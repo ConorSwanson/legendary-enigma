@@ -21,13 +21,18 @@ export interface PhotoMeta {
 
 export async function extractPhotoMeta(file: File): Promise<PhotoMeta> {
   try {
+    console.debug('[exif] file type:', file.type, 'size:', file.size);
     const exif = await parse(file, {
       gps: true,
       exif: true,
       tiff: true,
     });
 
-    if (!exif) return { date: null, mountainId: null, distanceKm: null };
+    if (!exif) {
+      console.debug('[exif] parse returned null');
+      return { date: null, mountainId: null, distanceKm: null };
+    }
+    console.debug('[exif] raw result:', exif);
 
     // Date
     const rawDate = exif.DateTimeOriginal ?? exif.CreateDate;
@@ -60,7 +65,8 @@ export async function extractPhotoMeta(file: File): Promise<PhotoMeta> {
     }
 
     return { date, mountainId, distanceKm };
-  } catch {
+  } catch (err) {
+    console.debug('[exif] parse error:', err);
     return { date: null, mountainId: null, distanceKm: null };
   }
 }
