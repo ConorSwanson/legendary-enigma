@@ -5,6 +5,8 @@ const { getDb } = require('../db');
 router.get('/', (_req, res) => {
   const db = getDb();
 
+  const { total_mountains } = db.prepare('SELECT COUNT(*) AS total_mountains FROM mountains').get();
+
   const totals = db.prepare(`
     SELECT
       COUNT(*)                          AS total_climbs,
@@ -50,6 +52,7 @@ router.get('/', (_req, res) => {
 
   res.json({
     ...totals,
+    total_mountains,
     by_month,
     by_year,
     top_mountains,

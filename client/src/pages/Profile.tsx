@@ -203,24 +203,24 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Progress toward all 58 */}
+      {/* Progress toward all 14ers */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-            Progress to All 58
+            Progress to All {stats.total_mountains}
           </h3>
           <span className="text-gray-400 text-sm font-medium">
-            {stats.unique_peaks} / 58
+            {stats.unique_peaks} / {stats.total_mountains}
           </span>
         </div>
         <div className="h-2.5 bg-gray-800 rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-sky-500 to-emerald-500 rounded-full transition-all duration-500"
-            style={{ width: `${Math.min(100, (stats.unique_peaks / 58) * 100)}%` }}
+            style={{ width: `${Math.min(100, (stats.unique_peaks / stats.total_mountains) * 100)}%` }}
           />
         </div>
         <p className="text-gray-600 text-xs mt-2">
-          {58 - stats.unique_peaks} peaks remaining
+          {stats.total_mountains - stats.unique_peaks} peaks remaining
         </p>
       </div>
     </div>

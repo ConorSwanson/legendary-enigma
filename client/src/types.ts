@@ -22,6 +22,7 @@ export interface Stats {
   total_climbs: number;
   unique_peaks: number;
   total_elevation: number;
+  total_mountains: number;
   by_month: { month: string; count: number }[];
   by_year: { year: string; count: number }[];
   top_mountains: { name: string; elevation: number; climb_count: number }[];

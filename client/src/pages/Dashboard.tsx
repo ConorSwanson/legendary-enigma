@@ -88,7 +88,7 @@ export default function Dashboard() {
         <StatCard
           label="Unique Peaks"
           value={stats.unique_peaks}
-          unit="/ 58"
+          unit={`/ ${stats.total_mountains}`}
           icon="⛰️"
           accent="text-emerald-400"
         />
