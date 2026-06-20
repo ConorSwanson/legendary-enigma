@@ -17,6 +17,13 @@ app.use('/api/climbs', require('./routes/climbs'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/profile', require('./routes/profile'));
 
+// Serve built React app (production)
+const clientDist = path.join(__dirname, '../../client/dist');
+if (require('fs').existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+}
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
