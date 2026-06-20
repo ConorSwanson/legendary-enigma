@@ -23,7 +23,8 @@ export async function extractPhotoMeta(file: File): Promise<PhotoMeta> {
   try {
     const exif = await parse(file, {
       gps: true,
-      pick: ['DateTimeOriginal', 'CreateDate'],
+      exif: true,
+      tiff: true,
     });
 
     if (!exif) return { date: null, mountainId: null, distanceKm: null };

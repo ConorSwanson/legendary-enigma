@@ -58,7 +58,12 @@ export default function LogClimb() {
       filled.distanceKm = meta.distanceKm ?? undefined;
     }
 
-    if (filled.date || filled.mountain) setAutoFill(filled);
+    if (filled.date || filled.mountain) {
+      setAutoFill(filled);
+    } else if (meta.date === null && meta.mountainId === null) {
+      // No EXIF at all — show a soft hint rather than silent failure
+      setAutoFill({ date: false, mountain: false });
+    }
   }
 
   function clearPhoto() {
@@ -147,7 +152,17 @@ export default function LogClimb() {
         </div>
 
         {/* Auto-fill banner */}
-        {autoFill && (
+        {autoFill && !autoFill.date && !autoFill.mountain ? (
+          <div className="bg-gray-800/60 border border-gray-700 rounded-lg px-3 py-2.5 flex items-start gap-2 text-sm">
+            <span className="text-gray-500 mt-0.5 shrink-0">ℹ</span>
+            <div className="text-gray-400">
+              No metadata found in this photo.
+              <span className="block text-xs mt-0.5 text-gray-600">
+                On iPhone, location is removed from photos for privacy. Fill in the fields below manually.
+              </span>
+            </div>
+          </div>
+        ) : autoFill && (
           <div className="bg-emerald-950/50 border border-emerald-800/60 rounded-lg px-3 py-2.5 flex items-start gap-2 text-sm">
             <span className="text-emerald-400 mt-0.5 shrink-0">✓</span>
             <div className="text-emerald-300">
@@ -161,7 +176,14 @@ export default function LogClimb() {
                 </span>
               )}
               {autoFill.date && <span> · date set</span>}
-              <span className="text-emerald-600 block text-xs mt-0.5">Review and adjust below if needed</span>
+              {!autoFill.mountain && (
+                <span className="block text-xs mt-0.5 text-emerald-600">
+                  Location not available (iPhone removes GPS from photos) — select mountain below
+                </span>
+              )}
+              {(autoFill.mountain || autoFill.date) && (
+                <span className="text-emerald-600 block text-xs mt-0.5">Review and adjust below if needed</span>
+              )}
             </div>
           </div>
         )}
