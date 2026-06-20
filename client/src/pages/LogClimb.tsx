@@ -18,6 +18,7 @@ export default function LogClimb() {
     mountain_id: '',
     climb_date: new Date().toISOString().split('T')[0],
     notes: '',
+    visibility: 'public' as 'public' | 'followers' | 'private',
   });
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -84,6 +85,7 @@ export default function LogClimb() {
     fd.append('mountain_id', form.mountain_id);
     fd.append('climb_date', form.climb_date);
     fd.append('notes', form.notes);
+    fd.append('visibility', form.visibility);
     if (photo) fd.append('photo', photo);
 
     try {
@@ -237,6 +239,32 @@ export default function LogClimb() {
             placeholder="Conditions, route taken, how it went…"
             className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 resize-none placeholder:text-gray-600 transition-colors"
           />
+        </div>
+
+        {/* Visibility */}
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1.5">Who can see this?</label>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { value: 'public', label: '🌐 Public', desc: 'Everyone' },
+              { value: 'followers', label: '👥 Followers', desc: 'Followers only' },
+              { value: 'private', label: '🔒 Private', desc: 'Just you' },
+            ] as const).map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setForm(f => ({ ...f, visibility: opt.value }))}
+                className={`p-2.5 rounded-lg border text-center transition-colors ${
+                  form.visibility === opt.value
+                    ? 'bg-sky-500/20 border-sky-500 text-sky-300'
+                    : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-gray-500'
+                }`}
+              >
+                <div className="text-sm">{opt.label}</div>
+                <div className="text-[10px] mt-0.5 opacity-70">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
         </div>
 
         <button

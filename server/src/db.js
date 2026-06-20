@@ -13,7 +13,6 @@ function getDb() {
 }
 
 const MOUNTAINS = [
-  // Original 40
   [1,  'Mount Elbert',            14440, 'Sawatch Range'],
   [2,  'Mount Massive',           14428, 'Sawatch Range'],
   [3,  'Mount Harvard',           14420, 'Sawatch Range'],
@@ -54,7 +53,6 @@ const MOUNTAINS = [
   [38, 'Redcloud Peak',           14034, 'San Juan Mountains'],
   [39, 'Pyramid Peak',            14018, 'Elk Mountains'],
   [40, 'Wilson Peak',             14017, 'San Juan Mountains'],
-  // Remaining 18 to complete all 58
   [41, 'Blanca Peak',             14345, 'Sangre de Cristo'],
   [42, 'La Plata Peak',           14336, 'Sawatch Range'],
   [43, 'Mount Cameron',           14238, 'Mosquito Range'],
@@ -76,9 +74,7 @@ const MOUNTAINS = [
 ];
 
 function initDb() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
   db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
@@ -92,13 +88,32 @@ function initDb() {
       range     TEXT    NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS users (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      clerk_id     TEXT    UNIQUE NOT NULL,
+      name         TEXT    NOT NULL DEFAULT 'Climber',
+      bio          TEXT,
+      avatar_path  TEXT,
+      created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS climbs (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id      INTEGER REFERENCES users(id) ON DELETE CASCADE,
       mountain_id  INTEGER NOT NULL REFERENCES mountains(id),
       climb_date   TEXT    NOT NULL,
       notes        TEXT,
       photo_path   TEXT,
+      visibility   TEXT    NOT NULL DEFAULT 'public',
       created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS follows (
+      follower_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      following_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (follower_id, following_id),
+      CHECK (follower_id != following_id)
     );
 
     CREATE TABLE IF NOT EXISTS profile (
@@ -108,9 +123,21 @@ function initDb() {
       avatar_path TEXT
     );
 
+    CREATE INDEX IF NOT EXISTS idx_climbs_user     ON climbs(user_id);
     CREATE INDEX IF NOT EXISTS idx_climbs_mountain ON climbs(mountain_id);
-    CREATE INDEX IF NOT EXISTS idx_climbs_date ON climbs(climb_date);
+    CREATE INDEX IF NOT EXISTS idx_climbs_date     ON climbs(climb_date);
+    CREATE INDEX IF NOT EXISTS idx_follows_follower   ON follows(follower_id);
+    CREATE INDEX IF NOT EXISTS idx_follows_following  ON follows(following_id);
   `);
+
+  // Migrate: add columns to legacy climbs table if missing
+  const climbCols = db.pragma('table_info(climbs)').map(c => c.name);
+  if (!climbCols.includes('user_id')) {
+    db.exec('ALTER TABLE climbs ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE');
+  }
+  if (!climbCols.includes('visibility')) {
+    db.exec("ALTER TABLE climbs ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'");
+  }
 
   const insertMountain = db.prepare(
     'INSERT OR IGNORE INTO mountains (id, name, elevation, range) VALUES (?, ?, ?, ?)'

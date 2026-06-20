@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
-import type { Profile as ProfileType, Stats } from '../types';
+import type { Profile as ProfileType, Stats, Mountain } from '../types';
+import BadgeGrid from '../components/BadgeGrid';
 
 function fmtElev(ft: number) {
   return ft >= 1000 ? `${(ft / 1000).toFixed(1)}k` : String(ft);
@@ -9,6 +10,7 @@ function fmtElev(ft: number) {
 export default function Profile() {
   const [profile, setProfile] = useState<ProfileType | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [mountains, setMountains] = useState<Mountain[]>([]);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: '', bio: '' });
   const [avatar, setAvatar] = useState<File | null>(null);
@@ -18,10 +20,11 @@ export default function Profile() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    Promise.all([api.profile.get(), api.stats.get()])
-      .then(([p, s]) => {
+    Promise.all([api.profile.get(), api.stats.get(), api.mountains.list()])
+      .then(([p, s, ms]) => {
         setProfile(p);
         setStats(s);
+        setMountains(ms);
         setForm({ name: p.name, bio: p.bio ?? '' });
       })
       .catch((e: Error) => setError(e.message));
@@ -223,6 +226,19 @@ export default function Profile() {
           {stats.total_mountains - stats.unique_peaks} peaks remaining
         </p>
       </div>
+
+      {/* Badge grid */}
+      {mountains.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-5">
+            Badge Collection
+          </h3>
+          <BadgeGrid
+            mountains={mountains}
+            climbedIds={new Set(stats.climbed_ids)}
+          />
+        </div>
+      )}
     </div>
   );
 }
