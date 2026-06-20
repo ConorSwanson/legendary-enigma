@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
-const { getDb } = require('../db');
+const { getDb, UPLOADS_DIR } = require('../db');
 const upload = require('../middleware/upload');
 const requireAuth = require('../middleware/auth');
 
-const UPLOAD_DIR = path.join(__dirname, '../../uploads');
+const UPLOAD_DIR = UPLOADS_DIR;
 
 function withAvatarUrl(user) {
   return { ...user, avatar_url: user.avatar_path ? `/uploads/${user.avatar_path}` : null };

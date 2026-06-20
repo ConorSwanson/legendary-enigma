@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { initDb } = require('./db');
+const { initDb, UPLOADS_DIR } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -10,7 +10,7 @@ initDb();
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(UPLOADS_DIR));
 
 app.use('/api/auth',      require('./routes/auth'));
 app.use('/api/mountains', require('./routes/mountains'));
