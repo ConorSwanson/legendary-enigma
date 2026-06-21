@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import type { Mountain } from '../types';
 import MountainBadge from './MountainBadge';
-import { RANGE_MOODS } from '../utils/badge';
+import { getPatchTheme } from '../utils/badge';
 
 interface Props {
   mountains: Mountain[];
@@ -37,7 +37,7 @@ export default function BadgeGrid({ mountains, climbedIds }: Props) {
     <div className="space-y-6">
       {sections.map(([range, ms]) => {
         const rangeClimbed = ms.filter(m => climbedIds.has(m.id)).length;
-        const mood = RANGE_MOODS[range];
+        const patchTheme = getPatchTheme(range);
 
         return (
           <div key={range}>
@@ -46,7 +46,7 @@ export default function BadgeGrid({ mountains, climbedIds }: Props) {
               <div className="flex items-center gap-2">
                 <div
                   className="w-2.5 h-2.5 rounded-full"
-                  style={{ backgroundColor: mood?.border ?? '#6b7280' }}
+                  style={{ backgroundColor: patchTheme?.stitching ?? '#6b7280' }}
                 />
                 <span className="text-sm font-semibold text-gray-300">{range}</span>
               </div>
@@ -62,7 +62,7 @@ export default function BadgeGrid({ mountains, climbedIds }: Props) {
                   key={m.id}
                   mountain={m}
                   climbed={climbedIds.has(m.id)}
-                  size={72}
+                  size={110}
                   onClick={() => navigate(climbedIds.has(m.id) ? `/history?mountain_id=${m.id}` : `/log?mountain_id=${m.id}`)}
                 />
               ))}
