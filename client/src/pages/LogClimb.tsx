@@ -4,6 +4,40 @@ import { api } from '../api';
 import type { Mountain } from '../types';
 import { extractPhotoMeta } from '../utils/exif';
 
+async function compressImage(file: File, maxPx = 1920, quality = 0.82): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width >= height) {
+          height = Math.round((height / width) * maxPx);
+          width = maxPx;
+        } else {
+          width = Math.round((width / height) * maxPx);
+          height = maxPx;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => resolve(blob
+          ? new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
+          : file
+        ),
+        'image/jpeg',
+        quality
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 interface AutoFill {
   date: boolean;
   mountain: boolean;
@@ -24,6 +58,7 @@ export default function LogClimb() {
   const [preview, setPreview] = useState<string | null>(null);
   const [autoFill, setAutoFill] = useState<AutoFill | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [compressing, setCompressing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -34,16 +69,21 @@ export default function LogClimb() {
 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
-    setPhoto(file);
     if (preview) URL.revokeObjectURL(preview);
     setPreview(file ? URL.createObjectURL(file) : null);
     setAutoFill(null);
 
-    if (!file) return;
+    if (!file) { setPhoto(null); return; }
 
     setParsing(true);
-    const meta = await extractPhotoMeta(file);
+    setCompressing(true);
+    const [meta, compressed] = await Promise.all([
+      extractPhotoMeta(file),
+      compressImage(file),
+    ]);
     setParsing(false);
+    setCompressing(false);
+    setPhoto(compressed);
 
     const filled: AutoFill = { date: false, mountain: false };
 
@@ -72,6 +112,7 @@ export default function LogClimb() {
     if (preview) URL.revokeObjectURL(preview);
     setPreview(null);
     setAutoFill(null);
+    setCompressing(false);
     if (fileRef.current) fileRef.current.value = '';
   }
 
@@ -123,9 +164,10 @@ export default function LogClimb() {
               >
                 ×
               </button>
-              {parsing && (
+              {(parsing || compressing) && (
                 <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-xs text-gray-300 px-3 py-1.5 flex items-center gap-2">
-                  <span className="animate-spin">⏳</span> Reading photo metadata…
+                  <span className="animate-spin inline-block">⏳</span>
+                  {compressing ? 'Compressing photo…' : 'Reading photo metadata…'}
                 </div>
               )}
             </div>
@@ -140,7 +182,7 @@ export default function LogClimb() {
                 Click to attach a photo
               </div>
               <div className="text-gray-600 text-xs mt-1">
-                Date &amp; mountain auto-filled from photo GPS · JPEG, PNG, WEBP · max 10 MB
+                Date &amp; mountain auto-filled from photo GPS · Photos compressed automatically
               </div>
             </button>
           )}
@@ -269,10 +311,10 @@ export default function LogClimb() {
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || compressing}
           className="w-full bg-sky-500 hover:bg-sky-400 disabled:bg-sky-900 disabled:text-sky-700 text-white font-semibold py-2.5 rounded-lg transition-colors"
         >
-          {submitting ? 'Saving…' : 'Save Climb'}
+          {submitting ? 'Uploading…' : compressing ? 'Compressing photo…' : 'Save Climb'}
         </button>
       </form>
     </div>
