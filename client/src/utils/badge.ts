@@ -210,77 +210,99 @@ export function generateBadge(mountainId: number, elevation: number): BadgeData 
 
 export interface PatchTheme {
   shortRange: string;
-  border: string;      // thick merrowed outer ring
-  stitching: string;   // dashed inner stitching + text color
+  // Outer patch structure
+  outerBorder: string;
+  innerLine: string;       // thin gold/accent line just inside border
+  stitching: string;       // dashed stitching color
+  // Sky (warm, saturated)
   skyTop: string;
   skyBottom: string;
+  // Sun disk
+  sunColor: string;
+  sunGlow: string;
+  // Mountains
   bgMtn: string;
   midMtn: string;
   fgMtn: string;
-  fgLight: string;     // lit/highlight face of hero mountain
+  fgLight: string;         // lit/sun face of hero mountain
   snow: string;
-  treeFill: string;
-  bannerBg: string;    // top/bottom text band background
-  textColor: string;
-  accentText: string;  // secondary (elevation) text
-  stars: boolean;
-  starColor: string;
+  // Ground
+  groundFar: string;
+  groundNear: string;
+  // Foreground trees
+  treeDark: string;
+  // Text banner
+  bannerBg: string;
+  bannerText: string;
+  bannerSub: string;
 }
 
 export const PATCH_THEMES: Record<string, PatchTheme> = {
   'Sawatch Range': {
     shortRange: 'SAWATCH RANGE',
-    border: '#1b4332', stitching: '#d4a017',
-    skyTop: '#0a1628', skyBottom: '#1e3a5f',
-    bgMtn: '#2a4a7a', midMtn: '#16294d', fgMtn: '#0a1830', fgLight: '#3d6899',
-    snow: '#ddeeff', treeFill: '#091a10',
-    bannerBg: '#0d2218', textColor: '#d4a017', accentText: '#7aadc8',
-    stars: true, starColor: '#b0c8e8',
+    outerBorder: '#2a3a18', innerLine: '#c8a830', stitching: '#c8a830',
+    skyTop: '#f0d898', skyBottom: '#d08848',
+    sunColor: '#e05818', sunGlow: '#f0a848',
+    bgMtn: '#7a9aaa', midMtn: '#5a7888', fgMtn: '#384858', fgLight: '#8ab0c0',
+    snow: '#f0f5f8',
+    groundFar: '#3a7830', groundNear: '#1e4818',
+    treeDark: '#0a1808',
+    bannerBg: '#182810', bannerText: '#f0e088', bannerSub: '#c8d8a0',
   },
   'Sangre de Cristo': {
     shortRange: 'SANGRE DE CRISTO',
-    border: '#6b1414', stitching: '#d4a017',
-    skyTop: '#1a0306', skyBottom: '#7a1e00',
-    bgMtn: '#5c1a0a', midMtn: '#380a04', fgMtn: '#1c0402', fgLight: '#7a3018',
-    snow: '#fff0e0', treeFill: '#120402',
-    bannerBg: '#3d0808', textColor: '#d4a017', accentText: '#d4806a',
-    stars: false, starColor: '',
+    outerBorder: '#281008', innerLine: '#e8b020', stitching: '#e8b020',
+    skyTop: '#b82808', skyBottom: '#e86020',
+    sunColor: '#f8c820', sunGlow: '#f8e060',
+    bgMtn: '#884020', midMtn: '#602010', fgMtn: '#380c08', fgLight: '#b05828',
+    snow: '#fff4e8',
+    groundFar: '#785018', groundNear: '#402808',
+    treeDark: '#140802',
+    bannerBg: '#280808', bannerText: '#f8e040', bannerSub: '#e8a860',
   },
   'San Juan Mountains': {
     shortRange: 'SAN JUAN MTNS',
-    border: '#7a3410', stitching: '#e8d060',
-    skyTop: '#100800', skyBottom: '#7a3800',
-    bgMtn: '#6b3008', midMtn: '#3d1a04', fgMtn: '#1c0c01', fgLight: '#8a5020',
-    snow: '#fff8e0', treeFill: '#100800',
-    bannerBg: '#421c06', textColor: '#e8d060', accentText: '#c89048',
-    stars: false, starColor: '',
+    outerBorder: '#281808', innerLine: '#e8d050', stitching: '#e8d050',
+    skyTop: '#c87020', skyBottom: '#e8b040',
+    sunColor: '#f8d820', sunGlow: '#f8f080',
+    bgMtn: '#986028', midMtn: '#704018', fgMtn: '#402008', fgLight: '#c07838',
+    snow: '#fff8e0',
+    groundFar: '#608020', groundNear: '#384810',
+    treeDark: '#0c1006',
+    bannerBg: '#281408', bannerText: '#f8e880', bannerSub: '#e0c060',
   },
   'Front Range': {
     shortRange: 'FRONT RANGE',
-    border: '#1e3050', stitching: '#90b4d0',
-    skyTop: '#05080f', skyBottom: '#182638',
-    bgMtn: '#263850', midMtn: '#141f30', fgMtn: '#080e1a', fgLight: '#3a5570',
-    snow: '#e0ecf8', treeFill: '#060c14',
-    bannerBg: '#0c1828', textColor: '#90b4d0', accentText: '#6090b0',
-    stars: true, starColor: '#a0c0d8',
+    outerBorder: '#101828', innerLine: '#a0c0d8', stitching: '#a0c0d8',
+    skyTop: '#4878b0', skyBottom: '#90b8d8',
+    sunColor: '#f5f0d8', sunGlow: '#f8f8e0',
+    bgMtn: '#3a5068', midMtn: '#283848', fgMtn: '#182030', fgLight: '#506880',
+    snow: '#e8f2f8',
+    groundFar: '#285038', groundNear: '#183028',
+    treeDark: '#080e0a',
+    bannerBg: '#101828', bannerText: '#d0e8f8', bannerSub: '#90b8d0',
   },
   'Mosquito Range': {
     shortRange: 'MOSQUITO RANGE',
-    border: '#0d3826', stitching: '#68c8a0',
-    skyTop: '#000d06', skyBottom: '#063824',
-    bgMtn: '#0a4028', midMtn: '#052618', fgMtn: '#02100a', fgLight: '#166044',
-    snow: '#e0faf0', treeFill: '#020a05',
-    bannerBg: '#031810', textColor: '#68c8a0', accentText: '#3ea880',
-    stars: true, starColor: '#90e0c0',
+    outerBorder: '#0c2018', innerLine: '#70d0a0', stitching: '#70d0a0',
+    skyTop: '#1a6840', skyBottom: '#58a870',
+    sunColor: '#f0c030', sunGlow: '#f8e070',
+    bgMtn: '#186040', midMtn: '#104030', fgMtn: '#082018', fgLight: '#288060',
+    snow: '#e0f8f0',
+    groundFar: '#207840', groundNear: '#104828',
+    treeDark: '#040e08',
+    bannerBg: '#0c2018', bannerText: '#90f0c0', bannerSub: '#60d090',
   },
   'Elk Mountains': {
     shortRange: 'ELK MOUNTAINS',
-    border: '#361060', stitching: '#b080e0',
-    skyTop: '#06010f', skyBottom: '#361060',
-    bgMtn: '#3e1470', midMtn: '#230840', fgMtn: '#0e031c', fgLight: '#5c2890',
-    snow: '#f0e8ff', treeFill: '#06010f',
-    bannerBg: '#1a0630', textColor: '#b080e0', accentText: '#8050c0',
-    stars: true, starColor: '#c8a0f0',
+    outerBorder: '#180830', innerLine: '#d090f0', stitching: '#d090f0',
+    skyTop: '#501870', skyBottom: '#883080',
+    sunColor: '#f0a820', sunGlow: '#f8d060',
+    bgMtn: '#4a1878', midMtn: '#301050', fgMtn: '#180828', fgLight: '#6830a0',
+    snow: '#f0e8ff',
+    groundFar: '#304050', groundNear: '#182030',
+    treeDark: '#060410',
+    bannerBg: '#180830', bannerText: '#f0d8ff', bannerSub: '#c090e8',
   },
 };
 
