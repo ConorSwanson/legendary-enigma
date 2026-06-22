@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { UserButton } from '@clerk/react';
 
 const links = [
   {
@@ -80,14 +81,20 @@ export default function NavBar() {
               {label}
             </NavLink>
           ))}
+          <div className="ml-auto">
+            <UserButton />
+          </div>
         </div>
       </nav>
 
-      {/* Mobile top bar — logo only */}
+      {/* Mobile top bar — logo + user button */}
       <nav className="md:hidden bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
         <div className="px-4 flex items-center h-12">
           <span className="text-lg">⛰️</span>
           <span className="font-bold text-white tracking-tight ml-2">14ers Tracker</span>
+          <div className="ml-auto">
+            <UserButton />
+          </div>
         </div>
       </nav>
 
