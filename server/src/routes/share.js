@@ -21,7 +21,8 @@ router.get('/:id', (req, res) => {
   const host = req.protocol + '://' + req.get('host');
   const title = `${row.user_name || 'Someone'} summited ${row.mountain_name} (${row.elevation.toLocaleString()} ft)!`;
   const description = `Logged on ${new Date(row.climb_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
-  const image = row.photo_path ? `${host}/uploads/${row.photo_path}` : `${host}/icon-512.png`;
+  // Generated badge card for rich previews (NPS patch + climber info at 1200×630)
+  const image = `${host}/api/og/climb/${row.id}`;
   const url = `${host}/share/${row.id}`;
 
   res.setHeader('Content-Type', 'text/html');
