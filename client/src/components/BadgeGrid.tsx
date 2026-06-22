@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import type { Mountain } from '../types';
 import MountainBadge from './MountainBadge';
-import { getPatchTheme } from '../utils/badge';
+import { PALETTES } from '../data/peaks-data';
 
 interface Props {
   mountains: Mountain[];
@@ -12,10 +12,21 @@ const RANGE_ORDER = [
   'Sawatch Range',
   'Sangre de Cristo',
   'San Juan Mountains',
-  'Front Range',
-  'Mosquito Range',
   'Elk Mountains',
+  'Mosquito Range',
+  'Front Range',
+  'Tenmile Range',
 ];
+
+const RANGE_TO_PALETTE: Record<string, keyof typeof PALETTES> = {
+  'Sawatch Range':      'SAWATCH',
+  'Sangre de Cristo':   'SANGRE',
+  'San Juan Mountains': 'SANJUAN',
+  'Elk Mountains':      'ELK',
+  'Mosquito Range':     'MOSQUITO',
+  'Front Range':        'FRONT',
+  'Tenmile Range':      'TENMILE',
+};
 
 export default function BadgeGrid({ mountains, climbedIds }: Props) {
   const navigate = useNavigate();
@@ -25,7 +36,6 @@ export default function BadgeGrid({ mountains, climbedIds }: Props) {
     return acc;
   }, {});
 
-  // Any ranges not in the ordered list
   mountains.forEach(m => {
     if (!byRange[m.range]) byRange[m.range] = [];
     if (!RANGE_ORDER.includes(m.range)) byRange[m.range].push(m);
@@ -34,20 +44,17 @@ export default function BadgeGrid({ mountains, climbedIds }: Props) {
   const sections = Object.entries(byRange).filter(([, ms]) => ms.length > 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {sections.map(([range, ms]) => {
         const rangeClimbed = ms.filter(m => climbedIds.has(m.id)).length;
-        const patchTheme = getPatchTheme(range);
+        const palKey = RANGE_TO_PALETTE[range];
+        const dotColor = palKey ? PALETTES[palKey].ac : '#6b7280';
 
         return (
           <div key={range}>
-            {/* Range header */}
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <div
-                  className="w-2.5 h-2.5 rounded-full"
-                  style={{ backgroundColor: patchTheme?.stitching ?? '#6b7280' }}
-                />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
                 <span className="text-sm font-semibold text-gray-300">{range}</span>
               </div>
               <span className="text-xs text-gray-500 font-medium">
@@ -55,8 +62,7 @@ export default function BadgeGrid({ mountains, climbedIds }: Props) {
               </span>
             </div>
 
-            {/* Badge row */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-4">
               {ms.map(m => (
                 <MountainBadge
                   key={m.id}
