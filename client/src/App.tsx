@@ -57,25 +57,26 @@ function AuthPageWrapper({ children, mode }: { children: ReactNode; mode: 'signi
       <div className="lg:w-[460px] lg:flex-shrink-0 lg:sticky lg:top-0 lg:h-screen bg-gray-900 lg:border-r lg:border-gray-800 flex flex-col overflow-hidden">
 
         {/* Content */}
-        <div className="flex-1 flex flex-col justify-center px-8 py-12 lg:px-10 lg:justify-between lg:py-10">
+        <div className="flex-1 flex flex-col justify-center px-8 py-8 lg:px-10 lg:justify-between lg:py-10">
 
           {/* Logo */}
-          <div className="flex items-center justify-center lg:justify-start gap-2.5 mb-10 lg:mb-0">
-            <span className="text-3xl lg:text-2xl">⛰️</span>
-            <span className="font-bold text-white text-xl lg:text-lg tracking-tight">14ers Tracker</span>
+          <div className="flex items-center justify-center lg:justify-start gap-2.5 mb-6 lg:mb-0">
+            <span className="text-2xl lg:text-2xl">⛰️</span>
+            <span className="font-bold text-white text-lg tracking-tight">14ers Tracker</span>
           </div>
 
           {/* Headline + features */}
           <div className="text-center lg:text-left">
-            <h1 className="text-4xl lg:text-5xl font-black text-white leading-[1.1] tracking-tight mb-4">
+            <h1 className="text-3xl lg:text-5xl font-black text-white leading-[1.1] tracking-tight mb-4">
               Track every<br />Colorado<br />summit.
             </h1>
-            <p className="text-gray-400 text-sm leading-relaxed mb-7 max-w-xs mx-auto lg:mx-0">
+            {/* Paragraph + bullets hidden on mobile — too much for one screen */}
+            <p className="hidden lg:block text-gray-400 text-sm leading-relaxed mb-7 max-w-xs">
               Log your 14er climbs, collect badge patches, and share your achievements with fellow mountaineers.
             </p>
-            <ul className="space-y-2.5">
+            <ul className="hidden lg:block space-y-2.5">
               {FEATURES.map(f => (
-                <li key={f} className="flex items-center gap-2.5 justify-center lg:justify-start">
+                <li key={f} className="flex items-center gap-2.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-sky-400 flex-shrink-0" />
                   <span className="text-sm text-gray-300">{f}</span>
                 </li>
@@ -84,7 +85,7 @@ function AuthPageWrapper({ children, mode }: { children: ReactNode; mode: 'signi
           </div>
 
           {/* Stats strip */}
-          <div className="mt-10 lg:mt-0 flex gap-4 text-xs text-gray-600 font-medium tracking-widest uppercase justify-center lg:justify-start">
+          <div className="mt-6 lg:mt-0 flex gap-4 text-xs text-gray-600 font-medium tracking-widest uppercase justify-center lg:justify-start">
             <span>58 peaks</span><span>·</span><span>7 ranges</span><span>·</span><span>1 app</span>
           </div>
         </div>
