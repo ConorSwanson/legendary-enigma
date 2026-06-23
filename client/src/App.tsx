@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { ClerkProvider, SignIn, SignUp, useAuth, useUser } from '@clerk/react';
 import type { ReactNode } from 'react';
 import Layout from './components/Layout';
@@ -31,7 +31,7 @@ const CLERK_APPEARANCE = {
   elements: {
     card: { boxShadow: 'none', border: 'none', padding: '0', backgroundColor: 'transparent' },
     header: { display: 'none' },
-    footerPages: { display: 'none' },
+    footer: { display: 'none' },
     socialButtonsBlockButton: { backgroundColor: '#111827', border: '1px solid #1f2937', color: '#f9fafb' },
     socialButtonsBlockButtonText: { color: '#f9fafb' },
     formFieldInput: { backgroundColor: '#111827', border: '1px solid #374151', color: '#f9fafb' },
@@ -49,7 +49,7 @@ const FEATURES = [
   'Follow and track fellow climbers',
 ];
 
-function AuthPageWrapper({ children }: { children: ReactNode }) {
+function AuthPageWrapper({ children, mode }: { children: ReactNode; mode: 'signin' | 'signup' }) {
   return (
     <div className="min-h-screen bg-gray-950 lg:flex">
 
@@ -107,6 +107,13 @@ function AuthPageWrapper({ children }: { children: ReactNode }) {
             Sign in to continue
           </p>
           {children}
+          <p className="text-gray-600 text-xs text-center mt-5">
+            {mode === 'signin' ? (
+              <>No account? <Link to="/sign-up" className="text-sky-400 hover:text-sky-300 transition-colors">Sign up</Link></>
+            ) : (
+              <>Have an account? <Link to="/sign-in" className="text-sky-400 hover:text-sky-300 transition-colors">Sign in</Link></>
+            )}
+          </p>
         </div>
       </div>
 
@@ -156,7 +163,7 @@ export default function App() {
           <Route
             path="/sign-in/*"
             element={
-              <AuthPageWrapper>
+              <AuthPageWrapper mode="signin">
                 <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" appearance={CLERK_APPEARANCE} />
               </AuthPageWrapper>
             }
@@ -164,7 +171,7 @@ export default function App() {
           <Route
             path="/sign-up/*"
             element={
-              <AuthPageWrapper>
+              <AuthPageWrapper mode="signup">
                 <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" appearance={CLERK_APPEARANCE} />
               </AuthPageWrapper>
             }
