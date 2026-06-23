@@ -176,7 +176,7 @@ export function buildBadge(React: unknown, peak: Peak, pal: Palette, opts: { cli
     h('g',{clipPath:`url(#cs-${uid})`}, E),
     T
   );
-  const wrapStyle = climbed ? {} : {filter:'grayscale(0.92) brightness(1.04)', opacity:0.62};
+  const wrapStyle = climbed ? {} : {filter:'grayscale(1) brightness(0.6)', opacity:0.35};
   return h('svg',{viewBox:'0 0 600 660', width:'100%', style:{display:'block', overflow:'visible'}},
     h('defs',null,
       h('path',{id:'sh-'+uid,d:SHIELD}),
