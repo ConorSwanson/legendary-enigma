@@ -143,8 +143,6 @@ const STUBS: [string, string, string, string, string][] = [
   ['wetterhorn','WETTERHORN','WETTERHORN PEAK','14,015','SANJUAN'],
   ['sanluis','SAN LUIS','SAN LUIS PEAK','14,014','SANJUAN'],
   ['sunshine','SUNSHINE','SUNSHINE PEAK','14,001','SANJUAN'],
-  // Stewart Peak — in Colorado 14ers DB but not all ranked lists; SANJUAN range
-  ['stewart','STEWART','STEWART PEAK','14,016','SANJUAN'],
   // Elk (7)
   ['castle','CASTLE','CASTLE PEAK','14,265','ELK'],
   ['maroon','MAROON','MAROON PEAK','14,163','ELK'],

@@ -71,7 +71,7 @@ const MOUNTAINS = [
   [55, 'Mount Lindsey',           14042, 'Sangre de Cristo'],
   [56, 'Little Bear Peak',        14037, 'Sangre de Cristo'],
   [57, 'North Eolus',             14039, 'San Juan Mountains'],
-  [58, 'Stewart Peak',            14016, 'San Juan Mountains'],
+  [58, 'Conundrum Peak',           14060, 'Elk Mountains'],
 ];
 
 function initDb() {
