@@ -73,7 +73,7 @@ router.get('/:id', requireAuth, (req, res) => {
     }
   }
 
-  res.json(withPhotoUrl(row));
+  res.json({ ...withPhotoUrl(row), is_owner: row.user_id === req.user.id });
 });
 
 // POST /api/climbs

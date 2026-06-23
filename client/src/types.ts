@@ -21,6 +21,7 @@ export interface Climb {
   created_at: string;
   user_id?: number;
   user_name?: string;
+  is_owner?: boolean;
 }
 
 export interface Stats {

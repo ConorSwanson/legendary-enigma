@@ -224,12 +224,14 @@ export default function ClimbDetail() {
               )}
 
               <div className="flex items-center gap-3 mt-5 flex-wrap">
-                <button
-                  onClick={() => setEditing(true)}
-                  className="bg-gray-800 hover:bg-gray-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors"
-                >
-                  Edit
-                </button>
+                {climb.is_owner && (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="bg-gray-800 hover:bg-gray-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors"
+                  >
+                    Edit
+                  </button>
+                )}
 
                 {climb.visibility !== 'private' && (
                   <button
@@ -257,7 +259,7 @@ export default function ClimbDetail() {
                   </button>
                 )}
 
-                {confirmDelete ? (
+                {climb.is_owner && (confirmDelete ? (
                   <div className="flex items-center gap-2">
                     <span className="text-gray-400 text-sm">Are you sure?</span>
                     <button
@@ -281,7 +283,7 @@ export default function ClimbDetail() {
                   >
                     Delete
                   </button>
-                )}
+                ))}
               </div>
             </div>
           )}
