@@ -22,6 +22,8 @@ export interface Climb {
   user_id?: number;
   user_name?: string;
   is_owner?: boolean;
+  like_count?: number;
+  is_liked?: boolean;
 }
 
 export interface Stats {
@@ -70,4 +72,6 @@ export interface FeedItem {
   user_id: number;
   user_name: string;
   user_avatar_url: string | null;
+  like_count?: number;
+  is_liked?: boolean;
 }

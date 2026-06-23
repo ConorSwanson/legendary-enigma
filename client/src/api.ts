@@ -43,6 +43,7 @@ export const api = {
       request<{ success: boolean }>(`/climbs/${id}`, { method: 'PUT', body: data }),
     delete: (id: number) =>
       request<{ success: boolean }>(`/climbs/${id}`, { method: 'DELETE' }),
+    like: (id: number) => request<{ liked: boolean; count: number }>(`/climbs/${id}/like`, { method: 'POST' }),
   },
   stats: {
     get: () => request<Stats>('/stats'),

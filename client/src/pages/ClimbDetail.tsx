@@ -25,6 +25,8 @@ export default function ClimbDetail() {
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState('');
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -38,6 +40,8 @@ export default function ClimbDetail() {
           climb_date: c.climb_date,
           notes: c.notes ?? '',
         });
+        setLiked(c.is_liked ?? false);
+        setLikeCount(c.like_count ?? 0);
       })
       .catch((e: Error) => setError(e.message));
   }, [id]);
@@ -72,6 +76,20 @@ export default function ClimbDetail() {
     } catch (err) {
       setError((err as Error).message);
       setDeleting(false);
+    }
+  }
+
+  async function handleLike() {
+    const prev = liked;
+    setLiked(!prev);
+    setLikeCount(n => prev ? n - 1 : n + 1);
+    try {
+      const res = await api.climbs.like(Number(id));
+      setLiked(res.liked);
+      setLikeCount(res.count);
+    } catch {
+      setLiked(prev);
+      setLikeCount(n => prev ? n + 1 : n - 1);
     }
   }
 
@@ -258,6 +276,21 @@ export default function ClimbDetail() {
                     Share
                   </button>
                 )}
+
+                <button
+                  onClick={handleLike}
+                  className={`flex items-center gap-1.5 font-medium px-4 py-2 rounded-lg text-sm transition-colors ${
+                    liked
+                      ? 'text-red-400 bg-red-950/30'
+                      : 'text-gray-400 hover:text-red-400 hover:bg-red-950/20 bg-gray-800'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-4 h-4"
+                    fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={liked ? 0 : 1.5}>
+                    <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+                  </svg>
+                  {likeCount > 0 ? likeCount : liked ? 'Loved' : 'Love'}
+                </button>
 
                 {climb.is_owner && (confirmDelete ? (
                   <div className="flex items-center gap-2">

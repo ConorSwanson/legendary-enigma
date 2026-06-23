@@ -130,6 +130,15 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_climbs_date     ON climbs(climb_date);
     CREATE INDEX IF NOT EXISTS idx_follows_follower   ON follows(follower_id);
     CREATE INDEX IF NOT EXISTS idx_follows_following  ON follows(following_id);
+
+    CREATE TABLE IF NOT EXISTS climb_likes (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      climb_id   INTEGER NOT NULL REFERENCES climbs(id) ON DELETE CASCADE,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(user_id, climb_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_likes_climb ON climb_likes(climb_id);
   `);
 
   // Migrate: add columns to legacy climbs table if missing

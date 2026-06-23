@@ -53,12 +53,14 @@ router.get('/', requireAuth, (req, res) => {
 router.get('/:id', requireAuth, (req, res) => {
   const row = getDb().prepare(`
     SELECT c.*, m.name AS mountain_name, m.elevation, m.range,
-           u.name AS user_name, u.id AS user_id
+           u.name AS user_name, u.id AS user_id,
+           (SELECT COUNT(*) FROM climb_likes WHERE climb_id = c.id) AS like_count,
+           EXISTS(SELECT 1 FROM climb_likes WHERE climb_id = c.id AND user_id = ?) AS is_liked
     FROM climbs c
     JOIN mountains m ON c.mountain_id = m.id
     LEFT JOIN users u ON c.user_id = u.id
     WHERE c.id = ?
-  `).get(req.params.id);
+  `).get(req.user.id, req.params.id);
 
   if (!row) return res.status(404).json({ error: 'Climb not found' });
 
@@ -73,7 +75,7 @@ router.get('/:id', requireAuth, (req, res) => {
     }
   }
 
-  res.json({ ...withPhotoUrl(row), is_owner: row.user_id === req.user.id });
+  res.json({ ...withPhotoUrl(row), is_owner: row.user_id === req.user.id, is_liked: !!row.is_liked, like_count: row.like_count ?? 0 });
 });
 
 // POST /api/climbs
@@ -136,6 +138,27 @@ router.delete('/:id', requireAuth, (req, res) => {
   deleteFile(climb.photo_path);
   db.prepare('DELETE FROM climbs WHERE id = ?').run(req.params.id);
   res.json({ success: true });
+});
+
+// POST /api/climbs/:id/like — toggle like
+router.post('/:id/like', requireAuth, (req, res) => {
+  const db = getDb();
+  const climb = db.prepare('SELECT id, visibility, user_id FROM climbs WHERE id = ?').get(req.params.id);
+  if (!climb) return res.status(404).json({ error: 'Climb not found' });
+  if (climb.visibility === 'private' && climb.user_id !== req.user.id)
+    return res.status(403).json({ error: 'Private climb' });
+
+  const existing = db.prepare('SELECT id FROM climb_likes WHERE user_id = ? AND climb_id = ?')
+    .get(req.user.id, req.params.id);
+
+  if (existing) {
+    db.prepare('DELETE FROM climb_likes WHERE user_id = ? AND climb_id = ?').run(req.user.id, req.params.id);
+  } else {
+    db.prepare('INSERT OR IGNORE INTO climb_likes (user_id, climb_id) VALUES (?, ?)').run(req.user.id, req.params.id);
+  }
+
+  const { count } = db.prepare('SELECT COUNT(*) as count FROM climb_likes WHERE climb_id = ?').get(req.params.id);
+  res.json({ liked: !existing, count });
 });
 
 module.exports = router;

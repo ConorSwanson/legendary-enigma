@@ -15,7 +15,9 @@ router.get('/', requireAuth, (req, res) => {
   const rows = getDb().prepare(`
     SELECT c.id, c.climb_date, c.photo_path, c.visibility, c.notes,
            m.name AS mountain_name, m.elevation, m.range, m.id AS mountain_id,
-           u.id AS user_id, u.name AS user_name, u.avatar_path AS user_avatar_path
+           u.id AS user_id, u.name AS user_name, u.avatar_path AS user_avatar_path,
+           (SELECT COUNT(*) FROM climb_likes WHERE climb_id = c.id) AS like_count,
+           EXISTS(SELECT 1 FROM climb_likes WHERE climb_id = c.id AND user_id = ?) AS is_liked
     FROM climbs c
     JOIN mountains m ON c.mountain_id = m.id
     JOIN users u ON c.user_id = u.id
@@ -25,9 +27,11 @@ router.get('/', requireAuth, (req, res) => {
       AND c.visibility IN ('public','followers')
     ORDER BY c.climb_date DESC, c.created_at DESC
     LIMIT 30 OFFSET ?
-  `).all(req.user.id, offset).map(r => ({
+  `).all(req.user.id, req.user.id, offset).map(r => ({
     ...withPhotoUrl(r),
     user_avatar_url: r.user_avatar_path ? `/uploads/${r.user_avatar_path}` : null,
+    is_liked: !!r.is_liked,
+    like_count: r.like_count ?? 0,
   }));
 
   res.json(rows);
@@ -41,16 +45,20 @@ router.get('/discover', requireAuth, (req, res) => {
   const rows = getDb().prepare(`
     SELECT c.id, c.climb_date, c.photo_path, c.visibility, c.notes,
            m.name AS mountain_name, m.elevation, m.range, m.id AS mountain_id,
-           u.id AS user_id, u.name AS user_name, u.avatar_path AS user_avatar_path
+           u.id AS user_id, u.name AS user_name, u.avatar_path AS user_avatar_path,
+           (SELECT COUNT(*) FROM climb_likes WHERE climb_id = c.id) AS like_count,
+           EXISTS(SELECT 1 FROM climb_likes WHERE climb_id = c.id AND user_id = ?) AS is_liked
     FROM climbs c
     JOIN mountains m ON c.mountain_id = m.id
     JOIN users u ON c.user_id = u.id
     WHERE c.visibility = 'public'
     ORDER BY c.climb_date DESC, c.created_at DESC
     LIMIT 30 OFFSET ?
-  `).all(offset).map(r => ({
+  `).all(req.user.id, offset).map(r => ({
     ...withPhotoUrl(r),
     user_avatar_url: r.user_avatar_path ? `/uploads/${r.user_avatar_path}` : null,
+    is_liked: !!r.is_liked,
+    like_count: r.like_count ?? 0,
   }));
 
   res.json(rows);

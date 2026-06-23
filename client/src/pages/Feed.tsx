@@ -10,6 +10,24 @@ function fmtDate(d: string) {
 }
 
 function FeedCard({ item }: { item: FeedItem }) {
+  const [liked, setLiked] = useState(item.is_liked ?? false);
+  const [likeCount, setLikeCount] = useState(item.like_count ?? 0);
+
+  async function handleLike(e: React.MouseEvent) {
+    e.preventDefault();
+    const prev = liked;
+    setLiked(!prev);
+    setLikeCount(c => prev ? c - 1 : c + 1);
+    try {
+      const res = await api.climbs.like(item.id);
+      setLiked(res.liked);
+      setLikeCount(res.count);
+    } catch {
+      setLiked(prev);
+      setLikeCount(c => prev ? c + 1 : c - 1);
+    }
+  }
+
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
       {item.photo_url && (
@@ -38,6 +56,21 @@ function FeedCard({ item }: { item: FeedItem }) {
         {item.notes && (
           <p className="text-gray-400 text-sm mt-2 leading-relaxed line-clamp-3">{item.notes}</p>
         )}
+
+        <div className="mt-3 pt-3 border-t border-gray-800 flex items-center">
+          <button
+            onClick={handleLike}
+            className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+              liked ? 'text-red-400' : 'text-gray-500 hover:text-red-400'
+            }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-4 h-4"
+              fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={liked ? 0 : 1.5}>
+              <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+            </svg>
+            {likeCount > 0 && <span>{likeCount}</span>}
+          </button>
+        </div>
       </div>
     </div>
   );
