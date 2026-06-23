@@ -85,7 +85,7 @@ function AuthPageWrapper({ children }: { children: ReactNode }) {
 
           {/* Stats strip */}
           <div className="mt-10 lg:mt-0 flex gap-4 text-xs text-gray-600 font-medium tracking-widest uppercase justify-center lg:justify-start">
-            <span>58 peaks</span><span>·</span><span>7 ranges</span><span>·</span><span>53k ft</span>
+            <span>58 peaks</span><span>·</span><span>7 ranges</span><span>·</span><span>1 app</span>
           </div>
         </div>
 
