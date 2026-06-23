@@ -15,61 +15,101 @@ import { setGetToken } from './utils/authStore';
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 
+// Dark appearance for Clerk's SignIn/SignUp — matches app palette, removes white card
+const CLERK_APPEARANCE = {
+  variables: {
+    colorBackground: '#030712',
+    colorText: '#f9fafb',
+    colorTextSecondary: '#6b7280',
+    colorInputBackground: '#111827',
+    colorInputText: '#f9fafb',
+    colorPrimary: '#38bdf8',
+    colorDanger: '#f87171',
+    borderRadius: '0.5rem',
+    fontFamily: 'inherit',
+  },
+  elements: {
+    card: { boxShadow: 'none', border: 'none', padding: '0', backgroundColor: 'transparent' },
+    header: { display: 'none' },
+    footerPages: { display: 'none' },
+    socialButtonsBlockButton: { backgroundColor: '#111827', border: '1px solid #1f2937', color: '#f9fafb' },
+    socialButtonsBlockButtonText: { color: '#f9fafb' },
+    formFieldInput: { backgroundColor: '#111827', border: '1px solid #374151', color: '#f9fafb' },
+    formFieldLabel: { color: '#9ca3af' },
+    dividerLine: { backgroundColor: '#1f2937' },
+    dividerText: { color: '#4b5563' },
+    identityPreviewText: { color: '#f9fafb' },
+    identityPreviewEditButton: { color: '#38bdf8' },
+  },
+};
+
+const FEATURES = [
+  'Earn a badge patch for every summit',
+  'Share your climb with a story card',
+  'Follow and track fellow climbers',
+];
+
 function AuthPageWrapper({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-950 flex">
-      {/* Left branding panel — large screens only */}
-      <div className="hidden lg:flex lg:w-[460px] flex-col justify-between bg-gray-900 border-r border-gray-800 p-10 overflow-hidden">
-        <div className="flex items-center gap-2.5">
-          <span className="text-2xl">⛰️</span>
-          <span className="font-bold text-white text-lg tracking-tight">14ers Tracker</span>
-        </div>
+    <div className="min-h-screen bg-gray-950 lg:flex">
 
-        <div className="space-y-5">
-          <h1 className="text-5xl font-black text-white leading-[1.1] tracking-tight">
-            Track every<br />Colorado<br />summit.
-          </h1>
-          <p className="text-gray-400 text-base leading-relaxed max-w-xs">
-            Log your 14er climbs, earn badge patches, and share achievements with fellow mountaineers.
-          </p>
-          <div className="flex gap-4 text-xs text-gray-600 font-medium tracking-widest uppercase pt-1">
-            <span>58 peaks</span>
-            <span>·</span>
-            <span>7 ranges</span>
-            <span>·</span>
-            <span>53,000+ ft</span>
+      {/* ── Hero panel — full-width on mobile, sticky left column on desktop ── */}
+      <div className="lg:w-[460px] lg:flex-shrink-0 lg:sticky lg:top-0 lg:h-screen bg-gray-900 lg:border-r lg:border-gray-800 flex flex-col overflow-hidden">
+
+        {/* Content */}
+        <div className="flex-1 flex flex-col justify-center px-8 py-12 lg:px-10 lg:justify-between lg:py-10">
+
+          {/* Logo */}
+          <div className="flex items-center justify-center lg:justify-start gap-2.5 mb-10 lg:mb-0">
+            <span className="text-3xl lg:text-2xl">⛰️</span>
+            <span className="font-bold text-white text-xl lg:text-lg tracking-tight">14ers Tracker</span>
+          </div>
+
+          {/* Headline + features */}
+          <div className="text-center lg:text-left">
+            <h1 className="text-4xl lg:text-5xl font-black text-white leading-[1.1] tracking-tight mb-4">
+              Track every<br />Colorado<br />summit.
+            </h1>
+            <p className="text-gray-400 text-sm leading-relaxed mb-7 max-w-xs mx-auto lg:mx-0">
+              Log your 14er climbs, collect badge patches, and share your achievements with fellow mountaineers.
+            </p>
+            <ul className="space-y-2.5">
+              {FEATURES.map(f => (
+                <li key={f} className="flex items-center gap-2.5 justify-center lg:justify-start">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 flex-shrink-0" />
+                  <span className="text-sm text-gray-300">{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Stats strip */}
+          <div className="mt-10 lg:mt-0 flex gap-4 text-xs text-gray-600 font-medium tracking-widest uppercase justify-center lg:justify-start">
+            <span>58 peaks</span><span>·</span><span>7 ranges</span><span>·</span><span>53k ft</span>
           </div>
         </div>
 
-        {/* Mountain silhouette */}
-        <div className="relative -mx-10 -mb-10">
-          <svg viewBox="0 0 460 140" className="w-full" preserveAspectRatio="xMidYMax meet">
-            <defs>
-              <linearGradient id="mtnGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#1e293b" />
-                <stop offset="100%" stopColor="#0f172a" />
-              </linearGradient>
-            </defs>
-            {/* Back range */}
-            <polygon points="0,140 40,95 85,115 130,70 175,100 220,55 265,85 310,45 355,75 400,50 460,80 460,140" fill="#1e2a3a" />
-            {/* Front range */}
-            <polygon points="0,140 30,110 70,125 110,88 160,115 200,72 250,100 295,62 340,92 385,65 430,85 460,72 460,140" fill="url(#mtnGrad)" />
+        {/* Mountain silhouette — bleeds into form section */}
+        <div className="flex-shrink-0">
+          <svg viewBox="0 0 460 90" className="w-full block" preserveAspectRatio="none">
+            <polygon
+              points="0,90 50,45 95,65 140,22 185,52 235,8 280,38 325,5 370,30 415,14 460,35 460,90"
+              fill="#030712"
+            />
           </svg>
         </div>
       </div>
 
-      {/* Right: Clerk form */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 min-h-screen">
-        {/* Mobile-only header */}
-        <div className="lg:hidden mb-8 text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <span className="text-3xl">⛰️</span>
-            <span className="font-bold text-white text-2xl tracking-tight">14ers Tracker</span>
-          </div>
-          <p className="text-gray-500 text-sm">Track your Colorado summit journey</p>
+      {/* ── Form panel ── */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 lg:py-0 bg-gray-950">
+        <div className="w-full max-w-sm">
+          <p className="text-gray-600 text-xs uppercase tracking-widest text-center mb-6 font-medium">
+            Sign in to continue
+          </p>
+          {children}
         </div>
-        {children}
       </div>
+
     </div>
   );
 }
@@ -117,7 +157,7 @@ export default function App() {
             path="/sign-in/*"
             element={
               <AuthPageWrapper>
-                <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" />
+                <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" appearance={CLERK_APPEARANCE} />
               </AuthPageWrapper>
             }
           />
@@ -125,7 +165,7 @@ export default function App() {
             path="/sign-up/*"
             element={
               <AuthPageWrapper>
-                <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" />
+                <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" appearance={CLERK_APPEARANCE} />
               </AuthPageWrapper>
             }
           />
