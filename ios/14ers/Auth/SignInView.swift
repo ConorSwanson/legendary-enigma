@@ -42,6 +42,8 @@ struct ClerkWebView: UIViewRepresentable {
         webView.backgroundColor = UIColor(red: 3/255, green: 7/255, blue: 18/255, alpha: 1)
         webView.scrollView.backgroundColor = UIColor(red: 3/255, green: 7/255, blue: 18/255, alpha: 1)
         webView.isOpaque = false
+        // Google blocks OAuth in embedded web views unless we present as Mobile Safari
+        webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 
         let url = URL(string: Config.apiBaseURL + "/sign-in")!
         webView.load(URLRequest(url: url))
