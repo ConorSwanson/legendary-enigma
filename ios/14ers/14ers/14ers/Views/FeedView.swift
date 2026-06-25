@@ -5,18 +5,19 @@ private let card = Color(red: 17/255, green: 24/255, blue: 39/255)
 private let emerald = Color(red: 52/255, green: 211/255, blue: 153/255)
 
 struct FeedView: View {
-    enum Tab: String, CaseIterable { case discover = "Discover", following = "Following" }
+    enum FeedTab: String, CaseIterable { case discover = "Discover", following = "Following" }
 
-    @State private var selectedTab: Tab = .discover
+    @State private var feedTab: FeedTab = .discover
     @State private var items: [FeedItem] = []
     @State private var isLoading = false
     @State private var error: String?
+    @EnvironmentObject var userState: UserState
 
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                Picker("Feed", selection: $selectedTab) {
-                    ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                Picker("Feed", selection: $feedTab) {
+                    ForEach(FeedTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
@@ -46,9 +47,14 @@ struct FeedView: View {
             }
             .background(bg.ignoresSafeArea())
             .navigationTitle("Feed")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
+                ToolbarItem(placement: .navigationBarTrailing) { NotificationBellButton() }
+            }
         }
         .task { await load() }
-        .onChange(of: selectedTab) {
+        .onChange(of: feedTab) {
             items = []
             Task { await load() }
         }
@@ -58,7 +64,7 @@ struct FeedView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            items = try await selectedTab == .discover
+            items = try await feedTab == .discover
                 ? APIClient.shared.feedDiscover()
                 : APIClient.shared.feedFollowing()
         } catch {

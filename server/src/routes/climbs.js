@@ -157,6 +157,11 @@ router.post('/:id/like', requireAuth, (req, res) => {
     db.prepare('DELETE FROM climb_likes WHERE user_id = ? AND climb_id = ?').run(req.user.id, req.params.id);
   } else {
     db.prepare('INSERT OR IGNORE INTO climb_likes (user_id, climb_id) VALUES (?, ?)').run(req.user.id, req.params.id);
+    if (climb.user_id && climb.user_id !== req.user.id) {
+      db.prepare(
+        "INSERT INTO notifications (user_id, from_user_id, type, climb_id) VALUES (?, ?, 'like', ?)"
+      ).run(climb.user_id, req.user.id, req.params.id);
+    }
   }
 
   const { count } = db.prepare('SELECT COUNT(*) as count FROM climb_likes WHERE climb_id = ?').get(req.params.id);

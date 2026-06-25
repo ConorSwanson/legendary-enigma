@@ -18,6 +18,7 @@ struct HomeView: View {
     @State private var isUploadingAvatar = false
     @State private var isUploadingBackground = false
     @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var userState: UserState
 
     var body: some View {
         NavigationView {
@@ -35,8 +36,13 @@ struct HomeView: View {
                 }
             }
             .background(bg.ignoresSafeArea())
-            .navigationTitle("Home")
+            .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NotificationBellButton()
+                }
+            }
         }
         .task { await load() }
         .onChange(of: avatarPickerItem) { handleAvatarPick() }
@@ -269,6 +275,7 @@ struct HomeView: View {
         if let (profileResult, statsResult) = try? await (p, s) {
             profile = profileResult
             stats = statsResult
+            userState.avatarUrl = profileResult.avatarUrl
         }
     }
 
@@ -375,5 +382,185 @@ private struct HomeClimbRow: View {
         .padding()
         .background(card)
         .cornerRadius(10)
+    }
+}
+
+// MARK: - Shared Header Components
+
+struct HeaderAvatar: View {
+    @EnvironmentObject var userState: UserState
+
+    var body: some View {
+        Button { userState.selectedTab = 0 } label: {
+            Group {
+                if let urlStr = userState.avatarUrl, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        if let img = phase.image {
+                            img.resizable().aspectRatio(contentMode: .fill)
+                        } else {
+                            avatarPlaceholder
+                        }
+                    }
+                } else {
+                    avatarPlaceholder
+                }
+            }
+            .frame(width: 30, height: 30)
+            .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var avatarPlaceholder: some View {
+        Circle()
+            .fill(Color(red: 56/255, green: 189/255, blue: 248/255).opacity(0.25))
+            .overlay(
+                Image(systemName: "person.fill")
+                    .font(.system(size: 13))
+                    .foregroundColor(Color(red: 56/255, green: 189/255, blue: 248/255))
+            )
+    }
+}
+
+struct NotificationBellButton: View {
+    @EnvironmentObject var userState: UserState
+    @State private var showNotifications = false
+
+    var body: some View {
+        Button { showNotifications = true } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "bell")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white)
+                if userState.unreadCount > 0 {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 8, height: 8)
+                        .offset(x: 5, y: -4)
+                }
+            }
+            .frame(width: 28, height: 28)
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showNotifications, onDismiss: {
+            Task { await userState.refresh() }
+        }) {
+            NotificationsView()
+                .environmentObject(userState)
+        }
+    }
+}
+
+// MARK: - Notifications View
+
+struct NotificationsView: View {
+    @EnvironmentObject var userState: UserState
+    @State private var notifications: [NotificationItem] = []
+    @State private var isLoading = true
+    @Environment(\.dismiss) private var dismiss
+
+    private let notifBg = Color(red: 3/255, green: 7/255, blue: 18/255)
+    private let notifCard = Color(red: 17/255, green: 24/255, blue: 39/255)
+
+    var body: some View {
+        NavigationView {
+            Group {
+                if isLoading {
+                    ProgressView().tint(.white)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(notifBg.ignoresSafeArea())
+                } else if notifications.isEmpty {
+                    VStack(spacing: 14) {
+                        Image(systemName: "bell.slash")
+                            .font(.system(size: 44))
+                            .foregroundColor(.gray.opacity(0.45))
+                        Text("No notifications yet")
+                            .foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(notifBg.ignoresSafeArea())
+                } else {
+                    List(notifications) { item in
+                        NotificationRow(item: item)
+                            .listRowBackground(notifCard)
+                            .listRowSeparatorTint(Color(red: 31/255, green: 41/255, blue: 55/255))
+                    }
+                    .listStyle(.plain)
+                    .background(notifBg)
+                    .scrollContentBackground(.hidden)
+                }
+            }
+            .navigationTitle("Notifications")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .task {
+            notifications = (try? await APIClient.shared.notifications()) ?? []
+            isLoading = false
+            try? await APIClient.shared.markNotificationsRead()
+            userState.unreadCount = 0
+        }
+    }
+}
+
+private struct NotificationRow: View {
+    let item: NotificationItem
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Group {
+                if let urlStr = item.fromUserAvatarUrl, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        if let img = phase.image {
+                            img.resizable().aspectRatio(contentMode: .fill)
+                        } else { avatarPlaceholder }
+                    }
+                } else {
+                    avatarPlaceholder
+                }
+            }
+            .frame(width: 40, height: 40)
+            .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(notifText)
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                Text(item.createdAt.shortNotifDate())
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+
+            Spacer()
+
+            if !item.isRead {
+                Circle()
+                    .fill(Color(red: 56/255, green: 189/255, blue: 248/255))
+                    .frame(width: 8, height: 8)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var notifText: String {
+        switch item.type {
+        case "like":   return "\(item.fromUserName) liked your climb on \(item.mountainName ?? "a peak")"
+        case "follow": return "\(item.fromUserName) started following you"
+        default:       return "\(item.fromUserName) interacted with your content"
+        }
+    }
+
+    private var avatarPlaceholder: some View {
+        Circle()
+            .fill(Color(red: 31/255, green: 41/255, blue: 55/255))
+            .overlay(
+                Text(item.fromUserName.prefix(1).uppercased())
+                    .font(.caption.bold())
+                    .foregroundColor(.white)
+            )
     }
 }

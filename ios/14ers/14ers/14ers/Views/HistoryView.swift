@@ -8,6 +8,7 @@ struct HistoryView: View {
     @State private var climbs: [Climb] = []
     @State private var isLoading = false
     @State private var error: String?
+    @EnvironmentObject var userState: UserState
 
     var body: some View {
         NavigationView {
@@ -45,8 +46,11 @@ struct HistoryView: View {
             }
             .background(bg.ignoresSafeArea())
             .navigationTitle("My Climbs")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    NotificationBellButton()
                     Button { Task { await load() } } label: {
                         Image(systemName: "arrow.clockwise")
                     }

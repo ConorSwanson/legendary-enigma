@@ -16,6 +16,7 @@ struct LogClimbView: View {
     @State private var isSaving = false
     @State private var saveError: String?
     @State private var showSuccess = false
+    @EnvironmentObject var userState: UserState
 
     // Manual photo picker
     @State private var pickerItem: PhotosPickerItem?
@@ -60,6 +61,11 @@ struct LogClimbView: View {
                 saveSection
             }
             .navigationTitle("Log a Climb")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
+                ToolbarItem(placement: .navigationBarTrailing) { NotificationBellButton() }
+            }
             .alert("Climb Logged!", isPresented: $showSuccess) {
                 Button("Done") { resetForm() }
             } message: {

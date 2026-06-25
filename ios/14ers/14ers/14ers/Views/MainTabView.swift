@@ -1,19 +1,25 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @EnvironmentObject var userState: UserState
+
     var body: some View {
-        TabView {
+        TabView(selection: $userState.selectedTab) {
             HomeView()
                 .tabItem { Label("Profile", systemImage: "house.fill") }
+                .tag(0)
 
             FeedView()
                 .tabItem { Label("Feed", systemImage: "person.2.fill") }
+                .tag(1)
 
             LogClimbView()
                 .tabItem { Label("Log", systemImage: "plus.circle.fill") }
+                .tag(2)
 
             HistoryView()
                 .tabItem { Label("History", systemImage: "clock.fill") }
+                .tag(3)
         }
         .tint(Color(red: 56/255, green: 189/255, blue: 248/255))
         .onAppear {

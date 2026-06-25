@@ -145,6 +145,31 @@ struct LikeResponse: Codable, Sendable {
     let count: Int
 }
 
+// MARK: - NotificationItem
+
+struct NotificationItem: Codable, Identifiable, Sendable {
+    let id: Int
+    let type: String
+    let fromUserId: Int
+    let fromUserName: String
+    let fromUserAvatarUrl: String?
+    let climbId: Int?
+    let mountainName: String?
+    let isRead: Bool
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, type
+        case fromUserId        = "from_user_id"
+        case fromUserName      = "from_user_name"
+        case fromUserAvatarUrl = "from_user_avatar_url"
+        case climbId           = "climb_id"
+        case mountainName      = "mountain_name"
+        case isRead            = "is_read"
+        case createdAt         = "created_at"
+    }
+}
+
 // MARK: - Peak GPS Coordinates
 
 struct PeakCoordinate: Sendable {
@@ -233,5 +258,9 @@ extension String {
         let display = DateFormatter()
         display.dateFormat = "MMM d, yyyy"
         return display.string(from: date)
+    }
+
+    func shortNotifDate() -> String {
+        String(prefix(10)).shortClimbDate()
     }
 }

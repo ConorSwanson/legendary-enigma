@@ -231,6 +231,23 @@ actor APIClient {
         try await requestVoid("/users/\(id)/follow", method: "DELETE")
     }
 
+    // MARK: - Notifications
+
+    func notifications() async throws -> [NotificationItem] {
+        try await request("/notifications")
+    }
+
+    func unreadNotificationCount() async throws -> Int {
+        struct R: Decodable { let count: Int }
+        let r: R = try await request("/notifications/unread-count")
+        return r.count
+    }
+
+    func markNotificationsRead() async throws {
+        struct R: Decodable { let success: Bool }
+        let _: R = try await request("/notifications/read-all", method: "POST")
+    }
+
     func updateProfile(name: String? = nil, bio: String? = nil, avatarData: Data? = nil, backgroundData: Data? = nil) async throws -> UserProfile {
         guard let url = URL(string: baseURL + "/api/profile") else {
             throw APIError.serverError("Invalid URL")

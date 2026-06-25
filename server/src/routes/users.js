@@ -48,12 +48,19 @@ router.post('/:id/follow', requireAuth, (req, res) => {
   const targetId = Number(req.params.id);
   if (targetId === req.user.id) return res.status(400).json({ error: 'Cannot follow yourself' });
 
-  const target = getDb().prepare('SELECT id FROM users WHERE id = ?').get(targetId);
+  const db = getDb();
+  const target = db.prepare('SELECT id FROM users WHERE id = ?').get(targetId);
   if (!target) return res.status(404).json({ error: 'User not found' });
 
-  getDb().prepare(
+  const result = db.prepare(
     'INSERT OR IGNORE INTO follows (follower_id, following_id) VALUES (?, ?)'
   ).run(req.user.id, targetId);
+
+  if (result.changes > 0) {
+    db.prepare(
+      "INSERT INTO notifications (user_id, from_user_id, type) VALUES (?, ?, 'follow')"
+    ).run(targetId, req.user.id);
+  }
 
   res.json({ success: true });
 });
