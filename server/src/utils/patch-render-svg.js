@@ -2,8 +2,6 @@
 // Mirrors the geometry from patch-render.js but outputs raw SVG strings
 // instead of React elements, so it works in Node/CommonJS without React.
 
-const BADGE_FONTS = require('./badge-fonts');
-
 const FIR = "M0 0 L-3 0 L-3 -5 L-13 -5 L-4 -15 L-11 -15 L-3 -25 L-9 -25 L-2 -34 L-6 -34 L0 -44 L6 -34 L2 -34 L9 -25 L3 -25 L11 -15 L4 -15 L13 -5 L3 -5 L3 0 Z";
 const BIRD = "M-22 0 C-12 -8 -4 -4 0 4 C4 -4 12 -8 22 0 C12 -2 4 2 0 8 C-4 2 -12 -2 -22 0 Z";
 const SHIELD = "M300 64 C356 64 396 68 418 78 C432 84 436 100 452 108 C470 117 480 130 480 168 C480 250 478 300 470 360 C458 448 408 540 300 612 C192 540 142 448 130 360 C122 300 120 250 120 168 C120 130 130 117 148 108 C164 100 168 84 182 78 C204 68 244 64 300 64 Z";
@@ -225,7 +223,7 @@ function buildBadgeSvg(peak, pal, opts = {}) {
   const wrapAttrs = climbed ? {} : { style: wrapStyle };
 
   return `<svg viewBox="0 0 600 660" xmlns="http://www.w3.org/2000/svg">` +
-    tag('defs', {}, `<style>${BADGE_FONTS}</style>` + defsContent) +
+    tag('defs', {}, defsContent) +
     tag('g', wrapAttrs, inner) +
     `</svg>`;
 }

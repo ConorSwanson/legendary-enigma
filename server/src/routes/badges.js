@@ -1,8 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const sharp = require('sharp');
+const path = require('path');
+const { Resvg } = require('@resvg/resvg-js');
 const { buildBadgeSvg } = require('../utils/patch-render-svg');
 const { PALETTES, RANGE_LABEL, peakByDbId } = require('../data/peaks-data');
+
+const FONT_DIR = path.join(__dirname, '../assets/fonts');
+const RESVG_OPTS = {
+  fitTo: { mode: 'width', value: 300 },
+  font: {
+    loadSystemFonts: false,
+    fontFiles: [
+      path.join(FONT_DIR, 'alfa-slab-one.ttf'),
+      path.join(FONT_DIR, 'oswald-500.ttf'),
+      path.join(FONT_DIR, 'oswald-600.ttf'),
+    ],
+  },
+};
 
 function badgeSvgFor(req) {
   const numericId = parseInt(req.params.id, 10);
@@ -16,14 +30,12 @@ function badgeSvgFor(req) {
 }
 
 // GET /api/badges/:id/png?climbed=1  — PNG for iOS AsyncImage
-router.get('/:id/png', async (req, res) => {
+router.get('/:id/png', (req, res) => {
   const svg = badgeSvgFor(req);
   if (!svg) return res.status(404).json({ error: 'Not found' });
   try {
-    const png = await sharp(Buffer.from(svg), { density: 150 })
-      .resize(300)
-      .png({ compressionLevel: 7 })
-      .toBuffer();
+    const resvg = new Resvg(svg, RESVG_OPTS);
+    const png = resvg.render().asPng();
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.send(png);
