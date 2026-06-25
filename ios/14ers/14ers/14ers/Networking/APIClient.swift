@@ -67,13 +67,18 @@ actor APIClient {
         }
         if http.statusCode == 404 { throw APIError.notFound }
         if http.statusCode >= 400 {
-            let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"] ?? "Request failed"
-            throw APIError.serverError(msg)
+            let body = String(data: data, encoding: .utf8) ?? "<binary>"
+            print("[API \(method) \(path)] HTTP \(http.statusCode): \(body)")
+            let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
+                ?? String(data: data, encoding: .utf8)?.prefix(200).description
+                ?? "HTTP \(http.statusCode)"
+            throw APIError.serverError("[\(http.statusCode)] \(msg)")
         }
 
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
+            print("[API \(method) \(path)] Decode error: \(error)")
             throw APIError.decodingError(error)
         }
     }
@@ -135,16 +140,29 @@ actor APIClient {
 
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse else { throw APIError.serverError("No response") }
+        print("[logClimb] HTTP \(http.statusCode)")
+        if http.statusCode >= 400 {
+            let body = String(data: data, encoding: .utf8) ?? "<binary>"
+            print("[logClimb] Error body: \(body)")
+        }
         if http.statusCode == 401 {
             Task { @MainActor in AuthManager.shared.signOut() }
             throw APIError.unauthorized
         }
         if http.statusCode >= 400 {
-            let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"] ?? "Request failed"
-            throw APIError.serverError(msg)
+            let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
+                ?? String(data: data, encoding: .utf8)?.prefix(200).description
+                ?? "HTTP \(http.statusCode)"
+            throw APIError.serverError("[\(http.statusCode)] \(msg)")
         }
         struct Created: Decodable { let id: Int }
-        return try JSONDecoder().decode(Created.self, from: data).id
+        do {
+            return try JSONDecoder().decode(Created.self, from: data).id
+        } catch {
+            let body = String(data: data, encoding: .utf8) ?? "<binary>"
+            print("[logClimb] Decode error: \(error)\nBody: \(body)")
+            throw APIError.decodingError(error)
+        }
     }
 
     func updateClimb(
