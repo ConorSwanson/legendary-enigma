@@ -94,34 +94,22 @@ struct ClimbDetailView: View {
                         .padding(.vertical, 4)
 
                         // Action buttons
-                        HStack(spacing: 10) {
+                        HStack(spacing: 16) {
                             if climb.isOwner == true {
-                                Button("Edit") { showEdit = true }
-                                    .buttonStyle(.bordered)
-                                    .tint(.white)
+                                iconButton(systemImage: "pencil", tint: .white) { showEdit = true }
                             }
 
                             Button { toggleLike() } label: {
-                                Label(
-                                    likeCount > 0 ? "\(likeCount)" : (liked ? "Loved" : "Love"),
-                                    systemImage: liked ? "heart.fill" : "heart"
-                                )
+                                likeIcon
                             }
-                            .buttonStyle(.bordered)
-                            .tint(liked ? .red : .gray)
+                            .buttonStyle(.plain)
 
                             shareButton
 
                             Spacer()
 
                             if climb.isOwner == true {
-                                Button(role: .destructive) {
-                                    showDeleteConfirm = true
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                                .buttonStyle(.bordered)
-                                .tint(.red)
+                                iconButton(systemImage: "trash", tint: .red) { showDeleteConfirm = true }
                             }
                         }
                     }
@@ -158,23 +146,56 @@ struct ClimbDetailView: View {
     }
 
     @ViewBuilder
+    private var likeIcon: some View {
+        HStack(spacing: 5) {
+            Image(systemName: liked ? "heart.fill" : "heart")
+                .font(.system(size: 20))
+                .foregroundColor(liked ? .red : Color(white: 0.6))
+            if likeCount > 0 {
+                Text("\(likeCount)")
+                    .font(.caption.bold())
+                    .foregroundColor(liked ? .red : Color(white: 0.6))
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(Color.white.opacity(0.08))
+        .cornerRadius(20)
+    }
+
+    @ViewBuilder
     private var shareButton: some View {
         if let img = badgeUIImage {
             ShareLink(
                 item: shareText,
                 preview: SharePreview(climb?.mountainName ?? "Summit", image: Image(uiImage: img))
             ) {
-                Label("Share", systemImage: "square.and.arrow.up")
+                iconButtonLabel(systemImage: "square.and.arrow.up", tint: Color(white: 0.6))
             }
-            .buttonStyle(.bordered)
-            .tint(.gray)
+            .buttonStyle(.plain)
         } else {
             ShareLink(item: shareText) {
-                Label("Share", systemImage: "square.and.arrow.up")
+                iconButtonLabel(systemImage: "square.and.arrow.up", tint: Color(white: 0.6))
             }
-            .buttonStyle(.bordered)
-            .tint(.gray)
+            .buttonStyle(.plain)
         }
+    }
+
+    private func iconButton(systemImage: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            iconButtonLabel(systemImage: systemImage, tint: tint)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func iconButtonLabel(systemImage: String, tint: Color) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 20))
+            .foregroundColor(tint)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(Color.white.opacity(0.08))
+            .cornerRadius(20)
     }
 
     private func load() async {
