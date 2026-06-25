@@ -34,8 +34,12 @@ struct LogClimbView: View {
     @State private var detectedMountainId: Int?
     @State private var detectedMountainName: String?
 
-    // Full-size photo preview
-    @State private var previewAsset: PHAsset?
+    // Full-size photo preview (swipeable)
+    @State private var previewStartIndex: Int?
+
+    // Success modal data
+    @State private var successMountain: Mountain?
+    @State private var successDate: Date = Date()
 
     var body: some View {
         NavigationView {
@@ -69,20 +73,26 @@ struct LogClimbView: View {
                 ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
                 ToolbarItem(placement: .navigationBarTrailing) { NotificationBellButton() }
             }
-            .alert("Climb Logged!", isPresented: $showSuccess) {
-                Button("Done") { resetForm() }
-            } message: {
-                Text("Your summit has been recorded.")
-            }
         }
         .task { mountains = (try? await APIClient.shared.mountains()) ?? [] }
         .onChange(of: pickerItem) { Task { await loadPickedPhoto() } }
-        .sheet(isPresented: Binding(
-            get: { previewAsset != nil },
-            set: { if !$0 { previewAsset = nil } }
-        )) {
-            if let asset = previewAsset {
-                PhotoPreviewSheet(asset: asset)
+        .sheet(isPresented: Binding(get: { previewStartIndex != nil }, set: { if !$0 { previewStartIndex = nil } })) {
+            if let idx = previewStartIndex {
+                PhotoPreviewSheet(
+                    items: suggestedAssets.map { item in
+                        PhotoPreviewSheet.Item(
+                            asset: item.asset,
+                            mountainName: mountains.first(where: { $0.id == item.mountainId })?.name,
+                            date: item.asset.creationDate
+                        )
+                    },
+                    startIndex: idx
+                )
+            }
+        }
+        .sheet(isPresented: $showSuccess, onDismiss: resetForm) {
+            if let m = successMountain {
+                ClimbSuccessView(mountain: m, climbDate: successDate)
             }
         }
     }
@@ -123,7 +133,8 @@ struct LogClimbView: View {
                         .foregroundColor(.secondary)
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(suggestedAssets, id: \.asset.localIdentifier) { item in
+                            ForEach(suggestedAssets.indices, id: \.self) { idx in
+                                let item = suggestedAssets[idx]
                                 ZStack(alignment: .topTrailing) {
                                     SuggestedPhotoThumb(asset: item.asset)
                                         .frame(width: 80, height: 80)
@@ -138,7 +149,7 @@ struct LogClimbView: View {
                                         )
                                         .onTapGesture { Task { await selectSuggested(item) } }
                                     Button {
-                                        previewAsset = item.asset
+                                        previewStartIndex = idx
                                     } label: {
                                         Image(systemName: "arrow.up.left.and.arrow.down.right")
                                             .font(.system(size: 8, weight: .bold))
@@ -413,6 +424,8 @@ struct LogClimbView: View {
                 visibility: visibility,
                 photoData: photoData
             )
+            successMountain = mountains.first(where: { $0.id == mountainId })
+            successDate = date
             showSuccess = true
         } catch {
             self.saveError = error.localizedDescription
@@ -463,32 +476,83 @@ private struct SuggestedPhotoThumb: View {
     }
 }
 
-// MARK: - Full-size photo preview sheet
+// MARK: - Swipeable full-size photo preview
 
 private struct PhotoPreviewSheet: View {
-    let asset: PHAsset
-    @State private var image: UIImage?
+    struct Item {
+        let asset: PHAsset
+        let mountainName: String?
+        let date: Date?
+    }
+
+    let items: [Item]
+    let startIndex: Int
+    @State private var currentPage: Int
     @Environment(\.dismiss) private var dismiss
 
+    init(items: [Item], startIndex: Int) {
+        self.items = items
+        self.startIndex = startIndex
+        _currentPage = State(initialValue: startIndex)
+    }
+
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topTrailing) {
             Color.black.ignoresSafeArea()
-            if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .ignoresSafeArea()
-            } else {
-                ProgressView().tint(.white)
+            TabView(selection: $currentPage) {
+                ForEach(items.indices, id: \.self) { idx in
+                    PhotoPageView(item: items[idx]).tag(idx)
+                }
             }
-        }
-        .overlay(alignment: .topTrailing) {
+            .tabViewStyle(.page(indexDisplayMode: items.count > 1 ? .automatic : .never))
+            .ignoresSafeArea()
+
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 30))
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(Color.white, Color.black.opacity(0.5))
                     .padding()
+            }
+        }
+    }
+}
+
+private struct PhotoPageView: View {
+    let item: PhotoPreviewSheet.Item
+    @State private var image: UIImage?
+
+    var body: some View {
+        ZStack {
+            Color.black
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                ProgressView().tint(.white)
+            }
+            if item.mountainName != nil || item.date != nil {
+                VStack {
+                    Spacer()
+                    VStack(spacing: 4) {
+                        if let name = item.mountainName {
+                            Text(name)
+                                .font(.headline.bold())
+                                .foregroundColor(.white)
+                        }
+                        if let d = item.date {
+                            Text(d, style: .date)
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.75))
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(Color.black.opacity(0.55))
+                    .cornerRadius(10)
+                    .padding(.bottom, 52)
+                }
             }
         }
         .task { image = await loadFullImage() }
@@ -501,9 +565,165 @@ private struct PhotoPreviewSheet: View {
         opts.version = .current
         return await withCheckedContinuation { cont in
             PHImageManager.default()
-                .requestImageDataAndOrientation(for: asset, options: opts) { data, _, _, _ in
+                .requestImageDataAndOrientation(for: item.asset, options: opts) { data, _, _, _ in
                     cont.resume(returning: data.flatMap { UIImage(data: $0) })
                 }
         }
+    }
+}
+
+// MARK: - Climb success modal
+
+private struct ClimbSuccessView: View {
+    let mountain: Mountain
+    let climbDate: Date
+    @Environment(\.dismiss) private var dismiss
+
+    private let emerald   = Color(red: 52/255,  green: 211/255, blue: 153/255)
+    private let bgColor   = Color(red: 3/255,   green: 7/255,   blue: 18/255)
+    private let cardColor = Color(red: 17/255,  green: 24/255,  blue: 39/255)
+
+    private var badgeURL: URL? {
+        URL(string: "\(Config.apiBaseURL)/api/badges/\(mountain.id)/png?climbed=1")
+    }
+
+    private var shareText: String {
+        let fmt = DateFormatter()
+        fmt.dateStyle = .medium
+        return "Just summited \(mountain.name) (\(mountain.elevation.formatted()) ft) on \(fmt.string(from: climbDate))! 🏔️ #Colorado14ers #14ers"
+    }
+
+    var body: some View {
+        ZStack {
+            bgColor.ignoresSafeArea()
+            ConfettiView()
+
+            ScrollView {
+                VStack(spacing: 28) {
+                    VStack(spacing: 8) {
+                        Text("Summit Achieved!")
+                            .font(.largeTitle.bold())
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                        Text("🏔️")
+                            .font(.system(size: 44))
+                    }
+                    .padding(.top, 48)
+
+                    AsyncImage(url: badgeURL) { phase in
+                        switch phase {
+                        case .success(let img):
+                            img.resizable().aspectRatio(contentMode: .fit)
+                        default:
+                            ProgressView().tint(emerald).frame(height: 200)
+                        }
+                    }
+                    .frame(maxWidth: 220)
+                    .shadow(color: emerald.opacity(0.35), radius: 24)
+
+                    VStack(spacing: 6) {
+                        Text(mountain.name)
+                            .font(.title2.bold())
+                            .foregroundColor(.white)
+                        Text("\(mountain.elevation.formatted()) ft  ·  \(mountain.range)")
+                            .font(.subheadline)
+                            .foregroundColor(emerald)
+                        Text(climbDate, style: .date)
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+
+                    VStack(spacing: 12) {
+                        ShareLink(item: shareText) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "square.and.arrow.up")
+                                Text("Share Your Summit")
+                            }
+                            .font(.headline)
+                            .foregroundColor(bgColor)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(emerald)
+                            .cornerRadius(14)
+                        }
+
+                        Button("Done") { dismiss() }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(cardColor)
+                            .cornerRadius(14)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 48)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Confetti animation
+
+private struct ConfettiView: View {
+    private struct Piece: Identifiable {
+        let id: Int
+        let xFraction: CGFloat
+        let delay: Double
+        let duration: Double
+        let color: Color
+        let width: CGFloat
+        let height: CGFloat
+        let startRotation: Double
+    }
+
+    private static func makePieces() -> [Piece] {
+        let colors: [Color] = [
+            Color(red: 52/255, green: 211/255, blue: 153/255),
+            Color(red: 56/255, green: 189/255, blue: 248/255),
+            .yellow, .orange, .pink, .purple,
+            Color(red: 251/255, green: 191/255, blue: 36/255)
+        ]
+        return (0..<80).map { i in
+            Piece(
+                id: i,
+                xFraction: CGFloat(i % 20) / 20.0 + CGFloat.random(in: -0.03...0.03),
+                delay: Double.random(in: 0...1.2),
+                duration: Double.random(in: 1.8...3.2),
+                color: colors[i % colors.count],
+                width: CGFloat.random(in: 5...12),
+                height: CGFloat.random(in: 3...7),
+                startRotation: Double.random(in: 0...360)
+            )
+        }
+    }
+
+    @State private var pieces: [Piece] = []
+    @State private var fall = false
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                ForEach(pieces) { piece in
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(piece.color)
+                        .frame(width: piece.width, height: piece.height)
+                        .rotationEffect(.degrees(piece.startRotation + (fall ? 720 : 0)))
+                        .position(
+                            x: piece.xFraction * geo.size.width,
+                            y: fall ? geo.size.height + 40 : -20
+                        )
+                        .animation(
+                            .easeIn(duration: piece.duration).delay(piece.delay),
+                            value: fall
+                        )
+                }
+            }
+        }
+        .onAppear {
+            if pieces.isEmpty { pieces = Self.makePieces() }
+            fall = true
+        }
+        .allowsHitTesting(false)
     }
 }
