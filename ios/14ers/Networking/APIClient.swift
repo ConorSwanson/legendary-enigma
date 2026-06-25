@@ -202,7 +202,7 @@ actor APIClient {
 // MARK: - Keychain helper
 
 enum KeychainHelper {
-    static func save(_ value: String, for key: String) {
+    nonisolated static func save(_ value: String, for key: String) {
         let data = Data(value.utf8)
         let query: [CFString: Any] = [
             kSecClass:       kSecClassGenericPassword,
@@ -213,7 +213,7 @@ enum KeychainHelper {
         SecItemAdd(query as CFDictionary, nil)
     }
 
-    static func load(for key: String) -> String? {
+    nonisolated static func load(for key: String) -> String? {
         let query: [CFString: Any] = [
             kSecClass:            kSecClassGenericPassword,
             kSecAttrAccount:      key,
@@ -226,7 +226,7 @@ enum KeychainHelper {
         return String(data: data, encoding: .utf8)
     }
 
-    static func delete(for key: String) {
+    nonisolated static func delete(for key: String) {
         let query: [CFString: Any] = [
             kSecClass:       kSecClassGenericPassword,
             kSecAttrAccount: key,

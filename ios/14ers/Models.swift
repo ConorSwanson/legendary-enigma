@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Mountain
 
-struct Mountain: Codable, Identifiable {
+struct Mountain: Codable, Identifiable, Sendable {
     let id: Int
     let name: String
     let elevation: Int
@@ -11,7 +11,7 @@ struct Mountain: Codable, Identifiable {
 
 // MARK: - Climb
 
-struct Climb: Codable, Identifiable {
+struct Climb: Codable, Identifiable, Sendable {
     let id: Int
     let mountainId: Int
     let mountainName: String
@@ -46,7 +46,7 @@ struct Climb: Codable, Identifiable {
 
 // MARK: - FeedItem
 
-struct FeedItem: Codable, Identifiable {
+struct FeedItem: Codable, Identifiable, Sendable {
     let id: Int
     let climbDate: String
     let photoUrl: String?
@@ -78,7 +78,7 @@ struct FeedItem: Codable, Identifiable {
 
 // MARK: - Stats
 
-struct Stats: Codable {
+struct Stats: Codable, Sendable {
     let totalClimbs: Int
     let uniquePeaks: Int
     let totalElevation: Int
@@ -96,7 +96,7 @@ struct Stats: Codable {
     }
 }
 
-struct RecentClimb: Codable, Identifiable {
+struct RecentClimb: Codable, Identifiable, Sendable {
     let id: Int
     let mountainName: String
     let elevation: Int
@@ -113,7 +113,7 @@ struct RecentClimb: Codable, Identifiable {
 
 // MARK: - User / Profile
 
-struct UserProfile: Codable, Identifiable {
+struct UserProfile: Codable, Identifiable, Sendable {
     let id: Int
     let name: String
     let bio: String?
@@ -136,7 +136,7 @@ struct UserProfile: Codable, Identifiable {
 
 // MARK: - Like response
 
-struct LikeResponse: Codable {
+struct LikeResponse: Codable, Sendable {
     let liked: Bool
     let count: Int
 }

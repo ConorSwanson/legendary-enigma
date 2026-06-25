@@ -48,7 +48,7 @@ struct FeedView: View {
             .navigationTitle("Feed")
         }
         .task { await load() }
-        .onChange(of: selectedTab) { _ in
+        .onChange(of: selectedTab) {
             items = []
             Task { await load() }
         }
