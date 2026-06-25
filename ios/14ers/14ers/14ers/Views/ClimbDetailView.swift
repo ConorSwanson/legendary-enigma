@@ -1,7 +1,8 @@
 import SwiftUI
+import UIKit
 
-private let bg = Color(red: 3/255, green: 7/255, blue: 18/255)
-private let card = Color(red: 17/255, green: 24/255, blue: 39/255)
+private let bg      = Color(red: 3/255,  green: 7/255,  blue: 18/255)
+private let card    = Color(red: 17/255, green: 24/255, blue: 39/255)
 private let emerald = Color(red: 52/255, green: 211/255, blue: 153/255)
 
 struct ClimbDetailView: View {
@@ -14,7 +15,19 @@ struct ClimbDetailView: View {
     @State private var likeCount = 0
     @State private var showEdit = false
     @State private var showDeleteConfirm = false
+    @State private var badgeUIImage: UIImage?
     @Environment(\.dismiss) private var dismiss
+
+    private var badgeURL: URL? {
+        guard let climb else { return nil }
+        return URL(string: "\(Config.apiBaseURL)/api/badges/\(climb.mountainId)/png?climbed=1")
+    }
+
+    private var shareText: String {
+        guard let climb else { return "" }
+        let base = "Summited \(climb.mountainName) (\(climb.elevation.formatted()) ft) on \(climb.climbDate.formattedClimbDate())! 🏔️ #Colorado14ers #14ers"
+        return "\(base)\n\(Config.apiBaseURL)/s/\(climbId)"
+    }
 
     var body: some View {
         ScrollView {
@@ -31,7 +44,8 @@ struct ClimbDetailView: View {
                         .clipped()
                     }
 
-                    VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Title row
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(climb.mountainName)
@@ -51,6 +65,7 @@ struct ClimbDetailView: View {
                                 .multilineTextAlignment(.trailing)
                         }
 
+                        // Notes
                         if let notes = climb.notes, !notes.isEmpty {
                             Text(notes)
                                 .font(.body)
@@ -61,6 +76,24 @@ struct ClimbDetailView: View {
                                 .cornerRadius(10)
                         }
 
+                        // Badge
+                        HStack {
+                            Spacer()
+                            AsyncImage(url: badgeURL) { phase in
+                                switch phase {
+                                case .success(let img):
+                                    img.resizable().aspectRatio(contentMode: .fit)
+                                default:
+                                    ProgressView().tint(emerald).frame(height: 160)
+                                }
+                            }
+                            .frame(maxWidth: 180)
+                            .shadow(color: emerald.opacity(0.3), radius: 20)
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+
+                        // Action buttons
                         HStack(spacing: 10) {
                             if climb.isOwner == true {
                                 Button("Edit") { showEdit = true }
@@ -68,9 +101,7 @@ struct ClimbDetailView: View {
                                     .tint(.white)
                             }
 
-                            Button {
-                                toggleLike()
-                            } label: {
+                            Button { toggleLike() } label: {
                                 Label(
                                     likeCount > 0 ? "\(likeCount)" : (liked ? "Loved" : "Love"),
                                     systemImage: liked ? "heart.fill" : "heart"
@@ -78,6 +109,8 @@ struct ClimbDetailView: View {
                             }
                             .buttonStyle(.bordered)
                             .tint(liked ? .red : .gray)
+
+                            shareButton
 
                             Spacer()
 
@@ -124,6 +157,26 @@ struct ClimbDetailView: View {
         .task { await load() }
     }
 
+    @ViewBuilder
+    private var shareButton: some View {
+        if let img = badgeUIImage {
+            ShareLink(
+                item: shareText,
+                preview: SharePreview(climb?.mountainName ?? "Summit", image: Image(uiImage: img))
+            ) {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(.bordered)
+            .tint(.gray)
+        } else {
+            ShareLink(item: shareText) {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(.bordered)
+            .tint(.gray)
+        }
+    }
+
     private func load() async {
         do {
             async let c = APIClient.shared.climb(climbId)
@@ -133,6 +186,11 @@ struct ClimbDetailView: View {
             mountains = fetchedMountains
             liked = fetched.isLiked ?? false
             likeCount = fetched.likeCount ?? 0
+            // Load badge as UIImage for SharePreview thumbnail
+            if let url = URL(string: "\(Config.apiBaseURL)/api/badges/\(fetched.mountainId)/png?climbed=1"),
+               let (data, _) = try? await URLSession.shared.data(from: url) {
+                badgeUIImage = UIImage(data: data)
+            }
         } catch {
             self.error = error.localizedDescription
         }
@@ -163,6 +221,8 @@ struct ClimbDetailView: View {
         }
     }
 }
+
+// MARK: - Edit Climb
 
 struct EditClimbView: View {
     let climb: Climb

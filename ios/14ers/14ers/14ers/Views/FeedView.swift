@@ -1,8 +1,9 @@
 import SwiftUI
 
-private let bg = Color(red: 3/255, green: 7/255, blue: 18/255)
-private let card = Color(red: 17/255, green: 24/255, blue: 39/255)
-private let emerald = Color(red: 52/255, green: 211/255, blue: 153/255)
+private let bg      = Color(red: 3/255,   green: 7/255,   blue: 18/255)
+private let card    = Color(red: 17/255,  green: 24/255,  blue: 39/255)
+private let emerald = Color(red: 52/255,  green: 211/255, blue: 153/255)
+private let sky     = Color(red: 56/255,  green: 189/255, blue: 248/255)
 
 struct FeedView: View {
     enum FeedTab: String, CaseIterable { case discover = "Discover", following = "Following" }
@@ -33,13 +34,17 @@ struct FeedView: View {
                     Spacer()
                 } else if items.isEmpty {
                     Spacer()
-                    Text("No posts yet")
-                        .foregroundColor(.gray)
+                    Text("No posts yet").foregroundColor(.gray)
                     Spacer()
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            ForEach(items) { FeedCard(item: $0) }
+                            ForEach(items) { item in
+                                NavigationLink(destination: ClimbDetailView(climbId: item.id)) {
+                                    FeedCard(item: item)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                         .padding()
                     }
@@ -73,6 +78,8 @@ struct FeedView: View {
     }
 }
 
+// MARK: - Feed Card
+
 struct FeedCard: View {
     let item: FeedItem
     @State private var liked: Bool
@@ -82,6 +89,10 @@ struct FeedCard: View {
         self.item = item
         _liked = State(initialValue: item.isLiked ?? false)
         _likeCount = State(initialValue: item.likeCount ?? 0)
+    }
+
+    private var shareText: String {
+        "Summited \(item.mountainName) (\(item.elevation.formatted()) ft) on \(item.climbDate.shortClimbDate())! 🏔️ #Colorado14ers #14ers\n\(Config.apiBaseURL)/s/\(item.id)"
     }
 
     var body: some View {
@@ -121,20 +132,32 @@ struct FeedCard: View {
                 }
 
                 HStack {
+                    // Profile avatar + name
                     HStack(spacing: 6) {
-                        Circle()
-                            .fill(Color(red: 56/255, green: 189/255, blue: 248/255).opacity(0.2))
-                            .frame(width: 24, height: 24)
-                            .overlay(
-                                Text(item.userName.prefix(1))
-                                    .font(.caption2.bold())
-                                    .foregroundColor(Color(red: 56/255, green: 189/255, blue: 248/255))
-                            )
+                        Group {
+                            if let urlStr = item.userAvatarUrl, let url = URL(string: urlStr) {
+                                AsyncImage(url: url) { phase in
+                                    if let img = phase.image {
+                                        img.resizable().aspectRatio(contentMode: .fill)
+                                    } else {
+                                        avatarPlaceholder
+                                    }
+                                }
+                            } else {
+                                avatarPlaceholder
+                            }
+                        }
+                        .frame(width: 24, height: 24)
+                        .clipShape(Circle())
+
                         Text(item.userName)
                             .font(.caption)
                             .foregroundColor(.gray)
                     }
+
                     Spacer()
+
+                    // Like button
                     Button(action: toggleLike) {
                         HStack(spacing: 4) {
                             Image(systemName: liked ? "heart.fill" : "heart")
@@ -148,12 +171,31 @@ struct FeedCard: View {
                         }
                     }
                     .buttonStyle(.plain)
+
+                    // Share button
+                    ShareLink(item: shareText) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 15))
+                            .foregroundColor(.gray)
+                            .padding(.leading, 10)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(12)
         }
         .background(card)
         .cornerRadius(14)
+    }
+
+    private var avatarPlaceholder: some View {
+        Circle()
+            .fill(sky.opacity(0.2))
+            .overlay(
+                Text(item.userName.prefix(1).uppercased())
+                    .font(.caption2.bold())
+                    .foregroundColor(sky)
+            )
     }
 
     private func toggleLike() {

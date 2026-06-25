@@ -226,9 +226,12 @@ struct HomeView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     ForEach(s.recentClimbs) { climb in
-                        NativeBadgeThumb(climb: climb)
-                            .frame(width: 100, height: 120)
-                            .cornerRadius(10)
+                        NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+                            NativeBadgeThumb(climb: climb)
+                                .frame(width: 100, height: 120)
+                                .cornerRadius(10)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -244,7 +247,10 @@ struct HomeView: View {
                 .font(.headline)
                 .foregroundColor(.white)
             ForEach(s.recentClimbs) { climb in
-                HomeClimbRow(climb: climb)
+                NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+                    HomeClimbRow(climb: climb)
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -385,34 +391,36 @@ private struct HomeClimbRow: View {
     }
 }
 
-// MARK: - Native Badge Thumbnail (no WKWebView)
+// MARK: - Badge Thumbnail (uses real badge PNG)
 
 private struct NativeBadgeThumb: View {
     let climb: RecentClimb
 
+    private var badgeURL: URL? {
+        URL(string: "\(Config.apiBaseURL)/api/badges/\(climb.mountainId)/png?climbed=1")
+    }
+
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 8/255,  green: 47/255, blue: 73/255),
-                    Color(red: 20/255, green: 30/255, blue: 70/255),
-                ],
-                startPoint: .top, endPoint: .bottom
-            )
-            VStack(spacing: 6) {
-                Image(systemName: "mountain.2.fill")
-                    .font(.system(size: 28))
-                    .foregroundColor(Color(red: 56/255, green: 189/255, blue: 248/255))
-                Text(climb.mountainName)
-                    .font(.caption2.bold())
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.75)
-                    .padding(.horizontal, 6)
-                Text("\(climb.elevation.formatted()) ft")
-                    .font(.caption2)
-                    .foregroundColor(Color(red: 52/255, green: 211/255, blue: 153/255))
+        AsyncImage(url: badgeURL) { phase in
+            switch phase {
+            case .success(let img):
+                img.resizable().aspectRatio(contentMode: .fit)
+            default:
+                ZStack {
+                    LinearGradient(
+                        colors: [
+                            Color(red: 8/255,  green: 47/255, blue: 73/255),
+                            Color(red: 20/255, green: 30/255, blue: 70/255),
+                        ],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    VStack(spacing: 4) {
+                        Image(systemName: "mountain.2.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(sky)
+                        ProgressView().tint(sky).scaleEffect(0.7)
+                    }
+                }
             }
         }
     }
