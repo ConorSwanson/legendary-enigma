@@ -1,5 +1,6 @@
 import Foundation
 import WebKit
+import UIKit
 import Combine
 
 @MainActor
@@ -9,46 +10,88 @@ final class AuthManager: NSObject, ObservableObject {
     @Published var isSignedIn: Bool = false
     @Published var isLoading: Bool = true
 
-    // Background WKWebView used to maintain the Clerk session and refresh tokens
-    private var webView: WKWebView?
-    private var pendingTokenContinuation: CheckedContinuation<String, Error>?
+    // Single WebView instance, created at init so it's always available
+    // for token refresh regardless of whether SignInView is visible.
+    private(set) var webView: WKWebView
+    private let coordinator: Coordinator
 
-    // Refresh loop — keeps the 60-second Clerk JWT fresh every 50 seconds
+    private var pendingTokenContinuation: CheckedContinuation<String, Error>?
     private var refreshLoopTask: Task<Void, Never>?
 
     private override init() {
+        let config = WKWebViewConfiguration()
+        let wv = WKWebView(frame: .zero, configuration: config)
+        wv.backgroundColor = UIColor(red: 3/255, green: 7/255, blue: 18/255, alpha: 1)
+        wv.scrollView.backgroundColor = UIColor(red: 3/255, green: 7/255, blue: 18/255, alpha: 1)
+        wv.isOpaque = false
+        wv.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+
+        let coord = Coordinator()
+        config.userContentController.add(coord, name: "clerkToken")
+        wv.navigationDelegate = coord
+
+        self.webView = wv
+        self.coordinator = coord
         super.init()
-        checkExistingToken()
+
+        startUp()
     }
 
-    private func checkExistingToken() {
-        if KeychainHelper.load(for: "clerk_token") != nil {
+    // MARK: - Startup
+
+    private func startUp() {
+        // Load sign-in URL. If a Clerk session exists the SDK auto-redirects,
+        // triggering token extraction. If not, the sign-in form is shown.
+        webView.load(URLRequest(url: URL(string: Config.apiBaseURL + "/sign-in")!))
+
+        let hasExistingToken = KeychainHelper.load(for: "clerk_token") != nil
+
+        if !hasExistingToken {
+            // First-ever launch — show sign-in immediately, no wait
+            isLoading = false
+            return
+        }
+
+        // Returning user: keep the loading spinner while Clerk restores the
+        // session and posts a fresh token. Cap the wait at 5 seconds so a
+        // network outage doesn't block the app forever.
+        Task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard isLoading else { return } // token already arrived, nothing to do
+            // Timed out — fall back to the Keychain token (may be stale)
             isSignedIn = true
+            isLoading = false
             startRefreshLoop()
         }
-        isLoading = false
+    }
+
+    // MARK: - Token handling
+
+    func receivedTokenFromWebView(_ token: String) {
+        if let cont = pendingTokenContinuation {
+            pendingTokenContinuation = nil
+            cont.resume(returning: token)
+        } else {
+            APIClient.shared.setToken(token)
+            if !isSignedIn {
+                isSignedIn = true
+                startRefreshLoop()
+            }
+            isLoading = false
+        }
     }
 
     func signOut() {
         stopRefreshLoop()
         APIClient.shared.clearToken()
-        webView?.load(URLRequest(url: URL(string: Config.apiBaseURL + "/sign-in")!))
+        webView.load(URLRequest(url: URL(string: Config.apiBaseURL + "/sign-in")!))
         isSignedIn = false
     }
 
-    /// Called by SignInWebView after successfully extracting the Clerk token
-    func didReceiveToken(_ token: String) {
-        APIClient.shared.setToken(token)
-        if !isSignedIn {
-            isSignedIn = true
-            startRefreshLoop()
-        }
-    }
+    // MARK: - Token refresh (called by the 50-second loop)
 
-    /// Refreshes the token by injecting JS into the maintained web view.
-    /// Guarded against concurrent calls; times out after 5 seconds.
     func refreshToken() async {
-        guard let wv = webView, pendingTokenContinuation == nil else { return }
+        guard pendingTokenContinuation == nil else { return }
 
         let timeoutTask = Task {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
@@ -61,7 +104,7 @@ final class AuthManager: NSObject, ObservableObject {
         do {
             let tok = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
                 pendingTokenContinuation = cont
-                wv.evaluateJavaScript("""
+                webView.evaluateJavaScript("""
                     window.Clerk?.session?.getToken().then(function(t) {
                         if(t) window.webkit.messageHandlers.clerkToken.postMessage(t);
                     });
@@ -71,20 +114,6 @@ final class AuthManager: NSObject, ObservableObject {
             APIClient.shared.setToken(tok)
         } catch {
             timeoutTask.cancel()
-            // Refresh failed silently — next API call will surface a 401 if needed
-        }
-    }
-
-    func attachWebView(_ webView: WKWebView) {
-        self.webView = webView
-    }
-
-    func receivedTokenFromWebView(_ token: String) {
-        if let cont = pendingTokenContinuation {
-            pendingTokenContinuation = nil
-            cont.resume(returning: token)
-        } else {
-            didReceiveToken(token)
         }
     }
 
@@ -94,7 +123,7 @@ final class AuthManager: NSObject, ObservableObject {
         stopRefreshLoop()
         refreshLoopTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 50_000_000_000) // 50 seconds
+                try? await Task.sleep(nanoseconds: 50_000_000_000)
                 guard !Task.isCancelled else { break }
                 await self?.refreshToken()
             }
@@ -104,5 +133,43 @@ final class AuthManager: NSObject, ObservableObject {
     private func stopRefreshLoop() {
         refreshLoopTask?.cancel()
         refreshLoopTask = nil
+    }
+
+    // MARK: - Coordinator (WKWebView delegate + message handler)
+
+    @MainActor
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+        func userContentController(
+            _ userContentController: WKUserContentController,
+            didReceive message: WKScriptMessage
+        ) {
+            guard message.name == "clerkToken", let token = message.body as? String else { return }
+            AuthManager.shared.receivedTokenFromWebView(token)
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard let url = webView.url else { return }
+            let path = url.path
+            if !path.contains("sign-in") && !path.contains("sign-up") && !path.contains("sso-callback") {
+                extractToken(from: webView)
+            }
+        }
+
+        private func extractToken(from webView: WKWebView) {
+            webView.evaluateJavaScript("""
+                (function tryGetToken(attempts) {
+                    if (window.Clerk && window.Clerk.session) {
+                        window.Clerk.session.getToken().then(function(t) {
+                            if (t) window.webkit.messageHandlers.clerkToken.postMessage(t);
+                            else if (attempts > 0) setTimeout(function() { tryGetToken(attempts-1); }, 1000);
+                        }).catch(function() {
+                            if (attempts > 0) setTimeout(function() { tryGetToken(attempts-1); }, 1000);
+                        });
+                    } else if (attempts > 0) {
+                        setTimeout(function() { tryGetToken(attempts-1); }, 1000);
+                    }
+                })(8);
+            """)
+        }
     }
 }
