@@ -78,25 +78,25 @@ struct ProfileView: View {
                             .padding(.horizontal)
                         }
 
-                        Spacer(minLength: 20)
-
-                        Button {
-                            authManager.signOut()
-                        } label: {
-                            Text("Sign Out")
-                                .font(.subheadline.bold())
-                                .foregroundColor(.red)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.red.opacity(0.1))
-                                .cornerRadius(12)
-                                .padding(.horizontal)
-                        }
-
                     } else if let error {
                         Text(error).foregroundColor(.red).padding()
                     } else {
                         ProgressView().tint(.white).padding(.top, 40)
+                    }
+
+                    Spacer(minLength: 20)
+
+                    Button {
+                        authManager.signOut()
+                    } label: {
+                        Text("Sign Out")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(12)
+                            .padding(.horizontal)
                     }
                 }
             }

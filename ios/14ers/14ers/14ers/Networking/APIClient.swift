@@ -61,7 +61,10 @@ actor APIClient {
             throw APIError.serverError("No response")
         }
 
-        if http.statusCode == 401 { throw APIError.unauthorized }
+        if http.statusCode == 401 {
+            Task { @MainActor in AuthManager.shared.signOut() }
+            throw APIError.unauthorized
+        }
         if http.statusCode == 404 { throw APIError.notFound }
         if http.statusCode >= 400 {
             let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"] ?? "Request failed"
@@ -149,7 +152,10 @@ actor APIClient {
         req.httpBody = body
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse else { throw APIError.serverError("No response") }
-        if http.statusCode == 401 { throw APIError.unauthorized }
+        if http.statusCode == 401 {
+            Task { @MainActor in AuthManager.shared.signOut() }
+            throw APIError.unauthorized
+        }
         if http.statusCode == 404 { throw APIError.notFound }
         if http.statusCode >= 400 {
             let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"] ?? "Update failed"
