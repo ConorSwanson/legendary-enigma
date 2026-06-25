@@ -89,13 +89,29 @@ private struct ShieldShape: Shape {
     }
 }
 
-// MARK: - Badge Cell (native SwiftUI — no WKWebView)
+// MARK: - Badge Cell — loads PNG from server, ShieldShape while loading
 
 struct BadgeCell: View {
     let mountain: Mountain
     let climbed: Bool
 
+    private var pngURL: URL? {
+        URL(string: "\(Config.apiBaseURL)/api/badges/\(mountain.id)/png?climbed=\(climbed ? 1 : 0)")
+    }
+
     var body: some View {
+        AsyncImage(url: pngURL) { phase in
+            switch phase {
+            case .success(let img):
+                img.resizable().aspectRatio(contentMode: .fit)
+            default:
+                shieldPlaceholder
+            }
+        }
+        .frame(height: 132)
+    }
+
+    private var shieldPlaceholder: some View {
         ZStack {
             ShieldShape()
                 .fill(LinearGradient(
@@ -110,38 +126,7 @@ struct BadgeCell: View {
                     climbed ? emerald.opacity(0.55) : Color(red: 50/255, green: 60/255, blue: 75/255),
                     lineWidth: 1.5
                 )
-
-            VStack(spacing: 4) {
-                Spacer()
-                Image(systemName: climbed ? "mountain.2.fill" : "mountain.2")
-                    .font(.system(size: 26))
-                    .foregroundColor(climbed ? emerald : .gray.opacity(0.28))
-                Text(mountain.name)
-                    .font(.caption.bold())
-                    .foregroundColor(climbed ? .white : Color(red: 100/255, green: 110/255, blue: 125/255))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.75)
-                Text("\(mountain.elevation.formatted()) ft")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(climbed ? emerald.opacity(0.75) : .gray.opacity(0.4))
-                Spacer().frame(height: 20)
-            }
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity)
-
-            if climbed {
-                VStack {
-                    HStack {
-                        Spacer()
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 15))
-                            .foregroundColor(emerald)
-                            .padding(6)
-                    }
-                    Spacer()
-                }
-            }
+            ProgressView().tint(climbed ? emerald : .gray)
         }
         .frame(height: 132)
     }

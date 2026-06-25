@@ -1,23 +1,42 @@
 const express = require('express');
 const router = express.Router();
+const sharp = require('sharp');
 const { buildBadgeSvg } = require('../utils/patch-render-svg');
 const { PALETTES, RANGE_LABEL, peakByDbId } = require('../data/peaks-data');
 
-// Public — no auth. Returns the shield-patch SVG for a mountain.
-// GET /api/badges/:id?climbed=1
-router.get('/:id', (req, res) => {
+function badgeSvgFor(req) {
   const numericId = parseInt(req.params.id, 10);
-  if (isNaN(numericId)) return res.status(400).json({ error: 'Invalid id' });
-
+  if (isNaN(numericId)) return null;
   const peak = peakByDbId(numericId);
-  if (!peak) return res.status(404).json({ error: 'Not found' });
-
+  if (!peak) return null;
   const climbed = req.query.climbed === '1' || req.query.climbed === 'true';
   const pal = PALETTES[peak.palette];
   const rangeLabel = RANGE_LABEL[peak.range] || peak.range;
+  return buildBadgeSvg(peak, pal, { climbed, rangeLabel });
+}
 
-  const svg = buildBadgeSvg(peak, pal, { climbed, rangeLabel });
+// GET /api/badges/:id/png?climbed=1  — PNG for iOS AsyncImage
+router.get('/:id/png', async (req, res) => {
+  const svg = badgeSvgFor(req);
+  if (!svg) return res.status(404).json({ error: 'Not found' });
+  try {
+    const png = await sharp(Buffer.from(svg), { density: 150 })
+      .resize(300)
+      .png({ compressionLevel: 7 })
+      .toBuffer();
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(png);
+  } catch (err) {
+    console.error('SVG→PNG error:', err);
+    res.status(500).json({ error: 'render_failed' });
+  }
+});
 
+// GET /api/badges/:id?climbed=1  — SVG for web
+router.get('/:id', (req, res) => {
+  const svg = badgeSvgFor(req);
+  if (!svg) return res.status(404).json({ error: 'Not found' });
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'public, max-age=3600');
   res.send(svg);
