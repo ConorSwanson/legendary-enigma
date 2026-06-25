@@ -34,6 +34,9 @@ struct LogClimbView: View {
     @State private var detectedMountainId: Int?
     @State private var detectedMountainName: String?
 
+    // Full-size photo preview
+    @State private var previewAsset: PHAsset?
+
     var body: some View {
         NavigationView {
             Form {
@@ -74,6 +77,14 @@ struct LogClimbView: View {
         }
         .task { mountains = (try? await APIClient.shared.mountains()) ?? [] }
         .onChange(of: pickerItem) { Task { await loadPickedPhoto() } }
+        .sheet(isPresented: Binding(
+            get: { previewAsset != nil },
+            set: { if !$0 { previewAsset = nil } }
+        )) {
+            if let asset = previewAsset {
+                PhotoPreviewSheet(asset: asset)
+            }
+        }
     }
 
     // MARK: - Form Sections
@@ -113,18 +124,31 @@ struct LogClimbView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             ForEach(suggestedAssets, id: \.asset.localIdentifier) { item in
-                                SuggestedPhotoThumb(asset: item.asset)
-                                    .frame(width: 72, height: 72)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(
-                                                selectedSuggestedId == item.asset.localIdentifier
-                                                    ? Color.accentColor : Color.clear,
-                                                lineWidth: 2
-                                            )
-                                    )
-                                    .onTapGesture { Task { await selectSuggested(item) } }
+                                ZStack(alignment: .topTrailing) {
+                                    SuggestedPhotoThumb(asset: item.asset)
+                                        .frame(width: 80, height: 80)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(
+                                                    selectedSuggestedId == item.asset.localIdentifier
+                                                        ? Color.accentColor : Color.clear,
+                                                    lineWidth: 2
+                                                )
+                                        )
+                                        .onTapGesture { Task { await selectSuggested(item) } }
+                                    Button {
+                                        previewAsset = item.asset
+                                    } label: {
+                                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                            .font(.system(size: 8, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .padding(4)
+                                            .background(Color.black.opacity(0.55))
+                                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                                    }
+                                    .padding(4)
+                                }
                             }
                         }
                         .padding(.vertical, 2)
@@ -275,6 +299,11 @@ struct LogClimbView: View {
         // Auto-suggest the mountain
         detectedMountainId = item.mountainId
         detectedMountainName = mountains.first(where: { $0.id == item.mountainId })?.name
+
+        // Use photo's creation date as the climb date
+        if let creationDate = item.asset.creationDate {
+            date = creationDate
+        }
 
         let opts = PHImageRequestOptions()
         opts.deliveryMode = .highQualityFormat
@@ -430,6 +459,51 @@ private struct SuggestedPhotoThumb: View {
                 contentMode: .aspectFill,
                 options: opts
             ) { img, _ in cont.resume(returning: img) }
+        }
+    }
+}
+
+// MARK: - Full-size photo preview sheet
+
+private struct PhotoPreviewSheet: View {
+    let asset: PHAsset
+    @State private var image: UIImage?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .ignoresSafeArea()
+            } else {
+                ProgressView().tint(.white)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            Button { dismiss() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 30))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(Color.white, Color.black.opacity(0.5))
+                    .padding()
+            }
+        }
+        .task { image = await loadFullImage() }
+    }
+
+    private func loadFullImage() async -> UIImage? {
+        let opts = PHImageRequestOptions()
+        opts.deliveryMode = .highQualityFormat
+        opts.isNetworkAccessAllowed = true
+        opts.version = .current
+        return await withCheckedContinuation { cont in
+            PHImageManager.default()
+                .requestImageDataAndOrientation(for: asset, options: opts) { data, _, _, _ in
+                    cont.resume(returning: data.flatMap { UIImage(data: $0) })
+                }
         }
     }
 }
