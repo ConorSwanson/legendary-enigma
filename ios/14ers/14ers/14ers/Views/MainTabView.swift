@@ -4,7 +4,7 @@ struct MainTabView: View {
     var body: some View {
         TabView {
             HomeView()
-                .tabItem { Label("Home", systemImage: "house.fill") }
+                .tabItem { Label("Profile", systemImage: "house.fill") }
 
             FeedView()
                 .tabItem { Label("Feed", systemImage: "person.2.fill") }
