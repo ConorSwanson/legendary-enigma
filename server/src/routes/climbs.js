@@ -57,7 +57,8 @@ router.get('/:id', requireAuth, (req, res) => {
     SELECT c.*, m.name AS mountain_name, m.elevation, m.range,
            u.name AS user_name, u.id AS user_id,
            (SELECT COUNT(*) FROM climb_likes WHERE climb_id = c.id) AS like_count,
-           EXISTS(SELECT 1 FROM climb_likes WHERE climb_id = c.id AND user_id = ?) AS is_liked
+           EXISTS(SELECT 1 FROM climb_likes WHERE climb_id = c.id AND user_id = ?) AS is_liked,
+           (SELECT COUNT(*) FROM climb_comments WHERE climb_id = c.id) AS comment_count
     FROM climbs c
     JOIN mountains m ON c.mountain_id = m.id
     LEFT JOIN users u ON c.user_id = u.id
@@ -77,7 +78,7 @@ router.get('/:id', requireAuth, (req, res) => {
     }
   }
 
-  res.json({ ...withPhotoUrl(row, req), is_owner: row.user_id === req.user.id, is_liked: !!row.is_liked, like_count: row.like_count ?? 0 });
+  res.json({ ...withPhotoUrl(row, req), is_owner: row.user_id === req.user.id, is_liked: !!row.is_liked, like_count: row.like_count ?? 0, comment_count: row.comment_count ?? 0 });
 });
 
 // POST /api/climbs

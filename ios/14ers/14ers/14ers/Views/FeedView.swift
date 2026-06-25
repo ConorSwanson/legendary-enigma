@@ -84,11 +84,13 @@ struct FeedCard: View {
     let item: FeedItem
     @State private var liked: Bool
     @State private var likeCount: Int
+    private let commentCount: Int
 
     init(item: FeedItem) {
         self.item = item
         _liked = State(initialValue: item.isLiked ?? false)
         _likeCount = State(initialValue: item.likeCount ?? 0)
+        commentCount = item.commentCount ?? 0
     }
 
     private var shareText: String {
@@ -172,12 +174,25 @@ struct FeedCard: View {
                     }
                     .buttonStyle(.plain)
 
+                    // Comment icon (tap to open detail)
+                    HStack(spacing: 4) {
+                        Image(systemName: "bubble.right")
+                            .font(.system(size: 15))
+                            .foregroundColor(.gray)
+                        if commentCount > 0 {
+                            Text("\(commentCount)")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .padding(.leading, 8)
+
                     // Share button
                     ShareLink(item: shareText) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 15))
                             .foregroundColor(.gray)
-                            .padding(.leading, 10)
+                            .padding(.leading, 8)
                     }
                     .buttonStyle(.plain)
                 }

@@ -150,6 +150,15 @@ function initDb() {
       created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id);
+
+    CREATE TABLE IF NOT EXISTS climb_comments (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      climb_id   INTEGER NOT NULL REFERENCES climbs(id) ON DELETE CASCADE,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      body       TEXT    NOT NULL,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_comments_climb ON climb_comments(climb_id);
   `);
 
   // Migrate: add columns to legacy climbs table if missing

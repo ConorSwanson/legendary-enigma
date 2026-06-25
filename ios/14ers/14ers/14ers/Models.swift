@@ -27,6 +27,7 @@ struct Climb: Codable, Identifiable, Sendable {
     var isOwner: Bool?
     var isLiked: Bool?
     var likeCount: Int?
+    var commentCount: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, notes, visibility
@@ -41,6 +42,7 @@ struct Climb: Codable, Identifiable, Sendable {
         case isOwner      = "is_owner"
         case isLiked      = "is_liked"
         case likeCount    = "like_count"
+        case commentCount = "comment_count"
     }
 }
 
@@ -61,6 +63,7 @@ struct FeedItem: Codable, Identifiable, Sendable {
     let userAvatarUrl: String?
     var isLiked: Bool?
     var likeCount: Int?
+    var commentCount: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, visibility, notes, elevation, range
@@ -73,6 +76,7 @@ struct FeedItem: Codable, Identifiable, Sendable {
         case userAvatarUrl = "user_avatar_url"
         case isLiked      = "is_liked"
         case likeCount    = "like_count"
+        case commentCount = "comment_count"
     }
 }
 
@@ -135,6 +139,27 @@ struct UserProfile: Codable, Identifiable, Sendable {
         case uniquePeaks   = "unique_peaks"
         case followers, following
         case isFollowing   = "is_following"
+    }
+}
+
+// MARK: - Comment
+
+struct Comment: Codable, Identifiable, Sendable {
+    let id: Int
+    let body: String
+    let userId: Int
+    let userName: String
+    let userAvatarUrl: String?
+    let createdAt: String
+    var isOwner: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case id, body
+        case userId        = "user_id"
+        case userName      = "user_name"
+        case userAvatarUrl = "user_avatar_url"
+        case createdAt     = "created_at"
+        case isOwner       = "is_owner"
     }
 }
 

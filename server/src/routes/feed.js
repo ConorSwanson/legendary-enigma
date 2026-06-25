@@ -18,7 +18,8 @@ router.get('/', requireAuth, (req, res) => {
            m.name AS mountain_name, m.elevation, m.range, m.id AS mountain_id,
            u.id AS user_id, u.name AS user_name, u.avatar_path AS user_avatar_path,
            (SELECT COUNT(*) FROM climb_likes WHERE climb_id = c.id) AS like_count,
-           EXISTS(SELECT 1 FROM climb_likes WHERE climb_id = c.id AND user_id = ?) AS is_liked
+           EXISTS(SELECT 1 FROM climb_likes WHERE climb_id = c.id AND user_id = ?) AS is_liked,
+           (SELECT COUNT(*) FROM climb_comments WHERE climb_id = c.id) AS comment_count
     FROM climbs c
     JOIN mountains m ON c.mountain_id = m.id
     JOIN users u ON c.user_id = u.id
@@ -33,6 +34,7 @@ router.get('/', requireAuth, (req, res) => {
     user_avatar_url: r.user_avatar_path ? `${req.protocol}://${req.get('host')}/uploads/${r.user_avatar_path}` : null,
     is_liked: !!r.is_liked,
     like_count: r.like_count ?? 0,
+    comment_count: r.comment_count ?? 0,
   }));
 
   res.json(rows);
@@ -48,7 +50,8 @@ router.get('/discover', requireAuth, (req, res) => {
            m.name AS mountain_name, m.elevation, m.range, m.id AS mountain_id,
            u.id AS user_id, u.name AS user_name, u.avatar_path AS user_avatar_path,
            (SELECT COUNT(*) FROM climb_likes WHERE climb_id = c.id) AS like_count,
-           EXISTS(SELECT 1 FROM climb_likes WHERE climb_id = c.id AND user_id = ?) AS is_liked
+           EXISTS(SELECT 1 FROM climb_likes WHERE climb_id = c.id AND user_id = ?) AS is_liked,
+           (SELECT COUNT(*) FROM climb_comments WHERE climb_id = c.id) AS comment_count
     FROM climbs c
     JOIN mountains m ON c.mountain_id = m.id
     JOIN users u ON c.user_id = u.id
@@ -60,6 +63,7 @@ router.get('/discover', requireAuth, (req, res) => {
     user_avatar_url: r.user_avatar_path ? `${req.protocol}://${req.get('host')}/uploads/${r.user_avatar_path}` : null,
     is_liked: !!r.is_liked,
     like_count: r.like_count ?? 0,
+    comment_count: r.comment_count ?? 0,
   }));
 
   res.json(rows);

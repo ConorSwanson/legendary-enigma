@@ -16,6 +16,9 @@ struct ClimbDetailView: View {
     @State private var showEdit = false
     @State private var showDeleteConfirm = false
     @State private var badgeUIImage: UIImage?
+    @State private var comments: [Comment] = []
+    @State private var newCommentText: String = ""
+    @State private var isPostingComment = false
     @Environment(\.dismiss) private var dismiss
 
     private var badgeURL: URL? {
@@ -115,6 +118,8 @@ struct ClimbDetailView: View {
                     }
                     .padding()
 
+                    commentsSection
+
                 } else if let error {
                     Text(error).foregroundColor(.red).padding()
                 } else {
@@ -198,16 +203,87 @@ struct ClimbDetailView: View {
             .cornerRadius(20)
     }
 
+    @ViewBuilder
+    private var commentsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Divider().background(Color.white.opacity(0.1))
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Comments")
+                    .font(.headline)
+                    .foregroundColor(.white)
+
+                if comments.isEmpty {
+                    Text("No comments yet. Be the first!")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .padding(.vertical, 4)
+                } else {
+                    ForEach(comments) { comment in
+                        CommentRow(comment: comment) {
+                            Task { await deleteComment(comment) }
+                        }
+                    }
+                }
+
+                // New comment input
+                HStack(spacing: 10) {
+                    TextField("Add a comment…", text: $newCommentText, axis: .vertical)
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .tint(emerald)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(card)
+                        .cornerRadius(20)
+                        .lineLimit(1...4)
+
+                    Button {
+                        Task { await submitComment() }
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(newCommentText.trimmingCharacters(in: .whitespaces).isEmpty ? Color(white: 0.3) : emerald)
+                    }
+                    .disabled(newCommentText.trimmingCharacters(in: .whitespaces).isEmpty || isPostingComment)
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding()
+        }
+    }
+
+    private func submitComment() async {
+        let text = newCommentText.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        isPostingComment = true
+        defer { isPostingComment = false }
+        do {
+            let created = try await APIClient.shared.postComment(climbId: climbId, body: text)
+            newCommentText = ""
+            comments.append(created)
+        } catch {}
+    }
+
+    private func deleteComment(_ comment: Comment) async {
+        guard comment.isOwner == true else { return }
+        do {
+            try await APIClient.shared.deleteComment(climbId: climbId, commentId: comment.id)
+            comments.removeAll { $0.id == comment.id }
+        } catch {}
+    }
+
     private func load() async {
         do {
             async let c = APIClient.shared.climb(climbId)
             async let ms = APIClient.shared.mountains()
-            let (fetched, fetchedMountains) = try await (c, ms)
+            async let cs = APIClient.shared.comments(climbId: climbId)
+            let (fetched, fetchedMountains, fetchedComments) = try await (c, ms, cs)
             climb = fetched
             mountains = fetchedMountains
+            comments = fetchedComments
             liked = fetched.isLiked ?? false
             likeCount = fetched.likeCount ?? 0
-            // Load badge as UIImage for SharePreview thumbnail
             if let url = URL(string: "\(Config.apiBaseURL)/api/badges/\(fetched.mountainId)/png?climbed=1"),
                let (data, _) = try? await URLSession.shared.data(from: url) {
                 badgeUIImage = UIImage(data: data)
@@ -240,6 +316,67 @@ struct ClimbDetailView: View {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+}
+
+// MARK: - Comment Row
+
+private let sky = Color(red: 56/255, green: 189/255, blue: 248/255)
+
+struct CommentRow: View {
+    let comment: Comment
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Group {
+                if let urlStr = comment.userAvatarUrl, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
+                        else { avatarPlaceholder }
+                    }
+                } else {
+                    avatarPlaceholder
+                }
+            }
+            .frame(width: 28, height: 28)
+            .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text(comment.userName)
+                        .font(.caption.bold())
+                        .foregroundColor(.white)
+                    Spacer()
+                    Text(comment.createdAt.shortNotifDate())
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                    if comment.isOwner == true {
+                        Button(action: onDelete) {
+                            Image(systemName: "trash")
+                                .font(.caption2)
+                                .foregroundColor(.red.opacity(0.7))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Text(comment.body)
+                    .font(.subheadline)
+                    .foregroundColor(Color(red: 209/255, green: 213/255, blue: 219/255))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var avatarPlaceholder: some View {
+        Circle()
+            .fill(sky.opacity(0.2))
+            .overlay(
+                Text(comment.userName.prefix(1).uppercased())
+                    .font(.caption2.bold())
+                    .foregroundColor(sky)
+            )
     }
 }
 

@@ -14,6 +14,7 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 
 app.use('/api/auth',      require('./routes/auth'));
 app.use('/api/mountains', require('./routes/mountains'));
+app.use('/api/climbs',    require('./routes/comments'));
 app.use('/api/climbs',    require('./routes/climbs'));
 app.use('/api/stats',     require('./routes/stats'));
 app.use('/api/profile',   require('./routes/profile'));

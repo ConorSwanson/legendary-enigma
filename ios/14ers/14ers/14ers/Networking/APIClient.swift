@@ -208,6 +208,21 @@ actor APIClient {
         try await request("/climbs/\(id)/like", method: "POST")
     }
 
+    // MARK: - Comments
+
+    func comments(climbId: Int) async throws -> [Comment] {
+        try await request("/climbs/\(climbId)/comments")
+    }
+
+    func postComment(climbId: Int, body: String) async throws -> Comment {
+        let payload = try JSONEncoder().encode(["body": body])
+        return try await request("/climbs/\(climbId)/comments", method: "POST", body: payload)
+    }
+
+    func deleteComment(climbId: Int, commentId: Int) async throws {
+        try await requestVoid("/climbs/\(climbId)/comments/\(commentId)", method: "DELETE")
+    }
+
     // MARK: - Feed
 
     func feedDiscover(page: Int = 1) async throws -> [FeedItem] {
