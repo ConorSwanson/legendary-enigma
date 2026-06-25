@@ -1,0 +1,105 @@
+import SwiftUI
+
+private let bg = Color(red: 3/255, green: 7/255, blue: 18/255)
+private let card = Color(red: 17/255, green: 24/255, blue: 39/255)
+private let emerald = Color(red: 52/255, green: 211/255, blue: 153/255)
+
+struct HistoryView: View {
+    @State private var climbs: [Climb] = []
+    @State private var isLoading = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationView {
+            Group {
+                if isLoading && climbs.isEmpty {
+                    ProgressView().tint(.white)
+                } else if let error {
+                    VStack {
+                        Text(error).foregroundColor(.red).padding()
+                        Spacer()
+                    }
+                } else if climbs.isEmpty {
+                    VStack {
+                        Spacer()
+                        Image(systemName: "mountain.2")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray.opacity(0.4))
+                            .padding(.bottom, 8)
+                        Text("No climbs yet")
+                            .foregroundColor(.gray)
+                        Spacer()
+                    }
+                } else {
+                    List(climbs) { climb in
+                        NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+                            ClimbRow(climb: climb)
+                        }
+                        .listRowBackground(card)
+                        .listRowSeparatorTint(Color(red: 31/255, green: 41/255, blue: 55/255))
+                    }
+                    .listStyle(.plain)
+                    .background(bg)
+                    .scrollContentBackground(.hidden)
+                }
+            }
+            .background(bg.ignoresSafeArea())
+            .navigationTitle("My Climbs")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button { Task { await load() } } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+        climbs = (try? await APIClient.shared.climbs()) ?? []
+    }
+}
+
+struct ClimbRow: View {
+    let climb: Climb
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
+                AsyncImage(url: url) { img in
+                    img.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Color(red: 31/255, green: 41/255, blue: 55/255)
+                }
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(red: 31/255, green: 41/255, blue: 55/255))
+                    Image(systemName: "mountain.2.fill")
+                        .foregroundColor(.gray.opacity(0.4))
+                }
+                .frame(width: 56, height: 56)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(climb.mountainName)
+                    .font(.subheadline.bold())
+                    .foregroundColor(.white)
+                Text("\(climb.elevation.formatted()) ft · \(climb.range)")
+                    .font(.caption)
+                    .foregroundColor(emerald)
+                Text(climb.climbDate.shortClimbDate())
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 4)
+    }
+}
