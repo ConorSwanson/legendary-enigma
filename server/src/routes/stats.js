@@ -43,7 +43,7 @@ router.get('/', requireAuth, (req, res) => {
     FROM climbs c JOIN mountains m ON c.mountain_id = m.id
     WHERE c.user_id = ?
     ORDER BY c.climb_date DESC, c.created_at DESC LIMIT 5
-  `).all(uid).map(r => ({ ...r, photo_url: r.photo_path ? `/uploads/${r.photo_path}` : null }));
+  `).all(uid).map(r => ({ ...r, photo_url: r.photo_path ? `${req.protocol}://${req.get('host')}/uploads/${r.photo_path}` : null }));
 
   // All mountain IDs the user has climbed (for badge grid)
   const climbed_ids = db.prepare(

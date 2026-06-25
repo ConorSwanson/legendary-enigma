@@ -89,7 +89,7 @@ router.get('/:id/climbs', requireAuth, (req, res) => {
     WHERE c.user_id = ? AND ${visFilter}
     ORDER BY c.climb_date DESC, c.created_at DESC
     LIMIT 50
-  `).all(targetId).map(r => ({ ...r, photo_url: r.photo_path ? `/uploads/${r.photo_path}` : null }));
+  `).all(targetId).map(r => ({ ...r, photo_url: r.photo_path ? `${req.protocol}://${req.get('host')}/uploads/${r.photo_path}` : null }));
 
   res.json(climbs);
 });

@@ -9,8 +9,10 @@ const requireAuth = require('../middleware/auth');
 const UPLOAD_DIR = UPLOADS_DIR;
 const VALID_VISIBILITY = new Set(['public', 'followers', 'private']);
 
-function withPhotoUrl(row) {
-  return { ...row, photo_url: row.photo_path ? `/uploads/${row.photo_path}` : null };
+function withPhotoUrl(row, req) {
+  if (!row.photo_path) return { ...row, photo_url: null };
+  const base = req ? `${req.protocol}://${req.get('host')}` : '';
+  return { ...row, photo_url: `${base}/uploads/${row.photo_path}` };
 }
 
 function deleteFile(filename) {
@@ -46,7 +48,7 @@ router.get('/', requireAuth, (req, res) => {
     LIMIT ? OFFSET ?
   `).all(...params);
 
-  res.json(rows.map(withPhotoUrl));
+  res.json(rows.map(r => withPhotoUrl(r, req)));
 });
 
 // GET /api/climbs/:id — own or public climb
@@ -75,7 +77,7 @@ router.get('/:id', requireAuth, (req, res) => {
     }
   }
 
-  res.json({ ...withPhotoUrl(row), is_owner: row.user_id === req.user.id, is_liked: !!row.is_liked, like_count: row.like_count ?? 0 });
+  res.json({ ...withPhotoUrl(row, req), is_owner: row.user_id === req.user.id, is_liked: !!row.is_liked, like_count: row.like_count ?? 0 });
 });
 
 // POST /api/climbs

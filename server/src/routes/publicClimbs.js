@@ -19,7 +19,7 @@ router.get('/:id', (req, res) => {
     return res.status(404).json({ error: 'Not found' });
   }
 
-  res.json({ ...row, photo_url: row.photo_path ? `/uploads/${row.photo_path}` : null });
+  res.json({ ...row, photo_url: row.photo_path ? `${req.protocol}://${req.get('host')}/uploads/${row.photo_path}` : null });
 });
 
 module.exports = router;

@@ -3,8 +3,9 @@ const router = express.Router();
 const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
 
-function withPhotoUrl(r) {
-  return { ...r, photo_url: r.photo_path ? `/uploads/${r.photo_path}` : null };
+function withPhotoUrl(r, req) {
+  const base = req ? `${req.protocol}://${req.get('host')}` : '';
+  return { ...r, photo_url: r.photo_path ? `${base}/uploads/${r.photo_path}` : null };
 }
 
 // GET /api/feed — climbs from people you follow
@@ -28,8 +29,8 @@ router.get('/', requireAuth, (req, res) => {
     ORDER BY c.climb_date DESC, c.created_at DESC
     LIMIT 30 OFFSET ?
   `).all(req.user.id, req.user.id, offset).map(r => ({
-    ...withPhotoUrl(r),
-    user_avatar_url: r.user_avatar_path ? `/uploads/${r.user_avatar_path}` : null,
+    ...withPhotoUrl(r, req),
+    user_avatar_url: r.user_avatar_path ? `${req.protocol}://${req.get('host')}/uploads/${r.user_avatar_path}` : null,
     is_liked: !!r.is_liked,
     like_count: r.like_count ?? 0,
   }));
@@ -55,8 +56,8 @@ router.get('/discover', requireAuth, (req, res) => {
     ORDER BY c.climb_date DESC, c.created_at DESC
     LIMIT 30 OFFSET ?
   `).all(req.user.id, offset).map(r => ({
-    ...withPhotoUrl(r),
-    user_avatar_url: r.user_avatar_path ? `/uploads/${r.user_avatar_path}` : null,
+    ...withPhotoUrl(r, req),
+    user_avatar_url: r.user_avatar_path ? `${req.protocol}://${req.get('host')}/uploads/${r.user_avatar_path}` : null,
     is_liked: !!r.is_liked,
     like_count: r.like_count ?? 0,
   }));
