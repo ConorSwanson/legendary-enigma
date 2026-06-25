@@ -13,6 +13,9 @@ final class AuthManager: NSObject, ObservableObject {
     private var webView: WKWebView?
     private var pendingTokenContinuation: CheckedContinuation<String, Error>?
 
+    // Refresh loop — keeps the 60-second Clerk JWT fresh every 50 seconds
+    private var refreshLoopTask: Task<Void, Never>?
+
     private override init() {
         super.init()
         checkExistingToken()
@@ -21,11 +24,13 @@ final class AuthManager: NSObject, ObservableObject {
     private func checkExistingToken() {
         if KeychainHelper.load(for: "clerk_token") != nil {
             isSignedIn = true
+            startRefreshLoop()
         }
         isLoading = false
     }
 
     func signOut() {
+        stopRefreshLoop()
         APIClient.shared.clearToken()
         webView?.load(URLRequest(url: URL(string: Config.apiBaseURL + "/sign-in")!))
         isSignedIn = false
@@ -34,15 +39,27 @@ final class AuthManager: NSObject, ObservableObject {
     /// Called by SignInWebView after successfully extracting the Clerk token
     func didReceiveToken(_ token: String) {
         APIClient.shared.setToken(token)
-        isSignedIn = true
+        if !isSignedIn {
+            isSignedIn = true
+            startRefreshLoop()
+        }
     }
 
     /// Refreshes the token by injecting JS into the maintained web view.
-    /// Falls back gracefully — if it fails the next API call will surface a 401.
+    /// Guarded against concurrent calls; times out after 5 seconds.
     func refreshToken() async {
-        guard let wv = webView else { return }
+        guard let wv = webView, pendingTokenContinuation == nil else { return }
+
+        let timeoutTask = Task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            if let cont = self.pendingTokenContinuation {
+                self.pendingTokenContinuation = nil
+                cont.resume(throwing: CancellationError())
+            }
+        }
+
         do {
-            let token = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
+            let tok = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
                 pendingTokenContinuation = cont
                 wv.evaluateJavaScript("""
                     window.Clerk?.session?.getToken().then(function(t) {
@@ -50,9 +67,11 @@ final class AuthManager: NSObject, ObservableObject {
                     });
                 """)
             }
-            APIClient.shared.setToken(token)
+            timeoutTask.cancel()
+            APIClient.shared.setToken(tok)
         } catch {
-            // Token refresh failed — will prompt sign-in on next unauthorized response
+            timeoutTask.cancel()
+            // Refresh failed silently — next API call will surface a 401 if needed
         }
     }
 
@@ -67,5 +86,23 @@ final class AuthManager: NSObject, ObservableObject {
         } else {
             didReceiveToken(token)
         }
+    }
+
+    // MARK: - Refresh loop
+
+    private func startRefreshLoop() {
+        stopRefreshLoop()
+        refreshLoopTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 50_000_000_000) // 50 seconds
+                guard !Task.isCancelled else { break }
+                await self?.refreshToken()
+            }
+        }
+    }
+
+    private func stopRefreshLoop() {
+        refreshLoopTask?.cancel()
+        refreshLoopTask = nil
     }
 }

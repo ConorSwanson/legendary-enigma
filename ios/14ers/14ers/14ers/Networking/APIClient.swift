@@ -61,10 +61,7 @@ actor APIClient {
             throw APIError.serverError("No response")
         }
 
-        if http.statusCode == 401 {
-            Task { @MainActor in AuthManager.shared.signOut() }
-            throw APIError.unauthorized
-        }
+        if http.statusCode == 401 { throw APIError.unauthorized }
         if http.statusCode == 404 { throw APIError.notFound }
         if http.statusCode >= 400 {
             let body = String(data: data, encoding: .utf8) ?? "<binary>"
@@ -145,10 +142,7 @@ actor APIClient {
             let body = String(data: data, encoding: .utf8) ?? "<binary>"
             print("[logClimb] Error body: \(body)")
         }
-        if http.statusCode == 401 {
-            Task { @MainActor in AuthManager.shared.signOut() }
-            throw APIError.unauthorized
-        }
+        if http.statusCode == 401 { throw APIError.unauthorized }
         if http.statusCode >= 400 {
             let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
                 ?? String(data: data, encoding: .utf8)?.prefix(200).description
@@ -197,10 +191,7 @@ actor APIClient {
         req.httpBody = body
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse else { throw APIError.serverError("No response") }
-        if http.statusCode == 401 {
-            Task { @MainActor in AuthManager.shared.signOut() }
-            throw APIError.unauthorized
-        }
+        if http.statusCode == 401 { throw APIError.unauthorized }
         if http.statusCode == 404 { throw APIError.notFound }
         if http.statusCode >= 400 {
             let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"] ?? "Update failed"
