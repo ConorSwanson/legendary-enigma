@@ -62,6 +62,33 @@ struct BadgeGridView: View {
     }
 }
 
+// MARK: - Shield Shape
+
+private struct ShieldShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let w = rect.width, h = rect.height
+        let r: CGFloat = 10
+        let pivot = h * 0.64
+        p.move(to: CGPoint(x: r, y: 0))
+        p.addLine(to: CGPoint(x: w - r, y: 0))
+        p.addArc(center: CGPoint(x: w - r, y: r), radius: r,
+                 startAngle: .degrees(-90), endAngle: .degrees(0), clockwise: false)
+        p.addLine(to: CGPoint(x: w, y: pivot))
+        p.addCurve(to: CGPoint(x: w / 2, y: h),
+                   control1: CGPoint(x: w,        y: pivot + (h - pivot) * 0.6),
+                   control2: CGPoint(x: w * 0.78, y: h))
+        p.addCurve(to: CGPoint(x: 0, y: pivot),
+                   control1: CGPoint(x: w * 0.22, y: h),
+                   control2: CGPoint(x: 0,        y: pivot + (h - pivot) * 0.6))
+        p.addLine(to: CGPoint(x: 0, y: r))
+        p.addArc(center: CGPoint(x: r, y: r), radius: r,
+                 startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
+        p.closeSubpath()
+        return p
+    }
+}
+
 // MARK: - Badge Cell (native SwiftUI — no WKWebView)
 
 struct BadgeCell: View {
@@ -69,42 +96,51 @@ struct BadgeCell: View {
     let climbed: Bool
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(
-                    LinearGradient(
-                        colors: climbed
-                            ? [emerald.opacity(0.22), Color(red: 14/255, green: 55/255, blue: 38/255)]
-                            : [dimCard, card],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+        ZStack {
+            ShieldShape()
+                .fill(LinearGradient(
+                    colors: climbed
+                        ? [Color(red: 18/255, green: 68/255, blue: 46/255),
+                           Color(red: 10/255, green: 36/255, blue: 26/255)]
+                        : [Color(red: 30/255, green: 38/255, blue: 52/255), card],
+                    startPoint: .top, endPoint: .bottom
+                ))
+            ShieldShape()
+                .stroke(
+                    climbed ? emerald.opacity(0.55) : Color(red: 50/255, green: 60/255, blue: 75/255),
+                    lineWidth: 1.5
                 )
 
-            VStack(spacing: 5) {
+            VStack(spacing: 4) {
                 Spacer()
                 Image(systemName: climbed ? "mountain.2.fill" : "mountain.2")
                     .font(.system(size: 26))
-                    .foregroundColor(climbed ? emerald : .gray.opacity(0.3))
+                    .foregroundColor(climbed ? emerald : .gray.opacity(0.28))
                 Text(mountain.name)
                     .font(.caption.bold())
-                    .foregroundColor(climbed ? .white : .gray)
+                    .foregroundColor(climbed ? .white : Color(red: 100/255, green: 110/255, blue: 125/255))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.75)
                 Text("\(mountain.elevation.formatted()) ft")
-                    .font(.caption2)
-                    .foregroundColor(climbed ? emerald.opacity(0.75) : .gray.opacity(0.45))
-                Spacer()
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(climbed ? emerald.opacity(0.75) : .gray.opacity(0.4))
+                Spacer().frame(height: 20)
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 10)
             .frame(maxWidth: .infinity)
 
             if climbed {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(emerald)
-                    .padding(6)
+                VStack {
+                    HStack {
+                        Spacer()
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 15))
+                            .foregroundColor(emerald)
+                            .padding(6)
+                    }
+                    Spacer()
+                }
             }
         }
         .frame(height: 132)

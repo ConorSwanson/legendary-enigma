@@ -148,7 +148,7 @@ struct LogClimbView: View {
                 }
                 .disabled(isSearching)
             } else if suggestedAssets.isEmpty && !photoAccessDenied {
-                Label("No climb photos found near the 58 peaks", systemImage: "photo.slash")
+                Label("No climb photos found near the 58 peaks", systemImage: "xmark.circle")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -233,7 +233,6 @@ struct LogClimbView: View {
             DispatchQueue.global(qos: .userInitiated).async {
                 let opts = PHFetchOptions()
                 opts.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-                opts.fetchLimit = 500
                 let result = PHAsset.fetchAssets(with: .image, options: opts)
                 var nearby: [(String, Int)] = []
                 result.enumerateObjects { asset, _, stop in
