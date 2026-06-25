@@ -71,10 +71,10 @@ struct ClimbDetailView: View {
                                 case .success(let img):
                                     img.resizable().aspectRatio(contentMode: .fit)
                                 default:
-                                    ProgressView().tint(emerald).frame(width: 110, height: 120)
+                                    ProgressView().tint(emerald).frame(width: 140, height: 154)
                                 }
                             }
-                            .frame(width: 110)
+                            .frame(width: 140)
                             .shadow(color: emerald.opacity(0.3), radius: 16)
                         }
 
