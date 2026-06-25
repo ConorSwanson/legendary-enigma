@@ -1,9 +1,10 @@
 import SwiftUI
-import WebKit
 
-private let bg   = Color(red: 3/255,  green: 7/255,  blue: 18/255)
-private let card = Color(red: 17/255, green: 24/255, blue: 39/255)
-private let sky  = Color(red: 56/255, green: 189/255, blue: 248/255)
+private let bg      = Color(red: 3/255,  green: 7/255,  blue: 18/255)
+private let card    = Color(red: 17/255, green: 24/255, blue: 39/255)
+private let sky     = Color(red: 56/255, green: 189/255, blue: 248/255)
+private let emerald = Color(red: 52/255, green: 211/255, blue: 153/255)
+private let dimCard = Color(red: 31/255, green: 41/255, blue: 55/255)
 
 struct BadgeGridView: View {
     @State private var mountains: [Mountain] = []
@@ -61,46 +62,51 @@ struct BadgeGridView: View {
     }
 }
 
-// MARK: - Badge Cell
+// MARK: - Badge Cell (native SwiftUI — no WKWebView)
 
 struct BadgeCell: View {
     let mountain: Mountain
     let climbed: Bool
 
     var body: some View {
-        BadgePatchView(mountainId: mountain.id, climbed: climbed)
-            .frame(height: 132)
-            .cornerRadius(12)
-    }
-}
+        ZStack(alignment: .topTrailing) {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(
+                    LinearGradient(
+                        colors: climbed
+                            ? [emerald.opacity(0.22), Color(red: 14/255, green: 55/255, blue: 38/255)]
+                            : [dimCard, card],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
 
-// MARK: - Shield patch rendered via WKWebView (WebKit has full SVG support)
+            VStack(spacing: 5) {
+                Spacer()
+                Image(systemName: climbed ? "mountain.2.fill" : "mountain.2")
+                    .font(.system(size: 26))
+                    .foregroundColor(climbed ? emerald : .gray.opacity(0.3))
+                Text(mountain.name)
+                    .font(.caption.bold())
+                    .foregroundColor(climbed ? .white : .gray)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                Text("\(mountain.elevation.formatted()) ft")
+                    .font(.caption2)
+                    .foregroundColor(climbed ? emerald.opacity(0.75) : .gray.opacity(0.45))
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity)
 
-struct BadgePatchView: UIViewRepresentable {
-    let mountainId: Int
-    let climbed: Bool
-
-    func makeUIView(context: Context) -> WKWebView {
-        let wv = WKWebView(frame: .zero)
-        wv.isOpaque = false
-        wv.backgroundColor = .clear
-        wv.scrollView.isScrollEnabled = false
-        wv.scrollView.bounces = false
-        wv.scrollView.backgroundColor = .clear
-        return wv
-    }
-
-    func updateUIView(_ wv: WKWebView, context: Context) {
-        let climbed01 = climbed ? "1" : "0"
-        let src = "\(Config.apiBaseURL)/api/badges/\(mountainId)?climbed=\(climbed01)"
-        let html = """
-        <!DOCTYPE html><html>
-        <head><meta name="viewport" content="width=device-width,initial-scale=1">
-        <style>html,body{margin:0;padding:0;background:transparent;width:100%;height:100%;overflow:hidden;}
-        img{width:100%;height:100%;object-fit:contain;display:block;}</style>
-        </head>
-        <body><img src="\(src)"/></body></html>
-        """
-        wv.loadHTMLString(html, baseURL: URL(string: Config.apiBaseURL))
+            if climbed {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(emerald)
+                    .padding(6)
+            }
+        }
+        .frame(height: 132)
     }
 }
