@@ -98,6 +98,7 @@ struct Stats: Codable, Sendable {
 
 struct RecentClimb: Codable, Identifiable, Sendable {
     let id: Int
+    let mountainId: Int
     let mountainName: String
     let elevation: Int
     let climbDate: String
@@ -105,6 +106,7 @@ struct RecentClimb: Codable, Identifiable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id, elevation
+        case mountainId   = "mountain_id"
         case mountainName = "mountain_name"
         case climbDate    = "climb_date"
         case photoUrl     = "photo_url"
@@ -118,6 +120,7 @@ struct UserProfile: Codable, Identifiable, Sendable {
     let name: String
     let bio: String?
     let avatarUrl: String?
+    let backgroundUrl: String?
     let totalClimbs: Int?
     let uniquePeaks: Int?
     let followers: Int?
@@ -126,11 +129,12 @@ struct UserProfile: Codable, Identifiable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id, name, bio
-        case avatarUrl    = "avatar_url"
-        case totalClimbs  = "total_climbs"
-        case uniquePeaks  = "unique_peaks"
+        case avatarUrl     = "avatar_url"
+        case backgroundUrl = "background_url"
+        case totalClimbs   = "total_climbs"
+        case uniquePeaks   = "unique_peaks"
         case followers, following
-        case isFollowing  = "is_following"
+        case isFollowing   = "is_following"
     }
 }
 

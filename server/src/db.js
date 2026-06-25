@@ -150,6 +150,11 @@ function initDb() {
     db.exec("ALTER TABLE climbs ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'");
   }
 
+  const userCols = db.pragma('table_info(users)').map(c => c.name);
+  if (!userCols.includes('background_path')) {
+    db.exec('ALTER TABLE users ADD COLUMN background_path TEXT');
+  }
+
   const insertMountain = db.prepare(
     'INSERT OR IGNORE INTO mountains (id, name, elevation, range) VALUES (?, ?, ?, ?)'
   );

@@ -107,17 +107,44 @@ actor APIClient {
         try await request("/climbs/\(id)")
     }
 
-    func logClimb(mountainId: Int, date: String, notes: String?, visibility: String) async throws -> Int {
-        struct Payload: Encodable {
-            let mountain_id: Int
-            let climb_date: String
-            let notes: String?
-            let visibility: String
+    func logClimb(mountainId: Int, date: String, notes: String?, visibility: String, photoData: Data? = nil) async throws -> Int {
+        guard let url = URL(string: baseURL + "/api/climbs") else {
+            throw APIError.serverError("Invalid URL")
+        }
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let tok = token() { req.setValue("Bearer \(tok)", forHTTPHeaderField: "Authorization") }
+
+        var body = Data()
+        func field(_ name: String, _ value: String) {
+            body.append(contentsOf: "--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8)
+        }
+        field("mountain_id", String(mountainId))
+        field("climb_date", date)
+        if let notes = notes { field("notes", notes) }
+        field("visibility", visibility)
+        if let photo = photoData {
+            body.append(contentsOf: "--\(boundary)\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n".utf8)
+            body.append(photo)
+            body.append(contentsOf: "\r\n".utf8)
+        }
+        body.append(contentsOf: "--\(boundary)--\r\n".utf8)
+        req.httpBody = body
+
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse else { throw APIError.serverError("No response") }
+        if http.statusCode == 401 {
+            Task { @MainActor in AuthManager.shared.signOut() }
+            throw APIError.unauthorized
+        }
+        if http.statusCode >= 400 {
+            let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"] ?? "Request failed"
+            throw APIError.serverError(msg)
         }
         struct Created: Decodable { let id: Int }
-        let body = try JSONEncoder().encode(Payload(mountain_id: mountainId, climb_date: date, notes: notes, visibility: visibility))
-        let result: Created = try await request("/climbs", method: "POST", body: body)
-        return result.id
+        return try JSONDecoder().decode(Created.self, from: data).id
     }
 
     func updateClimb(
@@ -202,6 +229,49 @@ actor APIClient {
 
     func unfollow(_ id: Int) async throws {
         try await requestVoid("/users/\(id)/follow", method: "DELETE")
+    }
+
+    func updateProfile(name: String? = nil, bio: String? = nil, avatarData: Data? = nil, backgroundData: Data? = nil) async throws -> UserProfile {
+        guard let url = URL(string: baseURL + "/api/profile") else {
+            throw APIError.serverError("Invalid URL")
+        }
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var req = URLRequest(url: url)
+        req.httpMethod = "PUT"
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let tok = token() { req.setValue("Bearer \(tok)", forHTTPHeaderField: "Authorization") }
+
+        var body = Data()
+        func field(_ name: String, _ value: String) {
+            body.append(contentsOf: "--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8)
+        }
+        func fileField(_ name: String, _ fileData: Data, filename: String) {
+            body.append(contentsOf: "--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\nContent-Type: image/jpeg\r\n\r\n".utf8)
+            body.append(fileData)
+            body.append(contentsOf: "\r\n".utf8)
+        }
+        if let name = name { field("name", name) }
+        if let bio = bio { field("bio", bio) }
+        if let avatarData = avatarData { fileField("avatar", avatarData, filename: "avatar.jpg") }
+        if let backgroundData = backgroundData { fileField("background", backgroundData, filename: "background.jpg") }
+        body.append(contentsOf: "--\(boundary)--\r\n".utf8)
+        req.httpBody = body
+
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse else { throw APIError.serverError("No response") }
+        if http.statusCode == 401 {
+            Task { @MainActor in AuthManager.shared.signOut() }
+            throw APIError.unauthorized
+        }
+        if http.statusCode >= 400 {
+            let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"] ?? "Update failed"
+            throw APIError.serverError(msg)
+        }
+        do {
+            return try JSONDecoder().decode(UserProfile.self, from: data)
+        } catch {
+            throw APIError.decodingError(error)
+        }
     }
 }
 

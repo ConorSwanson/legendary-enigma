@@ -63,7 +63,7 @@ struct BadgeGridView: View {
 
 // MARK: - Badge Cell
 
-private struct BadgeCell: View {
+struct BadgeCell: View {
     let mountain: Mountain
     let climbed: Bool
 
@@ -76,7 +76,7 @@ private struct BadgeCell: View {
 
 // MARK: - Shield patch rendered via WKWebView (WebKit has full SVG support)
 
-private struct BadgePatchView: UIViewRepresentable {
+struct BadgePatchView: UIViewRepresentable {
     let mountainId: Int
     let climbed: Bool
 

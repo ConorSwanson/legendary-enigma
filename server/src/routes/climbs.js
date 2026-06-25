@@ -3,7 +3,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const { getDb, UPLOADS_DIR } = require('../db');
-const upload = require('../middleware/upload');
+const { single: uploadSingle } = require('../middleware/upload');
 const requireAuth = require('../middleware/auth');
 
 const UPLOAD_DIR = UPLOADS_DIR;
@@ -81,7 +81,7 @@ router.get('/:id', requireAuth, (req, res) => {
 });
 
 // POST /api/climbs
-router.post('/', requireAuth, upload.single('photo'), (req, res) => {
+router.post('/', requireAuth, uploadSingle('photo'), (req, res) => {
   const { mountain_id, climb_date, notes, visibility = 'public' } = req.body;
   if (!mountain_id || !climb_date) {
     if (req.file) deleteFile(req.file.filename);
@@ -99,7 +99,7 @@ router.post('/', requireAuth, upload.single('photo'), (req, res) => {
 });
 
 // PUT /api/climbs/:id
-router.put('/:id', requireAuth, upload.single('photo'), (req, res) => {
+router.put('/:id', requireAuth, uploadSingle('photo'), (req, res) => {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM climbs WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
   if (!existing) {

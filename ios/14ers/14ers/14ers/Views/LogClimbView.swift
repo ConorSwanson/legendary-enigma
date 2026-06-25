@@ -1,4 +1,6 @@
 import SwiftUI
+import PhotosUI
+import UIKit
 
 struct LogClimbView: View {
     @State private var mountains: [Mountain] = []
@@ -9,6 +11,9 @@ struct LogClimbView: View {
     @State private var isSaving = false
     @State private var error: String?
     @State private var showSuccess = false
+    @State private var pickerItem: PhotosPickerItem?
+    @State private var photoData: Data?
+    @State private var photoImage: Image?
 
     var body: some View {
         NavigationView {
@@ -34,6 +39,29 @@ struct LogClimbView: View {
                         in: ...Date(),
                         displayedComponents: .date
                     )
+                }
+
+                Section("Photo (optional)") {
+                    PhotosPicker(selection: $pickerItem, matching: .images) {
+                        HStack {
+                            if let photoImage {
+                                photoImage
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 60, height: 60)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                            Text(photoData == nil ? "Add Photo" : "Change Photo")
+                                .foregroundColor(.accentColor)
+                        }
+                    }
+                    if photoData != nil {
+                        Button("Remove Photo", role: .destructive) {
+                            pickerItem = nil
+                            photoData = nil
+                            photoImage = nil
+                        }
+                    }
                 }
 
                 Section("Notes (optional)") {
@@ -82,6 +110,31 @@ struct LogClimbView: View {
         .task {
             mountains = (try? await APIClient.shared.mountains()) ?? []
         }
+        .onChange(of: pickerItem) {
+            Task { await loadPhoto() }
+        }
+    }
+
+    private func loadPhoto() async {
+        guard let item = pickerItem,
+              let raw = try? await item.loadTransferable(type: Data.self) else { return }
+        let compressed = compressPhoto(raw)
+        photoData = compressed
+        if let uiImage = UIImage(data: compressed) {
+            photoImage = Image(uiImage: uiImage)
+        }
+    }
+
+    private func compressPhoto(_ data: Data) -> Data {
+        guard let uiImage = UIImage(data: data) else { return data }
+        let maxDimension: CGFloat = 1200
+        let size = uiImage.size
+        let scale = min(maxDimension / max(size.width, size.height), 1.0)
+        guard scale < 1.0 else { return uiImage.jpegData(compressionQuality: 0.8) ?? data }
+        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resized = renderer.image { _ in uiImage.draw(in: CGRect(origin: .zero, size: newSize)) }
+        return resized.jpegData(compressionQuality: 0.8) ?? data
     }
 
     private func save() async {
@@ -97,7 +150,8 @@ struct LogClimbView: View {
                 mountainId: mountainId,
                 date: formatter.string(from: date),
                 notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes,
-                visibility: visibility
+                visibility: visibility,
+                photoData: photoData
             )
             showSuccess = true
         } catch {
@@ -110,5 +164,8 @@ struct LogClimbView: View {
         date = Date()
         notes = ""
         visibility = "public"
+        pickerItem = nil
+        photoData = nil
+        photoImage = nil
     }
 }

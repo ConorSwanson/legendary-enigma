@@ -39,7 +39,7 @@ router.get('/', requireAuth, (req, res) => {
   `).all(uid);
 
   const recent_climbs = db.prepare(`
-    SELECT c.id, c.climb_date, c.photo_path, m.name AS mountain_name, m.elevation
+    SELECT c.id, c.climb_date, c.photo_path, m.name AS mountain_name, m.elevation, m.id AS mountain_id
     FROM climbs c JOIN mountains m ON c.mountain_id = m.id
     WHERE c.user_id = ?
     ORDER BY c.climb_date DESC, c.created_at DESC LIMIT 5

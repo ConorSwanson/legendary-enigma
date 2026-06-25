@@ -3,41 +3,63 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const { getDb, UPLOADS_DIR } = require('../db');
-const upload = require('../middleware/upload');
+const { profileFields } = require('../middleware/upload');
 const requireAuth = require('../middleware/auth');
 
-const UPLOAD_DIR = UPLOADS_DIR;
-
-function withAvatarUrl(user) {
-  return { ...user, avatar_url: user.avatar_path ? `/uploads/${user.avatar_path}` : null };
+function withUrls(user, req) {
+  const base = `${req.protocol}://${req.get('host')}`;
+  return {
+    ...user,
+    avatar_url:     user.avatar_path     ? `${base}/uploads/${user.avatar_path}`     : null,
+    background_url: user.background_path ? `${base}/uploads/${user.background_path}` : null,
+  };
 }
 
+function deleteFile(filename) {
+  if (!filename) return;
+  const p = path.join(UPLOADS_DIR, filename);
+  if (fs.existsSync(p)) fs.unlinkSync(p);
+}
+
+// GET /api/profile
 router.get('/', requireAuth, (req, res) => {
-  res.json(withAvatarUrl(req.user));
+  res.json(withUrls(req.user, req));
 });
 
-router.put('/', requireAuth, upload.single('avatar'), (req, res) => {
+// PUT /api/profile — multipart with optional avatar + background image fields
+router.put('/', requireAuth, profileFields(), (req, res) => {
   const db = getDb();
   const existing = req.user;
   const { name, bio } = req.body;
-  let avatar_path = existing.avatar_path;
+  const files = req.files || {};
 
-  if (req.file) {
-    if (existing.avatar_path) {
-      const old = path.join(UPLOAD_DIR, existing.avatar_path);
-      if (fs.existsSync(old)) fs.unlinkSync(old);
-    }
-    avatar_path = req.file.filename;
+  const avatarFile     = (files.avatar     || [])[0];
+  const backgroundFile = (files.background || [])[0];
+
+  let avatar_path     = existing.avatar_path;
+  let background_path = existing.background_path;
+
+  if (avatarFile) {
+    deleteFile(existing.avatar_path);
+    avatar_path = avatarFile.filename;
+  }
+  if (backgroundFile) {
+    deleteFile(existing.background_path);
+    background_path = backgroundFile.filename;
   }
 
-  db.prepare('UPDATE users SET name=?, bio=?, avatar_path=? WHERE id=?').run(
-    name || existing.name,
-    bio !== undefined ? (bio || null) : existing.bio,
+  db.prepare(
+    'UPDATE users SET name=?, bio=?, avatar_path=?, background_path=? WHERE id=?'
+  ).run(
+    name !== undefined ? (name || existing.name) : existing.name,
+    bio  !== undefined ? (bio  || null)           : existing.bio,
     avatar_path,
+    background_path,
     existing.id
   );
 
-  res.json({ success: true });
+  const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(existing.id);
+  res.json(withUrls(updated, req));
 });
 
 module.exports = router;
