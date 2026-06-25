@@ -48,8 +48,8 @@ struct ClimbDetailView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 16) {
-                        // Title row
-                        HStack(alignment: .top) {
+                        // Title row with badge inline
+                        HStack(alignment: .top, spacing: 12) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(climb.mountainName)
                                     .font(.title2.bold())
@@ -60,12 +60,22 @@ struct ClimbDetailView: View {
                                 Text(climb.range)
                                     .font(.caption)
                                     .foregroundColor(.gray)
+                                Text(climb.climbDate.formattedClimbDate())
+                                    .font(.caption)
+                                    .foregroundColor(Color(white: 0.6))
+                                    .padding(.top, 2)
                             }
                             Spacer()
-                            Text(climb.climbDate.formattedClimbDate())
-                                .font(.subheadline)
-                                .foregroundColor(.white)
-                                .multilineTextAlignment(.trailing)
+                            AsyncImage(url: badgeURL) { phase in
+                                switch phase {
+                                case .success(let img):
+                                    img.resizable().aspectRatio(contentMode: .fit)
+                                default:
+                                    ProgressView().tint(emerald).frame(width: 110, height: 120)
+                                }
+                            }
+                            .frame(width: 110)
+                            .shadow(color: emerald.opacity(0.3), radius: 16)
                         }
 
                         // Notes
@@ -78,23 +88,6 @@ struct ClimbDetailView: View {
                                 .background(card)
                                 .cornerRadius(10)
                         }
-
-                        // Badge
-                        HStack {
-                            Spacer()
-                            AsyncImage(url: badgeURL) { phase in
-                                switch phase {
-                                case .success(let img):
-                                    img.resizable().aspectRatio(contentMode: .fit)
-                                default:
-                                    ProgressView().tint(emerald).frame(height: 160)
-                                }
-                            }
-                            .frame(maxWidth: 180)
-                            .shadow(color: emerald.opacity(0.3), radius: 20)
-                            Spacer()
-                        }
-                        .padding(.vertical, 4)
 
                         // Action buttons
                         HStack(spacing: 16) {
