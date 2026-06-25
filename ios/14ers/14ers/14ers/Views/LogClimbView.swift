@@ -40,6 +40,7 @@ struct LogClimbView: View {
     // Success modal data
     @State private var successMountain: Mountain?
     @State private var successDate: Date = Date()
+    @State private var successClimbId: Int = 0
 
     var body: some View {
         NavigationView {
@@ -92,7 +93,7 @@ struct LogClimbView: View {
         }
         .sheet(isPresented: $showSuccess, onDismiss: resetForm) {
             if let m = successMountain {
-                ClimbSuccessView(mountain: m, climbDate: successDate)
+                ClimbSuccessView(mountain: m, climbDate: successDate, climbId: successClimbId)
             }
         }
     }
@@ -417,7 +418,7 @@ struct LogClimbView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         do {
-            _ = try await APIClient.shared.logClimb(
+            let newClimbId = try await APIClient.shared.logClimb(
                 mountainId: mountainId,
                 date: formatter.string(from: date),
                 notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes,
@@ -426,6 +427,7 @@ struct LogClimbView: View {
             )
             successMountain = mountains.first(where: { $0.id == mountainId })
             successDate = date
+            successClimbId = newClimbId
             showSuccess = true
         } catch {
             self.saveError = error.localizedDescription
@@ -577,7 +579,9 @@ private struct PhotoPageView: View {
 private struct ClimbSuccessView: View {
     let mountain: Mountain
     let climbDate: Date
+    let climbId: Int
     @Environment(\.dismiss) private var dismiss
+    @State private var badgeUIImage: UIImage?
 
     private let emerald   = Color(red: 52/255,  green: 211/255, blue: 153/255)
     private let bgColor   = Color(red: 3/255,   green: 7/255,   blue: 18/255)
@@ -587,10 +591,18 @@ private struct ClimbSuccessView: View {
         URL(string: "\(Config.apiBaseURL)/api/badges/\(mountain.id)/png?climbed=1")
     }
 
+    private var shareURL: URL? {
+        URL(string: "\(Config.apiBaseURL)/s/\(climbId)")
+    }
+
     private var shareText: String {
         let fmt = DateFormatter()
         fmt.dateStyle = .medium
-        return "Just summited \(mountain.name) (\(mountain.elevation.formatted()) ft) on \(fmt.string(from: climbDate))! 🏔️ #Colorado14ers #14ers"
+        let base = "Just summited \(mountain.name) (\(mountain.elevation.formatted()) ft) on \(fmt.string(from: climbDate))! 🏔️ #Colorado14ers #14ers"
+        if let url = shareURL {
+            return "\(base)\n\(url.absoluteString)"
+        }
+        return base
     }
 
     var body: some View {
@@ -610,6 +622,7 @@ private struct ClimbSuccessView: View {
                     }
                     .padding(.top, 48)
 
+                    // Visual display uses AsyncImage; we separately load UIImage for SharePreview
                     AsyncImage(url: badgeURL) { phase in
                         switch phase {
                         case .success(let img):
@@ -634,19 +647,7 @@ private struct ClimbSuccessView: View {
                     }
 
                     VStack(spacing: 12) {
-                        ShareLink(item: shareText) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "square.and.arrow.up")
-                                Text("Share Your Summit")
-                            }
-                            .font(.headline)
-                            .foregroundColor(bgColor)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(emerald)
-                            .cornerRadius(14)
-                        }
-
+                        shareButton
                         Button("Done") { dismiss() }
                             .font(.headline)
                             .foregroundColor(.white)
@@ -659,6 +660,34 @@ private struct ClimbSuccessView: View {
                     .padding(.bottom, 48)
                 }
             }
+        }
+        .task {
+            guard let url = badgeURL,
+                  let (data, _) = try? await URLSession.shared.data(from: url) else { return }
+            badgeUIImage = UIImage(data: data)
+        }
+    }
+
+    @ViewBuilder
+    private var shareButton: some View {
+        let label = HStack(spacing: 8) {
+            Image(systemName: "square.and.arrow.up")
+            Text("Share Your Summit")
+        }
+        .font(.headline)
+        .foregroundColor(bgColor)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(emerald)
+        .cornerRadius(14)
+
+        if let img = badgeUIImage {
+            ShareLink(
+                item: shareText,
+                preview: SharePreview(mountain.name, image: Image(uiImage: img))
+            ) { label }
+        } else {
+            ShareLink(item: shareText) { label }
         }
     }
 }
