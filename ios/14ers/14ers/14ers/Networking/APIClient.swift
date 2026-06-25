@@ -84,6 +84,14 @@ actor APIClient {
         let _: [String: String] = try await request(path, method: method)
     }
 
+    // MARK: - Device Token
+
+    func sendDeviceToken(_ token: String) async throws {
+        let payload = try JSONEncoder().encode(["token": token])
+        struct R: Decodable { let success: Bool }
+        let _: R = try await request("/auth/device-token", method: "POST", body: payload)
+    }
+
     // MARK: - Mountains
 
     func mountains() async throws -> [Mountain] {

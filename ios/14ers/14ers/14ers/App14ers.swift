@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import UserNotifications
 
 @MainActor
 final class UserState: ObservableObject {
@@ -15,8 +16,34 @@ final class UserState: ObservableObject {
     }
 }
 
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+        Task { try? await APIClient.shared.sendDeviceToken(token) }
+    }
+
+    func application(_ application: UIApplication,
+                     didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("[Push] Registration failed: \(error.localizedDescription)")
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                 willPresent notification: UNNotification,
+                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound, .badge])
+    }
+}
+
 @main
 struct App14ers: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var authManager: AuthManager = AuthManager.shared
     @StateObject private var userState = UserState()
 
@@ -50,7 +77,16 @@ struct RootView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: authManager.isSignedIn)
         .task(id: authManager.isSignedIn) {
-            if authManager.isSignedIn { await userState.refresh() }
+            if authManager.isSignedIn {
+                await userState.refresh()
+                await requestPushPermission()
+            }
         }
+    }
+
+    private func requestPushPermission() async {
+        let center = UNUserNotificationCenter.current()
+        guard (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) == true else { return }
+        await MainActor.run { UIApplication.shared.registerForRemoteNotifications() }
     }
 }

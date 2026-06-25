@@ -589,9 +589,10 @@ private struct NotificationRow: View {
 
     private var notifText: String {
         switch item.type {
-        case "like":   return "\(item.fromUserName) liked your climb on \(item.mountainName ?? "a peak")"
-        case "follow": return "\(item.fromUserName) started following you"
-        default:       return "\(item.fromUserName) interacted with your content"
+        case "like":    return "\(item.fromUserName) liked your climb on \(item.mountainName ?? "a peak")"
+        case "follow":  return "\(item.fromUserName) started following you"
+        case "comment": return "\(item.fromUserName) commented on your climb of \(item.mountainName ?? "a peak")"
+        default:        return "\(item.fromUserName) interacted with your content"
         }
     }
 
@@ -603,5 +604,240 @@ private struct NotificationRow: View {
                     .font(.caption.bold())
                     .foregroundColor(.white)
             )
+    }
+}
+
+// MARK: - User Profile View (other users)
+
+struct UserProfileView: View {
+    let userId: Int
+
+    @State private var profile: UserProfile?
+    @State private var climbs: [Climb] = []
+    @State private var isFollowing = false
+    @State private var followerCount = 0
+    @State private var isTogglingFollow = false
+    @State private var error: String?
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                userHeroSection
+                VStack(spacing: 20) {
+                    userNameBio
+                    if let p = profile { userStatsRow(p) }
+                    followButton
+                    if !climbs.isEmpty { userClimbsSection }
+                }
+                .padding()
+            }
+        }
+        .background(bg.ignoresSafeArea())
+        .navigationTitle(profile?.name ?? "Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+    }
+
+    @ViewBuilder
+    private var userHeroSection: some View {
+        ZStack(alignment: .bottom) {
+            Group {
+                if let bgStr = profile?.backgroundUrl, let bgUrl = URL(string: bgStr) {
+                    AsyncImage(url: bgUrl) { phase in
+                        if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
+                        else { userMountainCanvas }
+                    }
+                } else {
+                    userMountainCanvas
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 160)
+            .clipped()
+
+            userAvatarImage
+                .frame(width: 80, height: 80)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(bg, lineWidth: 3))
+                .offset(y: 40)
+        }
+        .padding(.bottom, 40)
+    }
+
+    @ViewBuilder
+    private var userAvatarImage: some View {
+        if let avStr = profile?.avatarUrl, let avUrl = URL(string: avStr) {
+            AsyncImage(url: avUrl) { phase in
+                if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
+                else { userAvatarPlaceholder }
+            }
+        } else {
+            userAvatarPlaceholder
+        }
+    }
+
+    private var userAvatarPlaceholder: some View {
+        Circle()
+            .fill(sky.opacity(0.2))
+            .overlay(
+                Text((profile?.name ?? "?").prefix(1).uppercased())
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(sky)
+            )
+    }
+
+    @ViewBuilder
+    private var userMountainCanvas: some View {
+        LinearGradient(
+            colors: [
+                Color(red: 8/255,  green: 47/255, blue: 73/255),
+                Color(red: 20/255, green: 30/255, blue: 70/255),
+            ],
+            startPoint: .top, endPoint: .bottom
+        )
+    }
+
+    @ViewBuilder
+    private var userNameBio: some View {
+        VStack(spacing: 4) {
+            if let p = profile {
+                Text(p.name)
+                    .font(.title2.bold())
+                    .foregroundColor(.white)
+                if let bio = p.bio, !bio.isEmpty {
+                    Text(bio)
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                }
+            } else {
+                ProgressView().tint(.white)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private func userStatsRow(_ p: UserProfile) -> some View {
+        HStack(spacing: 0) {
+            userStatCell(value: "\(p.totalClimbs ?? 0)", label: "Climbs")
+            Divider().frame(height: 32).background(Color.white.opacity(0.1))
+            userStatCell(value: "\(p.uniquePeaks ?? 0)", label: "Peaks")
+            Divider().frame(height: 32).background(Color.white.opacity(0.1))
+            userStatCell(value: "\(followerCount)", label: "Followers")
+            Divider().frame(height: 32).background(Color.white.opacity(0.1))
+            userStatCell(value: "\(p.following ?? 0)", label: "Following")
+        }
+        .padding(.vertical, 12)
+        .background(card)
+        .cornerRadius(12)
+    }
+
+    private func userStatCell(value: String, label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value).font(.headline.bold()).foregroundColor(.white)
+            Text(label).font(.caption2).foregroundColor(.gray)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var followButton: some View {
+        Button {
+            Task { await toggleFollow() }
+        } label: {
+            Text(isFollowing ? "Following" : "Follow")
+                .font(.subheadline.bold())
+                .foregroundColor(isFollowing ? .white : Color(red: 3/255, green: 7/255, blue: 18/255))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(isFollowing ? Color.white.opacity(0.15) : emerald)
+                .cornerRadius(20)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(isFollowing ? Color.white.opacity(0.2) : Color.clear, lineWidth: 1)
+                )
+        }
+        .disabled(isTogglingFollow)
+    }
+
+    @ViewBuilder
+    private var userClimbsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Climbs")
+                .font(.headline)
+                .foregroundColor(.white)
+            ForEach(climbs) { climb in
+                NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+                    userClimbRow(climb)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func userClimbRow(_ climb: Climb) -> some View {
+        HStack {
+            if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
+                AsyncImage(url: url) { phase in
+                    if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
+                    else { RoundedRectangle(cornerRadius: 8).fill(card) }
+                }
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(card)
+                    .frame(width: 48, height: 48)
+                    .overlay(Image(systemName: "mountain.2").foregroundColor(.gray).font(.caption))
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(climb.mountainName)
+                    .font(.subheadline.bold())
+                    .foregroundColor(.white)
+                Text(climb.climbDate.shortClimbDate())
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            Spacer()
+            Text("\(climb.elevation.formatted())ft")
+                .font(.caption.bold())
+                .foregroundColor(emerald)
+        }
+        .padding()
+        .background(card)
+        .cornerRadius(10)
+    }
+
+    private func load() async {
+        do {
+            async let p = APIClient.shared.userProfile(userId)
+            async let cs = APIClient.shared.userClimbs(userId)
+            let (fetchedProfile, fetchedClimbs) = try await (p, cs)
+            profile = fetchedProfile
+            climbs = fetchedClimbs
+            isFollowing = fetchedProfile.isFollowing ?? false
+            followerCount = fetchedProfile.followers ?? 0
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    private func toggleFollow() async {
+        isTogglingFollow = true
+        defer { isTogglingFollow = false }
+        let prev = isFollowing
+        isFollowing = !prev
+        followerCount += prev ? -1 : 1
+        do {
+            if prev {
+                try await APIClient.shared.unfollow(userId)
+            } else {
+                try await APIClient.shared.follow(userId)
+            }
+        } catch {
+            isFollowing = prev
+            followerCount += prev ? 1 : -1
+        }
     }
 }

@@ -5,6 +5,7 @@ const fs = require('fs');
 const { getDb, UPLOADS_DIR } = require('../db');
 const { single: uploadSingle } = require('../middleware/upload');
 const requireAuth = require('../middleware/auth');
+const { pushToUser } = require('../utils/push');
 
 const UPLOAD_DIR = UPLOADS_DIR;
 const VALID_VISIBILITY = new Set(['public', 'followers', 'private']);
@@ -99,8 +100,7 @@ router.post('/', requireAuth, uploadSingle('photo'), (req, res) => {
   res.status(201).json({ id: result.lastInsertRowid });
 });
 
-// PUT /api/climbs/:id
-router.put('/:id', requireAuth, uploadSingle('photo'), (req, res) => {
+function handleUpdateClimb(req, res) {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM climbs WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
   if (!existing) {
@@ -129,8 +129,25 @@ router.put('/:id', requireAuth, uploadSingle('photo'), (req, res) => {
     req.params.id
   );
 
-  res.json({ success: true });
-});
+  const row = db.prepare(`
+    SELECT c.*, m.name AS mountain_name, m.elevation, m.range,
+           u.name AS user_name, u.id AS user_id,
+           (SELECT COUNT(*) FROM climb_likes WHERE climb_id = c.id) AS like_count,
+           (SELECT COUNT(*) FROM climb_comments WHERE climb_id = c.id) AS comment_count
+    FROM climbs c
+    JOIN mountains m ON c.mountain_id = m.id
+    LEFT JOIN users u ON c.user_id = u.id
+    WHERE c.id = ?
+  `).get(req.params.id);
+
+  res.json({ ...withPhotoUrl(row, req), is_owner: true, is_liked: false, like_count: row.like_count ?? 0, comment_count: row.comment_count ?? 0 });
+}
+
+// PUT /api/climbs/:id
+router.put('/:id', requireAuth, uploadSingle('photo'), handleUpdateClimb);
+
+// PATCH /api/climbs/:id (iOS client uses PATCH)
+router.patch('/:id', requireAuth, uploadSingle('photo'), handleUpdateClimb);
 
 // DELETE /api/climbs/:id
 router.delete('/:id', requireAuth, (req, res) => {
@@ -162,6 +179,14 @@ router.post('/:id/like', requireAuth, (req, res) => {
       db.prepare(
         "INSERT INTO notifications (user_id, from_user_id, type, climb_id) VALUES (?, ?, 'like', ?)"
       ).run(climb.user_id, req.user.id, req.params.id);
+      const fromUser = db.prepare('SELECT name FROM users WHERE id = ?').get(req.user.id);
+      const mountain = db.prepare(
+        'SELECT m.name FROM climbs c JOIN mountains m ON c.mountain_id = m.id WHERE c.id = ?'
+      ).get(req.params.id);
+      pushToUser(climb.user_id, {
+        title: 'New Like',
+        body: `${fromUser?.name || 'Someone'} liked your climb on ${mountain?.name || 'a peak'}`,
+      }).catch(() => {});
     }
   }
 

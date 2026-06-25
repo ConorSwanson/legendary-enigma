@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
+const { pushToUser } = require('../utils/push');
 
 function avatarUrl(req, path) {
   if (!path) return null;
@@ -59,6 +60,14 @@ router.post('/:id/comments', requireAuth, (req, res) => {
       db.prepare(
         "INSERT INTO notifications (user_id, from_user_id, type, climb_id) VALUES (?, ?, 'comment', ?)"
       ).run(climb.user_id, req.user.id, req.params.id);
+      const fromUser = db.prepare('SELECT name FROM users WHERE id = ?').get(req.user.id);
+      const mountain = db.prepare(
+        'SELECT m.name FROM climbs c JOIN mountains m ON c.mountain_id = m.id WHERE c.id = ?'
+      ).get(req.params.id);
+      pushToUser(climb.user_id, {
+        title: 'New Comment',
+        body: `${fromUser?.name || 'Someone'} commented on your climb of ${mountain?.name || 'a peak'}`,
+      }).catch(() => {});
     } catch (_) {}
   }
 

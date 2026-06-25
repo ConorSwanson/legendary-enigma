@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@clerk/clerk-sdk-node": "^4.13.23",
+    "@parse/node-apn": "^3.0.0",
     "@resvg/resvg-js": "^2.6.2",
     "better-sqlite3": "^9.4.3",
     "cors": "^2.8.5",

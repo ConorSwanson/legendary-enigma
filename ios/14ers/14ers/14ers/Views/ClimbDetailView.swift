@@ -337,9 +337,12 @@ struct CommentRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
-                    Text(comment.userName)
-                        .font(.caption.bold())
-                        .foregroundColor(.white)
+                    NavigationLink(destination: UserProfileView(userId: comment.userId)) {
+                        Text(comment.userName)
+                            .font(.caption.bold())
+                            .foregroundColor(.white)
+                    }
+                    .buttonStyle(.plain)
                     Spacer()
                     Text(comment.createdAt.shortNotifDate())
                         .font(.caption2)

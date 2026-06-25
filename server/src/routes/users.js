@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
+const { pushToUser } = require('../utils/push');
 
 function withAvatarUrl(user) {
   return { ...user, avatar_url: user.avatar_path ? `/uploads/${user.avatar_path}` : null };
@@ -60,6 +61,11 @@ router.post('/:id/follow', requireAuth, (req, res) => {
     db.prepare(
       "INSERT INTO notifications (user_id, from_user_id, type) VALUES (?, ?, 'follow')"
     ).run(targetId, req.user.id);
+    const fromUser = db.prepare('SELECT name FROM users WHERE id = ?').get(req.user.id);
+    pushToUser(targetId, {
+      title: 'New Follower',
+      body: `${fromUser?.name || 'Someone'} started following you`,
+    }).catch(() => {});
   }
 
   res.json({ success: true });

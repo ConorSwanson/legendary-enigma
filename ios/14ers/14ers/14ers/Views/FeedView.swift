@@ -134,28 +134,31 @@ struct FeedCard: View {
                 }
 
                 HStack {
-                    // Profile avatar + name
-                    HStack(spacing: 6) {
-                        Group {
-                            if let urlStr = item.userAvatarUrl, let url = URL(string: urlStr) {
-                                AsyncImage(url: url) { phase in
-                                    if let img = phase.image {
-                                        img.resizable().aspectRatio(contentMode: .fill)
-                                    } else {
-                                        avatarPlaceholder
+                    // Profile avatar + name → UserProfileView
+                    NavigationLink(destination: UserProfileView(userId: item.userId)) {
+                        HStack(spacing: 6) {
+                            Group {
+                                if let urlStr = item.userAvatarUrl, let url = URL(string: urlStr) {
+                                    AsyncImage(url: url) { phase in
+                                        if let img = phase.image {
+                                            img.resizable().aspectRatio(contentMode: .fill)
+                                        } else {
+                                            avatarPlaceholder
+                                        }
                                     }
+                                } else {
+                                    avatarPlaceholder
                                 }
-                            } else {
-                                avatarPlaceholder
                             }
-                        }
-                        .frame(width: 24, height: 24)
-                        .clipShape(Circle())
+                            .frame(width: 24, height: 24)
+                            .clipShape(Circle())
 
-                        Text(item.userName)
-                            .font(.caption)
-                            .foregroundColor(.gray)
+                            Text(item.userName)
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
                     }
+                    .buttonStyle(.plain)
 
                     Spacer()
 
