@@ -91,12 +91,16 @@ function initDb() {
     );
 
     CREATE TABLE IF NOT EXISTS users (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      clerk_id     TEXT    UNIQUE NOT NULL,
-      name         TEXT    NOT NULL DEFAULT 'Climber',
-      bio          TEXT,
-      avatar_path  TEXT,
-      created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      clerk_id        TEXT    UNIQUE,
+      email           TEXT    UNIQUE,
+      password_hash   TEXT,
+      apple_id        TEXT    UNIQUE,
+      name            TEXT    NOT NULL DEFAULT 'Climber',
+      bio             TEXT,
+      avatar_path     TEXT,
+      background_path TEXT,
+      created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS climbs (
@@ -179,8 +183,36 @@ function initDb() {
     db.exec("ALTER TABLE climbs ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'");
   }
 
+  // Migrate: replace Clerk-based users table with email/password/Apple auth
   const userCols = db.pragma('table_info(users)').map(c => c.name);
-  if (!userCols.includes('background_path')) {
+  if (!userCols.includes('email')) {
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      CREATE TABLE users_v2 (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        clerk_id        TEXT    UNIQUE,
+        email           TEXT    UNIQUE,
+        password_hash   TEXT,
+        apple_id        TEXT    UNIQUE,
+        name            TEXT    NOT NULL DEFAULT 'Climber',
+        bio             TEXT,
+        avatar_path     TEXT,
+        background_path TEXT,
+        created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO users_v2 (id, clerk_id, name, bio, avatar_path, created_at)
+        SELECT id, clerk_id, name, bio, avatar_path, created_at FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_v2 RENAME TO users;
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_users_apple ON users(apple_id);
+    `);
+    db.pragma('foreign_keys = ON');
+  }
+
+  // Migrate: add background_path if missing (no-op on new installs)
+  const userColsNow = db.pragma('table_info(users)').map(c => c.name);
+  if (!userColsNow.includes('background_path')) {
     db.exec('ALTER TABLE users ADD COLUMN background_path TEXT');
   }
 

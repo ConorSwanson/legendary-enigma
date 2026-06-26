@@ -30,20 +30,20 @@ actor APIClient {
     // MARK: - Token management
 
     nonisolated func setToken(_ token: String) {
-        KeychainHelper.save(token, for: "clerk_token")
+        KeychainHelper.save(token, for: "auth_token")
     }
 
     nonisolated func clearToken() {
-        KeychainHelper.delete(for: "clerk_token")
+        KeychainHelper.delete(for: "auth_token")
     }
 
     private nonisolated func token() -> String? {
-        KeychainHelper.load(for: "clerk_token")
+        KeychainHelper.load(for: "auth_token")
     }
 
     // MARK: - Core request
 
-    private func request<T: Decodable>(_ path: String, method: String = "GET", body: Data? = nil, isRetry: Bool = false) async throws -> T {
+    private func request<T: Decodable>(_ path: String, method: String = "GET", body: Data? = nil) async throws -> T {
         guard let url = URL(string: baseURL + "/api" + path) else {
             throw APIError.serverError("Invalid URL")
         }
@@ -62,12 +62,6 @@ actor APIClient {
         }
 
         if http.statusCode == 401 {
-            if !isRetry {
-                // Token may be stale — ask Clerk for a fresh one and retry once
-                await AuthManager.shared.refreshToken()
-                return try await request(path, method: method, body: body, isRetry: true)
-            }
-            // Still 401 after refresh — session is truly gone, sign out
             Task { @MainActor in AuthManager.shared.signOut() }
             throw APIError.unauthorized
         }
@@ -78,7 +72,7 @@ actor APIClient {
             let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
                 ?? String(data: data, encoding: .utf8)?.prefix(200).description
                 ?? "HTTP \(http.statusCode)"
-            throw APIError.serverError("[\(http.statusCode)] \(msg)")
+            throw APIError.serverError(msg)
         }
 
         do {
@@ -91,6 +85,29 @@ actor APIClient {
 
     private func requestVoid(_ path: String, method: String = "POST") async throws {
         let _: [String: String] = try await request(path, method: method)
+    }
+
+    // MARK: - Auth
+
+    struct AuthResponse: Decodable { let token: String }
+
+    func signIn(email: String, password: String) async throws -> AuthResponse {
+        let payload = try JSONEncoder().encode(["email": email, "password": password])
+        return try await request("/auth/signin", method: "POST", body: payload)
+    }
+
+    func signUp(name: String?, email: String, password: String) async throws -> AuthResponse {
+        struct Payload: Encodable { let name: String?; let email: String; let password: String }
+        let payload = try JSONEncoder().encode(Payload(name: name, email: email, password: password))
+        return try await request("/auth/signup", method: "POST", body: payload)
+    }
+
+    func signInWithApple(identityToken: String, fullName: PersonNameComponents?) async throws -> AuthResponse {
+        struct FullNamePayload: Encodable { let givenName: String?; let familyName: String? }
+        struct Payload: Encodable { let identityToken: String; let fullName: FullNamePayload? }
+        let fn = fullName.map { FullNamePayload(givenName: $0.givenName, familyName: $0.familyName) }
+        let payload = try JSONEncoder().encode(Payload(identityToken: identityToken, fullName: fn))
+        return try await request("/auth/apple", method: "POST", body: payload)
     }
 
     // MARK: - Device Token
@@ -159,7 +176,7 @@ actor APIClient {
             let body = String(data: data, encoding: .utf8) ?? "<binary>"
             print("[logClimb] Error body: \(body)")
         }
-        if http.statusCode == 401 { throw APIError.unauthorized }
+        if http.statusCode == 401 { Task { @MainActor in AuthManager.shared.signOut() }; throw APIError.unauthorized }
         if http.statusCode >= 400 {
             let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
                 ?? String(data: data, encoding: .utf8)?.prefix(200).description
@@ -208,7 +225,7 @@ actor APIClient {
         req.httpBody = body
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse else { throw APIError.serverError("No response") }
-        if http.statusCode == 401 { throw APIError.unauthorized }
+        if http.statusCode == 401 { Task { @MainActor in AuthManager.shared.signOut() }; throw APIError.unauthorized }
         if http.statusCode == 404 { throw APIError.notFound }
         if http.statusCode >= 400 {
             let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"] ?? "Update failed"

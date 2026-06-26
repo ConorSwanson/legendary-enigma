@@ -70,13 +70,7 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if authManager.isLoading {
-                ZStack {
-                    Color(red: 3/255, green: 7/255, blue: 18/255).ignoresSafeArea()
-                    ProgressView()
-                        .tint(.white)
-                }
-            } else if authManager.isSignedIn {
+            if authManager.isSignedIn {
                 MainTabView()
             } else {
                 SignInView()
