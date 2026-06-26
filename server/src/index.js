@@ -8,6 +8,14 @@ const PORT = process.env.PORT || 3001;
 
 initDb();
 
+const { APNS_KEY, APNS_KEY_ID, APNS_TEAM_ID, APNS_BUNDLE_ID } = process.env;
+if (APNS_KEY && APNS_KEY_ID && APNS_TEAM_ID && APNS_BUNDLE_ID) {
+  console.log(`[APNs] Configured — key_id=${APNS_KEY_ID} team=${APNS_TEAM_ID} bundle=${APNS_BUNDLE_ID}`);
+} else {
+  const missing = ['APNS_KEY', 'APNS_KEY_ID', 'APNS_TEAM_ID', 'APNS_BUNDLE_ID'].filter(k => !process.env[k]);
+  console.log(`[APNs] Not configured — missing: ${missing.join(', ')}`);
+}
+
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(UPLOADS_DIR));
