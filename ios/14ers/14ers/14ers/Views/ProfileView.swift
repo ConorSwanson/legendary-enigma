@@ -17,6 +17,7 @@ struct HomeView: View {
     @State private var backgroundPickerItem: PhotosPickerItem?
     @State private var isUploadingAvatar = false
     @State private var isUploadingBackground = false
+    @State private var showEditProfile = false
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var userState: UserState
 
@@ -178,10 +179,18 @@ struct HomeView: View {
     private var nameAndBio: some View {
         VStack(spacing: 4) {
             if let p = profile {
-                Text(p.name)
-                    .font(.title2.bold())
-                    .foregroundColor(.white)
-                if let bio = p.bio {
+                Button { showEditProfile = true } label: {
+                    HStack(spacing: 6) {
+                        Text(p.name)
+                            .font(.title2.bold())
+                            .foregroundColor(.white)
+                        Image(systemName: "pencil")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                }
+                .buttonStyle(.plain)
+                if let bio = p.bio, !bio.isEmpty {
                     Text(bio)
                         .font(.subheadline)
                         .foregroundColor(.gray)
@@ -193,6 +202,9 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 8)
+        .sheet(isPresented: $showEditProfile) {
+            EditProfileSheet(profile: $profile)
+        }
     }
 
     // MARK: - Stats
@@ -604,6 +616,119 @@ private struct NotificationRow: View {
                     .font(.caption.bold())
                     .foregroundColor(.white)
             )
+    }
+}
+
+// MARK: - Edit Profile Sheet
+
+private struct EditProfileSheet: View {
+    @Binding var profile: UserProfile?
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var name = ""
+    @State private var bio = ""
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    private let bg   = Color(red: 3/255,  green: 7/255,  blue: 18/255)
+    private let card = Color(red: 17/255, green: 24/255, blue: 39/255)
+    private let sky  = Color(red: 56/255, green: 189/255, blue: 248/255)
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                bg.ignoresSafeArea()
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Display Name")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        TextField("", text: $name,
+                                  prompt: Text("Your name").foregroundColor(Color(white: 0.35)))
+                            .padding(.horizontal, 16)
+                            .frame(height: 48)
+                            .background(Color.white.opacity(0.07))
+                            .foregroundColor(.white)
+                            .tint(sky)
+                            .cornerRadius(12)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.12), lineWidth: 1))
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Bio (optional)")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        TextField("", text: $bio,
+                                  prompt: Text("Tell climbers about yourself").foregroundColor(Color(white: 0.35)))
+                            .padding(.horizontal, 16)
+                            .frame(height: 48)
+                            .background(Color.white.opacity(0.07))
+                            .foregroundColor(.white)
+                            .tint(sky)
+                            .cornerRadius(12)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.12), lineWidth: 1))
+                    }
+
+                    if let msg = errorMessage {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    Spacer()
+                }
+                .padding(24)
+            }
+            .navigationTitle("Edit Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(bg, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(.gray)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        Task { await save() }
+                    } label: {
+                        if isSaving {
+                            ProgressView().tint(sky)
+                        } else {
+                            Text("Save")
+                                .fontWeight(.semibold)
+                                .foregroundColor(sky)
+                        }
+                    }
+                    .disabled(isSaving || name.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+        }
+        .onAppear {
+            name = profile?.name ?? ""
+            bio  = profile?.bio  ?? ""
+        }
+    }
+
+    private func save() async {
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        let trimmedBio  = bio.trimmingCharacters(in: .whitespaces)
+        guard !trimmedName.isEmpty else { return }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            let updated = try await APIClient.shared.updateProfile(
+                name: trimmedName,
+                bio: trimmedBio.isEmpty ? nil : trimmedBio
+            )
+            profile = updated
+            dismiss()
+        } catch let e as APIError {
+            errorMessage = e.errorDescription
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 
