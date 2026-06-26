@@ -28,7 +28,7 @@ router.post('/signup', async (req, res) => {
 
   const db = getDb();
   if (db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase())) {
-    return res.status(409).json({ error: 'An account with this email already exists' });
+    return res.status(400).json({ error: 'An account with this email already exists' });
   }
 
   const hash = await bcrypt.hash(password, 12);
@@ -47,10 +47,10 @@ router.post('/signin', async (req, res) => {
 
   const db = getDb();
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase());
-  if (!user || !user.password_hash) return res.status(401).json({ error: 'Invalid email or password' });
+  if (!user || !user.password_hash) return res.status(400).json({ error: 'Invalid email or password' });
 
   if (!await bcrypt.compare(password, user.password_hash)) {
-    return res.status(401).json({ error: 'Invalid email or password' });
+    return res.status(400).json({ error: 'Invalid email or password' });
   }
 
   res.json({ token: issueToken(user.id) });
@@ -106,7 +106,7 @@ router.post('/apple', async (req, res) => {
     res.json({ token: issueToken(user.id) });
   } catch (e) {
     console.error('[Apple Auth]', e.message);
-    res.status(401).json({ error: 'Apple sign in failed' });
+    res.status(400).json({ error: `Apple sign in failed: ${e.message}` });
   }
 });
 
