@@ -135,17 +135,23 @@ router.delete('/account', requireAuth, (req, res) => {
 
 // POST /api/auth/admin-delete-user  — temporary, remove after use
 router.post('/admin-delete-user', (req, res) => {
-  const { secret, email } = req.body;
+  const { secret, email, id } = req.body;
   if (!secret || secret !== process.env.JWT_SECRET) {
     return res.status(403).json({ error: 'Forbidden' });
   }
-  if (!email) return res.status(400).json({ error: 'email required' });
   const db = getDb();
-  const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+  // List all users if no email/id provided
+  if (!email && !id) {
+    const users = db.prepare('SELECT id, email, name, clerk_id, apple_id FROM users').all();
+    return res.json({ users });
+  }
+  const user = id
+    ? db.prepare('SELECT id FROM users WHERE id = ?').get(id)
+    : db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
   if (!user) return res.status(404).json({ error: 'User not found' });
   db.prepare('DELETE FROM device_tokens WHERE user_id = ?').run(user.id);
   db.prepare('DELETE FROM users WHERE id = ?').run(user.id);
-  res.json({ success: true, deleted: email });
+  res.json({ success: true, deleted: user.id });
 });
 
 module.exports = router;
