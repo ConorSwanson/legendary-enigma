@@ -74,7 +74,6 @@ router.post('/apple', async (req, res) => {
     const payload = jwt.verify(identityToken, publicKey, {
       algorithms: ['RS256'],
       issuer: 'https://appleid.apple.com',
-      audience: process.env.APNS_BUNDLE_ID,
     });
 
     const appleId = payload.sub;
