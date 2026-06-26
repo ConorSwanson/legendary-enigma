@@ -6,7 +6,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "build": "cd client && npm install && npm run build && cd ../server && npm install",
+    "build": "cd client && npm install --include=dev && npm run build && cd ../server && npm install",
     "start": "node server/src/index.js",
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev",
