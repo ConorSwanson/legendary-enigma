@@ -124,4 +124,13 @@ router.post('/device-token', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// DELETE /api/auth/account
+router.delete('/account', requireAuth, (req, res) => {
+  const db = getDb();
+  const userId = req.user.id;
+  db.prepare('DELETE FROM device_tokens WHERE user_id = ?').run(userId);
+  db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  res.json({ success: true });
+});
+
 module.exports = router;

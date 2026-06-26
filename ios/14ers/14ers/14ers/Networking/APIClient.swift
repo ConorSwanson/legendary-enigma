@@ -306,6 +306,11 @@ actor APIClient {
         let _: R = try await request("/notifications/read-all", method: "POST")
     }
 
+    func deleteAccount() async throws {
+        struct R: Decodable { let success: Bool }
+        let _: R = try await request("/auth/account", method: "DELETE")
+    }
+
     func updateProfile(name: String? = nil, bio: String? = nil, avatarData: Data? = nil, backgroundData: Data? = nil) async throws -> UserProfile {
         guard let url = URL(string: baseURL + "/api/profile") else {
             throw APIError.serverError("Invalid URL")

@@ -18,6 +18,8 @@ struct HomeView: View {
     @State private var isUploadingAvatar = false
     @State private var isUploadingBackground = false
     @State private var showEditProfile = false
+    @State private var showDeleteConfirm = false
+    @State private var isDeletingAccount = false
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var userState: UserState
 
@@ -267,22 +269,52 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Sign Out
+    // MARK: - Sign Out / Delete Account
 
     @ViewBuilder
     private var signOutButton: some View {
-        Button {
-            authManager.signOut()
-        } label: {
-            Text("Sign Out")
-                .font(.subheadline.bold())
-                .foregroundColor(.red)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.red.opacity(0.1))
-                .cornerRadius(12)
+        VStack(spacing: 10) {
+            Button {
+                authManager.signOut()
+            } label: {
+                Text("Sign Out")
+                    .font(.subheadline.bold())
+                    .foregroundColor(.red)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(12)
+            }
+
+            Button {
+                showDeleteConfirm = true
+            } label: {
+                Text("Delete Account")
+                    .font(.caption)
+                    .foregroundColor(Color(white: 0.4))
+            }
         }
         .padding(.top, 8)
+        .confirmationDialog(
+            "Delete Account",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Account", role: .destructive) {
+                Task { await deleteAccount() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will permanently delete your account and all your climb data. This cannot be undone.")
+        }
+    }
+
+    private func deleteAccount() async {
+        isDeletingAccount = true
+        do {
+            try await APIClient.shared.deleteAccount()
+        } catch {}
+        authManager.signOut()
     }
 
     // MARK: - Load
