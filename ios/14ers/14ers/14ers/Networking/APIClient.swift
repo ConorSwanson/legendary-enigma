@@ -43,7 +43,7 @@ actor APIClient {
 
     // MARK: - Core request
 
-    private func request<T: Decodable>(_ path: String, method: String = "GET", body: Data? = nil) async throws -> T {
+    private func request<T: Decodable>(_ path: String, method: String = "GET", body: Data? = nil, isRetry: Bool = false) async throws -> T {
         guard let url = URL(string: baseURL + "/api" + path) else {
             throw APIError.serverError("Invalid URL")
         }
@@ -61,7 +61,16 @@ actor APIClient {
             throw APIError.serverError("No response")
         }
 
-        if http.statusCode == 401 { throw APIError.unauthorized }
+        if http.statusCode == 401 {
+            if !isRetry {
+                // Token may be stale — ask Clerk for a fresh one and retry once
+                await AuthManager.shared.refreshToken()
+                return try await request(path, method: method, body: body, isRetry: true)
+            }
+            // Still 401 after refresh — session is truly gone, sign out
+            Task { @MainActor in AuthManager.shared.signOut() }
+            throw APIError.unauthorized
+        }
         if http.statusCode == 404 { throw APIError.notFound }
         if http.statusCode >= 400 {
             let body = String(data: data, encoding: .utf8) ?? "<binary>"
