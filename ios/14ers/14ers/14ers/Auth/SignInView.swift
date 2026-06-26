@@ -1,6 +1,12 @@
 import SwiftUI
 import AuthenticationServices
 
+private let bgColor   = Color(red: 3/255,  green: 7/255,   blue: 18/255)
+private let skyColor  = Color(red: 56/255, green: 189/255, blue: 248/255)
+private let midBlue   = Color(red: 8/255,  green: 47/255,  blue: 73/255)
+private let deepBlue  = Color(red: 20/255, green: 30/255,  blue: 70/255)
+private let farBlue   = Color(red: 30/255, green: 60/255,  blue: 100/255)
+
 struct SignInView: View {
     @State private var email = ""
     @State private var password = ""
@@ -10,25 +16,42 @@ struct SignInView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color(red: 3/255, green: 7/255, blue: 18/255).ignoresSafeArea()
+            ZStack(alignment: .top) {
+                // Full-screen mountain scene
+                AuthMountainCanvas()
+                    .ignoresSafeArea()
+
+                // Gradient that fades mountains into dark bg for the form area
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: 260)
+                    LinearGradient(
+                        colors: [bgColor.opacity(0), bgColor],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    .frame(height: 140)
+                    bgColor.ignoresSafeArea(edges: .bottom)
+                }
+                .ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 0) {
-                        VStack(spacing: 8) {
+                        // Logo floats over mountain scene
+                        VStack(spacing: 10) {
                             Image(systemName: "mountain.2.fill")
-                                .font(.system(size: 52))
-                                .foregroundColor(Color(red: 52/255, green: 211/255, blue: 153/255))
+                                .font(.system(size: 56))
+                                .foregroundColor(skyColor)
+                                .shadow(color: skyColor.opacity(0.5), radius: 16, x: 0, y: 4)
                             Text("14ers")
-                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                                .font(.system(size: 42, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                             Text("Track every summit")
-                                .foregroundColor(Color(white: 0.5))
+                                .foregroundColor(Color(white: 0.55))
                                 .font(.subheadline)
                         }
-                        .padding(.top, 72)
-                        .padding(.bottom, 48)
+                        .padding(.top, 80)
+                        .padding(.bottom, 52)
 
+                        // Auth form
                         VStack(spacing: 12) {
                             SignInWithAppleButton(.signIn,
                                 onRequest: { req in req.requestedScopes = [.fullName, .email] },
@@ -39,11 +62,11 @@ struct SignInView: View {
                             .cornerRadius(14)
 
                             HStack {
-                                Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
-                                Text("or").foregroundColor(Color(white: 0.4)).font(.footnote)
-                                Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+                                Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
+                                Text("or").foregroundColor(Color(white: 0.35)).font(.footnote)
+                                Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, 2)
 
                             AuthField("Email", text: $email)
                                 .keyboardType(.emailAddress)
@@ -62,7 +85,7 @@ struct SignInView: View {
                                     .padding(.horizontal, 4)
                             }
 
-                            EmeraldButton(label: "Sign In", isLoading: isLoading,
+                            PrimaryButton(label: "Sign In", isLoading: isLoading,
                                           disabled: email.isEmpty || password.isEmpty,
                                           action: signIn)
 
@@ -71,12 +94,12 @@ struct SignInView: View {
                             } label: {
                                 Text("Create an account")
                                     .font(.subheadline)
-                                    .foregroundColor(Color(red: 52/255, green: 211/255, blue: 153/255))
+                                    .foregroundColor(skyColor)
                             }
                             .padding(.top, 4)
                         }
                         .padding(.horizontal, 28)
-                        .padding(.bottom, 48)
+                        .padding(.bottom, 60)
                     }
                 }
             }
@@ -135,6 +158,80 @@ struct SignInView: View {
     }
 }
 
+// MARK: - Mountain Background Canvas
+
+struct AuthMountainCanvas: View {
+    var body: some View {
+        Canvas { ctx, size in
+            // Sky gradient
+            ctx.fill(
+                Path(CGRect(origin: .zero, size: size)),
+                with: .linearGradient(
+                    Gradient(stops: [
+                        .init(color: Color(red: 5/255,  green: 20/255, blue: 55/255),  location: 0),
+                        .init(color: Color(red: 8/255,  green: 47/255, blue: 73/255),  location: 0.45),
+                        .init(color: Color(red: 20/255, green: 30/255, blue: 70/255),  location: 0.7),
+                        .init(color: Color(red: 3/255,  green: 7/255,  blue: 18/255),  location: 1),
+                    ]),
+                    startPoint: .zero,
+                    endPoint: CGPoint(x: 0, y: size.height)
+                )
+            )
+
+            // Back range
+            var back = Path()
+            back.move(to: CGPoint(x: 0, y: size.height))
+            back.addLines([
+                CGPoint(x: 0,                y: size.height * 0.52),
+                CGPoint(x: size.width * 0.12, y: size.height * 0.32),
+                CGPoint(x: size.width * 0.28, y: size.height * 0.46),
+                CGPoint(x: size.width * 0.42, y: size.height * 0.22),
+                CGPoint(x: size.width * 0.55, y: size.height * 0.38),
+                CGPoint(x: size.width * 0.68, y: size.height * 0.18),
+                CGPoint(x: size.width * 0.80, y: size.height * 0.35),
+                CGPoint(x: size.width,         y: size.height * 0.28),
+                CGPoint(x: size.width,         y: size.height),
+            ])
+            back.closeSubpath()
+            ctx.fill(back, with: .color(Color(red: 15/255, green: 45/255, blue: 90/255).opacity(0.55)))
+
+            // Mid range
+            var mid = Path()
+            mid.move(to: CGPoint(x: 0, y: size.height))
+            mid.addLines([
+                CGPoint(x: 0,                y: size.height * 0.65),
+                CGPoint(x: size.width * 0.10, y: size.height * 0.50),
+                CGPoint(x: size.width * 0.22, y: size.height * 0.60),
+                CGPoint(x: size.width * 0.38, y: size.height * 0.40),
+                CGPoint(x: size.width * 0.52, y: size.height * 0.56),
+                CGPoint(x: size.width * 0.65, y: size.height * 0.38),
+                CGPoint(x: size.width * 0.78, y: size.height * 0.52),
+                CGPoint(x: size.width * 0.90, y: size.height * 0.42),
+                CGPoint(x: size.width,         y: size.height * 0.55),
+                CGPoint(x: size.width,         y: size.height),
+            ])
+            mid.closeSubpath()
+            ctx.fill(mid, with: .color(Color(red: 8/255, green: 28/255, blue: 60/255).opacity(0.75)))
+
+            // Foreground range
+            var fore = Path()
+            fore.move(to: CGPoint(x: 0, y: size.height))
+            fore.addLines([
+                CGPoint(x: 0,                y: size.height * 0.78),
+                CGPoint(x: size.width * 0.18, y: size.height * 0.62),
+                CGPoint(x: size.width * 0.33, y: size.height * 0.72),
+                CGPoint(x: size.width * 0.50, y: size.height * 0.55),
+                CGPoint(x: size.width * 0.65, y: size.height * 0.68),
+                CGPoint(x: size.width * 0.82, y: size.height * 0.58),
+                CGPoint(x: size.width,         y: size.height * 0.70),
+                CGPoint(x: size.width,         y: size.height),
+            ])
+            fore.closeSubpath()
+            ctx.fill(fore, with: .color(Color(red: 3/255, green: 12/255, blue: 32/255)))
+        }
+    }
+}
+
 // MARK: - Shared auth field components
 
 struct AuthField: View {
@@ -153,7 +250,7 @@ struct AuthField: View {
             .frame(height: 52)
             .background(Color.white.opacity(0.07))
             .foregroundColor(.white)
-            .tint(Color(red: 52/255, green: 211/255, blue: 153/255))
+            .tint(Color(red: 56/255, green: 189/255, blue: 248/255))
             .cornerRadius(14)
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.12), lineWidth: 1))
     }
@@ -180,7 +277,7 @@ struct AuthSecureField: View {
             .frame(height: 52)
             .background(Color.white.opacity(0.07))
             .foregroundColor(.white)
-            .tint(Color(red: 52/255, green: 211/255, blue: 153/255))
+            .tint(Color(red: 56/255, green: 189/255, blue: 248/255))
             .cornerRadius(14)
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.12), lineWidth: 1))
 
@@ -195,7 +292,7 @@ struct AuthSecureField: View {
     }
 }
 
-struct EmeraldButton: View {
+struct PrimaryButton: View {
     let label: String
     let isLoading: Bool
     let disabled: Bool
@@ -205,7 +302,7 @@ struct EmeraldButton: View {
         Button(action: action) {
             ZStack {
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(red: 52/255, green: 211/255, blue: 153/255))
+                    .fill(Color(red: 56/255, green: 189/255, blue: 248/255))
                     .frame(height: 52)
                 if isLoading {
                     ProgressView().tint(Color(red: 2/255, green: 10/255, blue: 24/255))
@@ -220,3 +317,6 @@ struct EmeraldButton: View {
         .opacity((isLoading || disabled) ? 0.5 : 1)
     }
 }
+
+// Keep EmeraldButton as a typealias so SignUpView compiles unchanged
+typealias EmeraldButton = PrimaryButton
