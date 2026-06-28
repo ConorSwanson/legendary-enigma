@@ -226,6 +226,15 @@ function initDb() {
 
   db.prepare('INSERT OR IGNORE INTO profile (id, name) VALUES (1, ?)').run('Climber');
 
+  // Seed App Store review account (idempotent — no-op if already exists)
+  const reviewEmail = 'review@14erstracker.com';
+  if (!db.prepare('SELECT id FROM users WHERE email = ?').get(reviewEmail)) {
+    const bcrypt = require('bcryptjs');
+    const hash = bcrypt.hashSync('Summit14er!', 12);
+    db.prepare('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)').run(reviewEmail, hash, 'Apple Reviewer');
+    console.log('[Seed] Created App Store review account');
+  }
+
   console.log('Database ready at', DB_PATH);
 }
 
