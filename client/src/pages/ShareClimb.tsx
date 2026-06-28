@@ -17,8 +17,32 @@ interface PublicClimb {
 
 function fmtDate(d: string) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    month: 'long', day: 'numeric', year: 'numeric',
   });
+}
+
+function MountainHero() {
+  return (
+    <div className="w-full h-64 overflow-hidden" style={{ background: 'linear-gradient(to bottom, #05143780, #081e49, #14225e)' }}>
+      <svg viewBox="0 0 400 160" preserveAspectRatio="xMidYMax slice" className="w-full h-full">
+        {/* Back range */}
+        <polygon
+          points="0,160 0,85 48,52 112,74 168,36 220,60 272,30 320,55 400,44 400,160"
+          fill="rgba(15,45,90,0.55)"
+        />
+        {/* Mid range */}
+        <polygon
+          points="0,160 0,104 40,80 88,96 152,64 208,90 260,60 316,83 360,67 400,88 400,160"
+          fill="rgba(8,28,60,0.75)"
+        />
+        {/* Foreground ridge */}
+        <polygon
+          points="0,160 0,125 72,99 132,115 200,88 260,109 328,93 400,112 400,160"
+          fill="#030C1E"
+        />
+      </svg>
+    </div>
+  );
 }
 
 export default function ShareClimb() {
@@ -36,7 +60,7 @@ export default function ShareClimb() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#030712] flex items-center justify-center">
         <div className="text-center space-y-3">
           <div className="text-5xl">🔒</div>
           <p className="text-white font-bold text-xl">This climb is private</p>
@@ -48,7 +72,7 @@ export default function ShareClimb() {
 
   if (!climb) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#030712] flex items-center justify-center">
         <div className="animate-pulse w-80 h-96 bg-gray-900 rounded-2xl" />
       </div>
     );
@@ -64,64 +88,56 @@ export default function ShareClimb() {
   const climberName = climb.user_name || 'A climber';
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-[#030712]">
 
-        {/* Achievement headline */}
-        <div className="text-center mb-6">
-          <p className="text-gray-400 text-sm uppercase tracking-widest mb-1">Colorado 14er Summit</p>
-          <h1 className="text-2xl font-bold text-white leading-tight">
-            {climberName} summited<br />
-            <span className="text-emerald-400">{climb.mountain_name}</span>
-          </h1>
-          <p className="text-gray-400 text-sm mt-2">{fmtDate(climb.climb_date)}</p>
-        </div>
-
-        {/* Badge — large, centered, always climbed=true */}
-        <div className="flex justify-center mb-6">
-          <MountainBadge
-            mountain={mountain}
-            climbed
-            size={180}
+      {/* Photo or mountain hero at top */}
+      {climb.photo_url ? (
+        <div className="w-full h-72 overflow-hidden">
+          <img
+            src={climb.photo_url}
+            alt={climb.mountain_name}
+            className="w-full h-full object-cover"
           />
         </div>
+      ) : (
+        <MountainHero />
+      )}
 
-        {/* Stats row */}
-        <div className="flex justify-center gap-8 mb-6 text-center">
-          <div>
-            <div className="text-2xl font-bold text-white">{climb.elevation.toLocaleString()}</div>
-            <div className="text-gray-500 text-xs uppercase tracking-wide">feet</div>
+      <div className="max-w-lg mx-auto px-5 py-5">
+
+        {/* Title row — info left, badge right (mirrors ClimbDetailView) */}
+        <div className="flex items-start gap-4 mb-5">
+          <div className="flex-1 min-w-0">
+            <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">{climberName}</p>
+            <h1 className="text-2xl font-bold text-white leading-tight">{climb.mountain_name}</h1>
+            <p className="text-[#34D399] font-semibold text-lg">{climb.elevation.toLocaleString()} ft</p>
+            <p className="text-gray-500 text-sm">{climb.range}</p>
+            <p className="text-gray-600 text-sm mt-1">{fmtDate(climb.climb_date)}</p>
           </div>
-          <div className="w-px bg-gray-800" />
-          <div>
-            <div className="text-lg font-semibold text-white">{climb.range.replace(' Range', '').replace(' Mountains', ' Mtns')}</div>
-            <div className="text-gray-500 text-xs uppercase tracking-wide">range</div>
+          <div className="shrink-0" style={{ filter: 'drop-shadow(0 0 16px rgba(52,211,153,0.25))' }}>
+            <MountainBadge mountain={mountain} climbed size={120} />
           </div>
         </div>
-
-        {/* Photo */}
-        {climb.photo_url && (
-          <div className="rounded-xl overflow-hidden mb-4 border border-gray-800">
-            <img src={climb.photo_url} alt={climb.mountain_name} className="w-full object-cover max-h-72" />
-          </div>
-        )}
 
         {/* Notes */}
         {climb.notes && (
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
-            <p className="text-gray-300 text-sm leading-relaxed italic">"{climb.notes}"</p>
+          <div className="bg-[#111827] rounded-xl p-4 mb-5">
+            <p className="text-gray-300 text-sm leading-relaxed">"{climb.notes}"</p>
           </div>
         )}
 
         {/* CTA */}
         <Link
           to="/"
-          className="block w-full text-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+          className="block w-full text-center font-semibold py-3 rounded-xl text-sm transition-colors"
+          style={{ background: '#38BDF8', color: '#030712' }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#7DD3FC')}
+          onMouseLeave={e => (e.currentTarget.style.background = '#38BDF8')}
         >
           Track your own 14ers →
         </Link>
 
-        <p className="text-center text-gray-600 text-xs mt-3">
+        <p className="text-center text-gray-700 text-xs mt-3">
           14ers Tracker · All 58 Colorado 14ers
         </p>
       </div>
