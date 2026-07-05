@@ -16,6 +16,7 @@ struct ClimbDetailView: View {
     @State private var showEdit = false
     @State private var showDeleteConfirm = false
     @State private var badgeUIImage: UIImage?
+    @State private var ascentCount: Int = 0
     @State private var comments: [Comment] = []
     @State private var newCommentText: String = ""
     @State private var isPostingComment = false
@@ -66,12 +67,25 @@ struct ClimbDetailView: View {
                                     .padding(.top, 2)
                             }
                             Spacer()
-                            AsyncImage(url: badgeURL) { phase in
-                                switch phase {
-                                case .success(let img):
-                                    img.resizable().aspectRatio(contentMode: .fit)
-                                default:
-                                    ProgressView().tint(emerald).frame(width: 140, height: 154)
+                            ZStack(alignment: .topTrailing) {
+                                AsyncImage(url: badgeURL) { phase in
+                                    switch phase {
+                                    case .success(let img):
+                                        img.resizable().aspectRatio(contentMode: .fit)
+                                    default:
+                                        ProgressView().tint(emerald).frame(width: 140, height: 154)
+                                    }
+                                }
+                                if ascentCount > 1 {
+                                    Text("×\(ascentCount)")
+                                        .font(.system(size: 11, weight: .black, design: .rounded))
+                                        .foregroundColor(Color(red: 3/255, green: 7/255, blue: 18/255))
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3)
+                                        .background(emerald)
+                                        .clipShape(Capsule())
+                                        .padding(.top, 2)
+                                        .padding(.trailing, 2)
                                 }
                             }
                             .frame(width: 140)
@@ -277,6 +291,10 @@ struct ClimbDetailView: View {
             comments = fetchedComments
             liked = fetched.isLiked ?? false
             likeCount = fetched.likeCount ?? 0
+            if fetched.isOwner == true {
+                let ownAscents = (try? await APIClient.shared.climbs(mountainId: fetched.mountainId)) ?? []
+                ascentCount = ownAscents.count
+            }
             if let url = URL(string: "\(Config.apiBaseURL)/api/badges/\(fetched.mountainId)/png?climbed=1"),
                let (data, _) = try? await URLSession.shared.data(from: url) {
                 badgeUIImage = UIImage(data: data)

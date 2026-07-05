@@ -16,6 +16,7 @@ private let rangeOrder = [
 struct BadgeGridView: View {
     @State private var mountains: [Mountain] = []
     @State private var climbedIds: Set<Int>  = []
+    @State private var ascentCounts: [Int: Int] = [:]
     @State private var isLoading = true
 
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
@@ -68,11 +69,13 @@ struct BadgeGridView: View {
                             LazyVGrid(columns: columns, spacing: 12) {
                                 ForEach(section.mountains) { mountain in
                                     let climbed = climbedIds.contains(mountain.id)
+                                    let count   = ascentCounts[mountain.id] ?? 0
                                     NavigationLink(destination: BadgeDetailView(
                                         mountain: mountain,
-                                        climbed: climbed
+                                        climbed: climbed,
+                                        ascentCount: count
                                     )) {
-                                        BadgeTile(mountain: mountain, climbed: climbed)
+                                        BadgeTile(mountain: mountain, climbed: climbed, ascentCount: count)
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -96,6 +99,7 @@ struct BadgeGridView: View {
         if let (fetchedMountains, stats) = try? await (ms, st) {
             mountains = fetchedMountains
             climbedIds = Set(stats.climbedIds)
+            ascentCounts = Dictionary(uniqueKeysWithValues: stats.ascentCounts.map { ($0.id, $0.count) })
         }
         isLoading = false
     }
@@ -106,6 +110,7 @@ struct BadgeGridView: View {
 private struct BadgeTile: View {
     let mountain: Mountain
     let climbed: Bool
+    let ascentCount: Int
 
     private var pngURL: URL? {
         URL(string: "\(Config.apiBaseURL)/api/badges/\(mountain.id)/png?climbed=\(climbed ? 1 : 0)")
@@ -113,26 +118,34 @@ private struct BadgeTile: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AsyncImage(url: pngURL) { phase in
-                switch phase {
-                case .success(let img):
-                    img.resizable().aspectRatio(contentMode: .fit)
-                default:
-                    ZStack {
-                        ShieldShape()
-                            .fill(LinearGradient(
-                                colors: climbed
-                                    ? [Color(red: 18/255, green: 68/255, blue: 46/255),
-                                       Color(red: 10/255, green: 36/255, blue: 26/255)]
-                                    : [Color(red: 30/255, green: 38/255, blue: 52/255), card],
-                                startPoint: .top, endPoint: .bottom
-                            ))
-                        ProgressView().tint(climbed ? emerald : .gray)
+            ZStack(alignment: .topTrailing) {
+                AsyncImage(url: pngURL) { phase in
+                    switch phase {
+                    case .success(let img):
+                        img.resizable().aspectRatio(contentMode: .fit)
+                    default:
+                        ZStack {
+                            ShieldShape()
+                                .fill(LinearGradient(
+                                    colors: climbed
+                                        ? [Color(red: 18/255, green: 68/255, blue: 46/255),
+                                           Color(red: 10/255, green: 36/255, blue: 26/255)]
+                                        : [Color(red: 30/255, green: 38/255, blue: 52/255), card],
+                                    startPoint: .top, endPoint: .bottom
+                                ))
+                            ProgressView().tint(climbed ? emerald : .gray)
+                        }
+                        .aspectRatio(600.0 / 660.0, contentMode: .fit)
                     }
-                    .aspectRatio(600.0 / 660.0, contentMode: .fit)
+                }
+                .frame(maxWidth: .infinity)
+
+                if ascentCount > 1 {
+                    AscentCountPill(count: ascentCount, size: .small)
+                        .padding(.top, 6)
+                        .padding(.trailing, 4)
                 }
             }
-            .frame(maxWidth: .infinity)
             .padding(.top, 6)
 
             Color(red: 31/255, green: 41/255, blue: 55/255).frame(height: 1)
@@ -155,7 +168,7 @@ private struct BadgeTile: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 9))
                             .foregroundColor(emerald)
-                        Text("Summited")
+                        Text(ascentCount > 1 ? "\(ascentCount) ascents" : "Summited")
                             .font(.system(size: 9, weight: .semibold))
                             .foregroundColor(emerald)
                     }
@@ -183,9 +196,10 @@ private struct BadgeTile: View {
 struct BadgeDetailView: View {
     let mountain: Mountain
     let climbed: Bool
+    let ascentCount: Int
 
-    @State private var climbDate: String?
-    @State private var climbNotes: String?
+    @State private var ascents: [Climb] = []
+    @State private var isLoading = false
 
     private var pngURL: URL? {
         URL(string: "\(Config.apiBaseURL)/api/badges/\(mountain.id)/png?climbed=\(climbed ? 1 : 0)")
@@ -194,46 +208,77 @@ struct BadgeDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                AsyncImage(url: pngURL) { phase in
-                    switch phase {
-                    case .success(let img):
-                        img.resizable().aspectRatio(contentMode: .fit)
-                    default:
-                        ZStack {
-                            ShieldShape()
-                                .fill(LinearGradient(
-                                    colors: climbed
-                                        ? [Color(red: 18/255, green: 68/255, blue: 46/255),
-                                           Color(red: 10/255, green: 36/255, blue: 26/255)]
-                                        : [Color(red: 30/255, green: 38/255, blue: 52/255), card],
-                                    startPoint: .top, endPoint: .bottom
-                                ))
-                            ProgressView().tint(climbed ? emerald : .gray)
+                // Badge with count pill
+                ZStack(alignment: .topTrailing) {
+                    AsyncImage(url: pngURL) { phase in
+                        switch phase {
+                        case .success(let img):
+                            img.resizable().aspectRatio(contentMode: .fit)
+                        default:
+                            ZStack {
+                                ShieldShape()
+                                    .fill(LinearGradient(
+                                        colors: climbed
+                                            ? [Color(red: 18/255, green: 68/255, blue: 46/255),
+                                               Color(red: 10/255, green: 36/255, blue: 26/255)]
+                                            : [Color(red: 30/255, green: 38/255, blue: 52/255), card],
+                                        startPoint: .top, endPoint: .bottom
+                                    ))
+                                ProgressView().tint(climbed ? emerald : .gray)
+                            }
+                            .aspectRatio(600.0 / 660.0, contentMode: .fit)
                         }
-                        .aspectRatio(600.0 / 660.0, contentMode: .fit)
+                    }
+                    if ascentCount > 1 {
+                        AscentCountPill(count: ascentCount, size: .large)
+                            .padding(.top, 4)
+                            .padding(.trailing, 4)
                     }
                 }
                 .frame(maxWidth: 240)
                 .padding(.top, 8)
 
+                // Mountain info
                 VStack(spacing: 1) {
                     detailRow(label: "Mountain", value: mountain.name)
                     detailRow(label: "Range", value: mountain.range)
                     detailRow(label: "Elevation", value: "\(mountain.elevation.formatted()) ft")
                     detailRow(
                         label: "Status",
-                        value: climbed ? "Summited" : "Not yet summited",
+                        value: climbed
+                            ? (ascentCount > 1 ? "\(ascentCount) ascents" : "Summited")
+                            : "Not yet summited",
                         valueColor: climbed ? emerald : .gray
                     )
-                    if let date = climbDate {
-                        detailRow(label: "Date", value: date.shortClimbDate())
-                    }
-                    if let notes = climbNotes, !notes.isEmpty {
-                        detailRow(label: "Notes", value: notes)
-                    }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal)
+
+                // Past ascents list
+                if climbed {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("ASCENTS")
+                            .font(.caption.bold())
+                            .foregroundColor(emerald)
+                            .tracking(1.5)
+                            .padding(.horizontal)
+
+                        if isLoading {
+                            ProgressView().tint(.white).frame(maxWidth: .infinity).padding()
+                        } else {
+                            VStack(spacing: 1) {
+                                ForEach(ascents) { climb in
+                                    NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+                                        AscentRow(climb: climb)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.horizontal)
+                        }
+                    }
+                }
             }
             .padding(.bottom, 32)
         }
@@ -242,11 +287,9 @@ struct BadgeDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             guard climbed else { return }
-            let climbs = (try? await APIClient.shared.climbs()) ?? []
-            if let match = climbs.first(where: { $0.mountainId == mountain.id }) {
-                climbDate = match.climbDate
-                climbNotes = match.notes
-            }
+            isLoading = true
+            ascents = (try? await APIClient.shared.climbs(mountainId: mountain.id)) ?? []
+            isLoading = false
         }
     }
 
@@ -267,6 +310,65 @@ struct BadgeDetailView: View {
         .background(card)
         Divider()
             .background(Color(red: 31/255, green: 41/255, blue: 55/255))
+    }
+}
+
+// MARK: - Ascent Row (used in BadgeDetailView list)
+
+private struct AscentRow: View {
+    let climb: Climb
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(climb.climbDate.shortClimbDate())
+                    .font(.subheadline.bold())
+                    .foregroundColor(.white)
+                if let notes = climb.notes, !notes.isEmpty {
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .lineLimit(1)
+                }
+            }
+            Spacer()
+            if climb.photoUrl != nil {
+                Image(systemName: "photo")
+                    .font(.caption)
+                    .foregroundColor(.gray.opacity(0.5))
+            }
+            Image(systemName: "chevron.right")
+                .font(.caption2.bold())
+                .foregroundColor(.gray.opacity(0.4))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(card)
+        Divider()
+            .background(Color(red: 31/255, green: 41/255, blue: 55/255))
+    }
+}
+
+// MARK: - Ascent Count Pill
+
+private enum PillSize { case small, large }
+
+private struct AscentCountPill: View {
+    let count: Int
+    let size: PillSize
+
+    private var fontSize: CGFloat { size == .small ? 9 : 11 }
+    private var hPad:     CGFloat { size == .small ? 5 : 7 }
+    private var vPad:     CGFloat { size == .small ? 2 : 3 }
+
+    var body: some View {
+        Text("×\(count)")
+            .font(.system(size: fontSize, weight: .black, design: .rounded))
+            .foregroundColor(Color(red: 3/255, green: 7/255, blue: 18/255))
+            .padding(.horizontal, hPad)
+            .padding(.vertical, vPad)
+            .background(emerald)
+            .clipShape(Capsule())
     }
 }
 

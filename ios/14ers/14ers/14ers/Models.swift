@@ -82,6 +82,11 @@ struct FeedItem: Codable, Identifiable, Sendable {
 
 // MARK: - Stats
 
+struct AscentCount: Codable, Sendable {
+    let id: Int
+    let count: Int
+}
+
 struct Stats: Codable, Sendable {
     let totalClimbs: Int
     let uniquePeaks: Int
@@ -89,6 +94,7 @@ struct Stats: Codable, Sendable {
     let totalMountains: Int
     let climbedIds: [Int]
     let recentClimbs: [RecentClimb]
+    let ascentCounts: [AscentCount]
 
     enum CodingKeys: String, CodingKey {
         case totalClimbs    = "total_climbs"
@@ -97,6 +103,7 @@ struct Stats: Codable, Sendable {
         case totalMountains = "total_mountains"
         case climbedIds     = "climbed_ids"
         case recentClimbs   = "recent_climbs"
+        case ascentCounts   = "ascent_counts"
     }
 }
 

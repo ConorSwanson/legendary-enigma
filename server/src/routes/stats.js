@@ -50,7 +50,12 @@ router.get('/', requireAuth, (req, res) => {
     'SELECT DISTINCT mountain_id AS id FROM climbs WHERE user_id = ?'
   ).all(uid).map(r => r.id);
 
-  res.json({ ...totals, total_mountains, by_month, by_year, top_mountains, recent_climbs, climbed_ids });
+  // Per-mountain ascent counts (for repeat-ascent badge display)
+  const ascent_counts = db.prepare(
+    'SELECT mountain_id AS id, COUNT(*) AS count FROM climbs WHERE user_id = ? GROUP BY mountain_id'
+  ).all(uid);
+
+  res.json({ ...totals, total_mountains, by_month, by_year, top_mountains, recent_climbs, climbed_ids, ascent_counts });
 });
 
 module.exports = router;
