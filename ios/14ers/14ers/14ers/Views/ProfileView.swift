@@ -48,6 +48,12 @@ struct HomeView: View {
             }
         }
         .task { await load() }
+        .onReceive(NotificationCenter.default.publisher(for: .climbDeleted)) { _ in
+            Task { await load() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .climbLogged)) { _ in
+            Task { await load() }
+        }
         .onChange(of: avatarPickerItem) { handleAvatarPick() }
         .onChange(of: backgroundPickerItem) { handleBackgroundPick() }
     }

@@ -271,6 +271,13 @@ nonisolated(unsafe) let allPeakCoordinates: [PeakCoordinate] = [
     PeakCoordinate(mountainId: 58, latitude: 39.0103, longitude: -106.8561), // Conundrum Peak
 ]
 
+// MARK: - App-wide notifications
+
+extension Notification.Name {
+    static let climbDeleted = Notification.Name("climbDeleted")
+    static let climbLogged  = Notification.Name("climbLogged")
+}
+
 // MARK: - Helpers
 
 extension String {

@@ -63,6 +63,11 @@ struct FeedView: View {
             items = []
             Task { await load() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .climbDeleted)) { note in
+            if let deletedId = note.object as? Int {
+                items.removeAll { $0.id == deletedId }
+            }
+        }
     }
 
     private func load() async {

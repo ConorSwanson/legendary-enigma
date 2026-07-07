@@ -58,6 +58,13 @@ struct HistoryView: View {
             }
         }
         .task { await load() }
+        .onReceive(NotificationCenter.default.publisher(for: .climbDeleted)) { note in
+            if let deletedId = note.object as? Int {
+                climbs.removeAll { $0.id == deletedId }
+            } else {
+                Task { await load() }
+            }
+        }
     }
 
     private func load() async {

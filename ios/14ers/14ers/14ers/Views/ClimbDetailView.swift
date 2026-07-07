@@ -375,6 +375,7 @@ struct ClimbDetailView: View {
     private func deleteClimb() async {
         do {
             try await APIClient.shared.deleteClimb(climbId)
+            NotificationCenter.default.post(name: .climbDeleted, object: climbId)
             dismiss()
         } catch {
             self.error = error.localizedDescription

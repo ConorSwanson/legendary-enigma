@@ -431,6 +431,7 @@ struct LogClimbView: View {
             successDate = date
             successClimbId = newClimbId
             successAscentCount = max(1, allAscents.count)
+            NotificationCenter.default.post(name: .climbLogged, object: newClimbId)
             showSuccess = true
         } catch {
             self.saveError = error.localizedDescription
