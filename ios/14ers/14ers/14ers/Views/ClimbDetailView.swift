@@ -17,6 +17,7 @@ struct ClimbDetailView: View {
     @State private var showDeleteConfirm = false
     @State private var badgeUIImage: UIImage?
     @State private var ascentCount: Int = 0
+    @State private var otherAscents: [Climb] = []
     @State private var comments: [Comment] = []
     @State private var newCommentText: String = ""
     @State private var isPostingComment = false
@@ -126,6 +127,10 @@ struct ClimbDetailView: View {
                     .padding()
 
                     commentsSection
+
+                    if !otherAscents.isEmpty {
+                        otherAscentsSection
+                    }
 
                 } else if let error {
                     Text(error).foregroundColor(.red).padding()
@@ -260,6 +265,52 @@ struct ClimbDetailView: View {
         }
     }
 
+    @ViewBuilder
+    private var otherAscentsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Divider().background(Color.white.opacity(0.1))
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Other Ascents")
+                    .font(.headline)
+                    .foregroundColor(.white)
+
+                ForEach(otherAscents) { ascent in
+                    NavigationLink(destination: ClimbDetailView(climbId: ascent.id)) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(ascent.climbDate.shortClimbDate())
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.white)
+                                if let notes = ascent.notes, !notes.isEmpty {
+                                    Text(notes)
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                        .lineLimit(1)
+                                }
+                            }
+                            Spacer()
+                            if ascent.photoUrl != nil {
+                                Image(systemName: "photo")
+                                    .font(.caption)
+                                    .foregroundColor(.gray.opacity(0.5))
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.bold())
+                                .foregroundColor(.gray.opacity(0.4))
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 11)
+                        .background(card)
+                        .cornerRadius(10)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding()
+        }
+    }
+
     private func submitComment() async {
         let text = newCommentText.trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return }
@@ -294,6 +345,7 @@ struct ClimbDetailView: View {
             if fetched.isOwner == true {
                 let ownAscents = (try? await APIClient.shared.climbs(mountainId: fetched.mountainId)) ?? []
                 ascentCount = ownAscents.count
+                otherAscents = ownAscents.filter { $0.id != climbId }
             }
             if let url = URL(string: "\(Config.apiBaseURL)/api/badges/\(fetched.mountainId)/png?climbed=1"),
                let (data, _) = try? await URLSession.shared.data(from: url) {
