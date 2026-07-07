@@ -383,6 +383,25 @@ struct ClimbDetailView: View {
     }
 }
 
+// MARK: - Deleted toast
+
+struct DeletedToast: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(emerald)
+            Text("Climb deleted")
+                .font(.subheadline.bold())
+                .foregroundColor(.white)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(Color(red: 17/255, green: 24/255, blue: 39/255))
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.4), radius: 10, y: 4)
+    }
+}
+
 // MARK: - Comment Row
 
 private let sky = Color(red: 56/255, green: 189/255, blue: 248/255)

@@ -8,6 +8,7 @@ struct HistoryView: View {
     @State private var climbs: [Climb] = []
     @State private var isLoading = false
     @State private var error: String?
+    @State private var showDeletedToast = false
     @EnvironmentObject var userState: UserState
 
     var body: some View {
@@ -56,6 +57,13 @@ struct HistoryView: View {
                     }
                 }
             }
+            .overlay(alignment: .bottom) {
+                if showDeletedToast {
+                    DeletedToast()
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.bottom, 16)
+                }
+            }
         }
         .task { await load() }
         .onReceive(NotificationCenter.default.publisher(for: .climbDeleted)) { note in
@@ -63,6 +71,11 @@ struct HistoryView: View {
                 climbs.removeAll { $0.id == deletedId }
             } else {
                 Task { await load() }
+            }
+            withAnimation(.spring(response: 0.3)) { showDeletedToast = true }
+            Task {
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                withAnimation(.easeOut(duration: 0.3)) { showDeletedToast = false }
             }
         }
     }

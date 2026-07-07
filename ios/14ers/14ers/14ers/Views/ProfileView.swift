@@ -20,6 +20,7 @@ struct HomeView: View {
     @State private var showEditProfile = false
     @State private var showDeleteConfirm = false
     @State private var isDeletingAccount = false
+    @State private var showDeletedToast = false
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var userState: UserState
 
@@ -46,10 +47,22 @@ struct HomeView: View {
                     NotificationBellButton()
                 }
             }
+            .overlay(alignment: .bottom) {
+                if showDeletedToast {
+                    DeletedToast()
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.bottom, 16)
+                }
+            }
         }
         .task { await load() }
         .onReceive(NotificationCenter.default.publisher(for: .climbDeleted)) { _ in
             Task { await load() }
+            withAnimation(.spring(response: 0.3)) { showDeletedToast = true }
+            Task {
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                withAnimation(.easeOut(duration: 0.3)) { showDeletedToast = false }
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .climbLogged)) { _ in
             Task { await load() }
