@@ -617,8 +617,9 @@ private struct ClimbSuccessView: View {
                             .font(.largeTitle.bold())
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
-                        Text("🏔️")
+                        Image(systemName: "mountain.2.fill")
                             .font(.system(size: 44))
+                            .foregroundColor(emerald)
                     }
                     .padding(.top, 48)
 
