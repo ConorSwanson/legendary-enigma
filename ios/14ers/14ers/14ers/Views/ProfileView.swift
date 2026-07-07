@@ -56,7 +56,9 @@ struct HomeView: View {
             }
         }
         .task { await load() }
-        .onReceive(NotificationCenter.default.publisher(for: .climbDeleted)) { _ in
+        .onChange(of: userState.climbWasDeleted) { newValue in
+            guard newValue else { return }
+            userState.climbWasDeleted = false
             Task { await load() }
             withAnimation(.spring(response: 0.3)) { showDeletedToast = true }
             Task {

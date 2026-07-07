@@ -22,6 +22,7 @@ struct ClimbDetailView: View {
     @State private var newCommentText: String = ""
     @State private var isPostingComment = false
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var userState: UserState
 
     private var badgeURL: URL? {
         guard let climb else { return nil }
@@ -376,6 +377,7 @@ struct ClimbDetailView: View {
         do {
             try await APIClient.shared.deleteClimb(climbId)
             NotificationCenter.default.post(name: .climbDeleted, object: climbId)
+            userState.climbWasDeleted = true
             dismiss()
         } catch {
             self.error = error.localizedDescription

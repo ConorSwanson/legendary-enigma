@@ -7,6 +7,7 @@ final class UserState: ObservableObject {
     @Published var avatarUrl: String?
     @Published var unreadCount: Int = 0
     @Published var selectedTab: Int = 0
+    @Published var climbWasDeleted = false
 
     func refresh() async {
         async let p = APIClient.shared.myProfile()

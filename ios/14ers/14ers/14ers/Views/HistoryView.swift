@@ -66,12 +66,10 @@ struct HistoryView: View {
             }
         }
         .task { await load() }
-        .onReceive(NotificationCenter.default.publisher(for: .climbDeleted)) { note in
-            if let deletedId = note.object as? Int {
-                climbs.removeAll { $0.id == deletedId }
-            } else {
-                Task { await load() }
-            }
+        .onChange(of: userState.climbWasDeleted) { newValue in
+            guard newValue else { return }
+            userState.climbWasDeleted = false
+            Task { await load() }
             withAnimation(.spring(response: 0.3)) { showDeletedToast = true }
             Task {
                 try? await Task.sleep(nanoseconds: 2_500_000_000)
