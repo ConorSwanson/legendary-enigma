@@ -1,7 +1,6 @@
 import SwiftUI
 import Combine
 import UserNotifications
-import Sentry
 
 @MainActor
 final class UserState: ObservableObject {
@@ -20,12 +19,6 @@ final class UserState: ObservableObject {
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        SentrySDK.start { options in
-            options.dsn = "https://6e95e46a4a5afcf64374d250d3530293@o4511632586375168.ingest.us.sentry.io/4511632596795392"
-            options.tracesSampleRate = 1.0
-            options.attachScreenshot = true
-            options.attachViewHierarchy = true
-        }
         UNUserNotificationCenter.current().delegate = self
         return true
     }
