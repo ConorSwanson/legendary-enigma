@@ -16,6 +16,7 @@ struct LogClimbView: View {
     @State private var isSaving = false
     @State private var saveError: String?
     @State private var showSuccess = false
+    @State private var successAscentCount: Int = 1
     @EnvironmentObject var userState: UserState
 
     // Manual photo picker
@@ -93,7 +94,7 @@ struct LogClimbView: View {
         }
         .sheet(isPresented: $showSuccess, onDismiss: resetForm) {
             if let m = successMountain {
-                ClimbSuccessView(mountain: m, climbDate: successDate, climbId: successClimbId)
+                ClimbSuccessView(mountain: m, climbDate: successDate, climbId: successClimbId, ascentCount: successAscentCount)
             }
         }
     }
@@ -425,9 +426,11 @@ struct LogClimbView: View {
                 visibility: visibility,
                 photoData: photoData
             )
+            let allAscents = (try? await APIClient.shared.climbs(mountainId: mountainId)) ?? []
             successMountain = mountains.first(where: { $0.id == mountainId })
             successDate = date
             successClimbId = newClimbId
+            successAscentCount = max(1, allAscents.count)
             showSuccess = true
         } catch {
             self.saveError = error.localizedDescription
@@ -580,6 +583,7 @@ private struct ClimbSuccessView: View {
     let mountain: Mountain
     let climbDate: Date
     let climbId: Int
+    let ascentCount: Int
     @Environment(\.dismiss) private var dismiss
     @State private var badgeUIImage: UIImage?
 
@@ -595,10 +599,27 @@ private struct ClimbSuccessView: View {
         URL(string: "\(Config.apiBaseURL)/s/\(climbId)")
     }
 
+    private var titleText: String {
+        if ascentCount <= 1 { return "Summit Achieved!" }
+        let fmt = NumberFormatter()
+        fmt.numberStyle = .ordinal
+        let ordinal = fmt.string(from: NSNumber(value: ascentCount)) ?? "\(ascentCount)"
+        return "\(ordinal) Ascent!"
+    }
+
     private var shareText: String {
-        let fmt = DateFormatter()
-        fmt.dateStyle = .medium
-        let base = "Just summited \(mountain.name) (\(mountain.elevation.formatted()) ft) on \(fmt.string(from: climbDate))! 🏔️ #Colorado14ers #14ers"
+        let dateFmt = DateFormatter()
+        dateFmt.dateStyle = .medium
+        let verb: String
+        if ascentCount > 1 {
+            let ordFmt = NumberFormatter()
+            ordFmt.numberStyle = .ordinal
+            let ordinal = ordFmt.string(from: NSNumber(value: ascentCount)) ?? "\(ascentCount)"
+            verb = "Summited \(mountain.name) for the \(ordinal) time"
+        } else {
+            verb = "Just summited \(mountain.name)"
+        }
+        let base = "\(verb) (\(mountain.elevation.formatted()) ft) on \(dateFmt.string(from: climbDate))! #Colorado14ers #14ers"
         if let url = shareURL {
             return "\(base)\n\(url.absoluteString)"
         }
@@ -613,23 +634,36 @@ private struct ClimbSuccessView: View {
             ScrollView {
                 VStack(spacing: 28) {
                     VStack(spacing: 8) {
-                        Text("Summit Achieved!")
+                        Text(titleText)
                             .font(.largeTitle.bold())
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
-                        Image(systemName: "mountain.2.fill")
+                        Image(systemName: ascentCount > 1 ? "arrow.trianglehead.2.clockwise.rotate.90" : "mountain.2.fill")
                             .font(.system(size: 44))
                             .foregroundColor(emerald)
                     }
                     .padding(.top, 48)
 
-                    // Visual display uses AsyncImage; we separately load UIImage for SharePreview
-                    AsyncImage(url: badgeURL) { phase in
-                        switch phase {
-                        case .success(let img):
-                            img.resizable().aspectRatio(contentMode: .fit)
-                        default:
-                            ProgressView().tint(emerald).frame(height: 200)
+                    // Badge with optional repeat-ascent pill overlay
+                    ZStack(alignment: .topTrailing) {
+                        AsyncImage(url: badgeURL) { phase in
+                            switch phase {
+                            case .success(let img):
+                                img.resizable().aspectRatio(contentMode: .fit)
+                            default:
+                                ProgressView().tint(emerald).frame(height: 200)
+                            }
+                        }
+                        if ascentCount > 1 {
+                            Text("×\(ascentCount)")
+                                .font(.system(size: 13, weight: .black, design: .rounded))
+                                .foregroundColor(Color(red: 3/255, green: 7/255, blue: 18/255))
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 4)
+                                .background(emerald)
+                                .clipShape(Capsule())
+                                .padding(.top, 4)
+                                .padding(.trailing, 4)
                         }
                     }
                     .frame(maxWidth: 220)
