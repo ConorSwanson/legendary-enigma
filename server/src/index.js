@@ -43,4 +43,9 @@ if (require('fs').existsSync(clientDist)) {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  // Pre-warm badge PNG cache so first user load is instant
+  try {
+    const { warmBadgeCache } = require('./routes/badges');
+    warmBadgeCache();
+  } catch (_) {}
 });
