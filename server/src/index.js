@@ -32,6 +32,8 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/public/climbs', require('./routes/publicClimbs'));
 app.use('/api/badges',        require('./routes/badges'));
 app.use('/api/og',            require('./routes/ogImage'));
+app.use('/api/beta',          require('./routes/beta'));
+app.use('/beta',              require('./routes/beta'));
 app.use('/s',             require('./routes/share'));
 
 // Serve built React app (production)

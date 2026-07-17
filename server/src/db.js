@@ -172,6 +172,12 @@ function initDb() {
       UNIQUE(user_id, token)
     );
     CREATE INDEX IF NOT EXISTS idx_device_tokens_user ON device_tokens(user_id);
+
+    CREATE TABLE IF NOT EXISTS beta_signups (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      email      TEXT    NOT NULL UNIQUE,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   // Migrate: add columns to legacy climbs table if missing
