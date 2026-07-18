@@ -87,20 +87,12 @@ const PAGE = `<!DOCTYPE html>
       padding: 72px 0 48px;
     }
 
-    .badge-wrap {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+    .app-icon {
       width: 96px; height: 96px;
-      background: var(--card);
       border-radius: 22px;
-      border: 1px solid var(--border);
       margin-bottom: 32px;
       box-shadow: 0 0 40px rgba(52,211,153,0.15);
-    }
-
-    .mountain-svg {
-      width: 60px; height: 60px;
+      display: block;
     }
 
     .eyebrow {
@@ -277,15 +269,7 @@ const PAGE = `<!DOCTYPE html>
   </nav>
 
   <div class="hero">
-    <div class="badge-wrap">
-      <svg class="mountain-svg" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M30 8L52 48H8L30 8Z" fill="#1F2937"/>
-        <path d="M30 8L38 26L30 22L22 26L30 8Z" fill="#E5E7EB"/>
-        <path d="M18 48L30 22L42 48H18Z" fill="#374151"/>
-        <path d="M8 48L18 30L26 38L18 48H8Z" fill="#4B5563"/>
-        <circle cx="30" cy="8" r="2" fill="#34D399"/>
-      </svg>
-    </div>
+    <img src="/public/app-icon.png" alt="14ers Tracker" class="app-icon" />
 
     <p class="eyebrow">iOS Beta — Coming Soon</p>
     <h1>Track every<br/><span>Colorado summit.</span></h1>
