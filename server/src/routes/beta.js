@@ -1,6 +1,31 @@
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../db');
+const nodemailer = require('nodemailer');
+
+function getMailer() {
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
+  return nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: Number(SMTP_PORT) || 587,
+    secure: Number(SMTP_PORT) === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  });
+}
+
+async function sendSignupAlert(email) {
+  const mailer = getMailer();
+  if (!mailer) return;
+  const notify = process.env.SMTP_NOTIFY || process.env.SMTP_USER;
+  await mailer.sendMail({
+    from: `"14ers Tracker" <${process.env.SMTP_USER}>`,
+    to: notify,
+    subject: '🏔️ New beta signup',
+    text: `${email} just joined the 14ers Tracker beta waitlist.`,
+    html: `<p><strong>${email}</strong> just joined the 14ers Tracker beta waitlist.</p>`,
+  });
+}
 
 const PAGE = `<!DOCTYPE html>
 <html lang="en">
@@ -372,10 +397,16 @@ router.post('/signup', (req, res) => {
   if (!email || !email.includes('@')) {
     return res.status(400).json({ error: 'Valid email required' });
   }
+  const normalized = email.toLowerCase().trim();
   try {
-    getDb().prepare(
+    const result = getDb().prepare(
       'INSERT OR IGNORE INTO beta_signups (email) VALUES (?)'
-    ).run(email.toLowerCase().trim());
+    ).run(normalized);
+    if (result.changes > 0) {
+      sendSignupAlert(normalized).catch(err =>
+        console.error('[Beta] Email notification failed:', err.message)
+      );
+    }
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Could not save email' });
