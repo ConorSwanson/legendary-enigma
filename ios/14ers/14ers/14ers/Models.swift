@@ -274,8 +274,9 @@ nonisolated(unsafe) let allPeakCoordinates: [PeakCoordinate] = [
 // MARK: - App-wide notifications
 
 extension Notification.Name {
-    static let climbDeleted = Notification.Name("climbDeleted")
-    static let climbLogged  = Notification.Name("climbLogged")
+    static let climbDeleted    = Notification.Name("climbDeleted")
+    static let climbLogged     = Notification.Name("climbLogged")
+    static let navigateToClimb = Notification.Name("navigateToClimb")
 }
 
 // MARK: - Helpers

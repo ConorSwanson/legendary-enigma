@@ -9,6 +9,8 @@ struct HistoryView: View {
     @State private var isLoading = false
     @State private var error: String?
     @State private var showDeletedToast = false
+    @State private var deepLinkClimbId: Int?
+    @State private var isDeepLinkActive = false
     @EnvironmentObject var userState: UserState
 
     var body: some View {
@@ -64,8 +66,25 @@ struct HistoryView: View {
                         .padding(.bottom, 16)
                 }
             }
+            .background(
+                NavigationLink(
+                    isActive: $isDeepLinkActive,
+                    destination: {
+                        if let id = deepLinkClimbId {
+                            ClimbDetailView(climbId: id)
+                        }
+                    },
+                    label: { EmptyView() }
+                )
+            )
         }
         .task { await load() }
+        .onChange(of: userState.pendingClimbId) { newValue in
+            guard let id = newValue else { return }
+            userState.pendingClimbId = nil
+            deepLinkClimbId = id
+            isDeepLinkActive = true
+        }
         .onChange(of: userState.climbWasDeleted) { newValue in
             guard newValue else { return }
             userState.climbWasDeleted = false

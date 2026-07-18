@@ -8,6 +8,7 @@ final class UserState: ObservableObject {
     @Published var unreadCount: Int = 0
     @Published var selectedTab: Int = 0
     @Published var climbWasDeleted = false
+    @Published var pendingClimbId: Int?
 
     func refresh() async {
         async let p = APIClient.shared.myProfile()
@@ -40,6 +41,17 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                                  withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound, .badge])
     }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                 didReceive response: UNNotificationResponse,
+                                 withCompletionHandler completionHandler: @escaping () -> Void) {
+        let userInfo = response.notification.request.content.userInfo
+        if let climbId = userInfo["climbId"] as? Int {
+            NotificationCenter.default.post(name: .navigateToClimb, object: nil,
+                                            userInfo: ["climbId": climbId])
+        }
+        completionHandler()
+    }
 }
 
 @main
@@ -71,6 +83,14 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: authManager.isSignedIn)
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToClimb)) { note in
+            guard authManager.isSignedIn,
+                  let climbId = note.userInfo?["climbId"] as? Int else { return }
+            userState.selectedTab = 3
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                userState.pendingClimbId = climbId
+            }
+        }
         .task(id: authManager.isSignedIn) {
             if authManager.isSignedIn {
                 await userState.refresh()

@@ -587,9 +587,16 @@ struct NotificationsView: View {
                     .background(notifBg.ignoresSafeArea())
                 } else {
                     List(notifications) { item in
-                        NotificationRow(item: item)
-                            .listRowBackground(notifCard)
-                            .listRowSeparatorTint(Color(red: 31/255, green: 41/255, blue: 55/255))
+                        NotificationRow(item: item) {
+                            guard let climbId = item.climbId else { return }
+                            userState.selectedTab = 3
+                            dismiss()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                                userState.pendingClimbId = climbId
+                            }
+                        }
+                        .listRowBackground(notifCard)
+                        .listRowSeparatorTint(Color(red: 31/255, green: 41/255, blue: 55/255))
                     }
                     .listStyle(.plain)
                     .background(notifBg)
@@ -615,6 +622,7 @@ struct NotificationsView: View {
 
 private struct NotificationRow: View {
     let item: NotificationItem
+    var onTap: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -650,6 +658,8 @@ private struct NotificationRow: View {
             }
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture { onTap?() }
     }
 
     private var notifText: String {

@@ -186,6 +186,7 @@ router.post('/:id/like', requireAuth, (req, res) => {
       pushToUser(climb.user_id, {
         title: 'New Like',
         body: `${fromUser?.name || 'Someone'} liked your climb on ${mountain?.name || 'a peak'}`,
+        climbId: Number(req.params.id),
       }).catch(() => {});
     }
   }

@@ -19,7 +19,7 @@ function getProvider() {
   return _provider;
 }
 
-async function pushToUser(userId, { title, body }) {
+async function pushToUser(userId, { title, body, climbId }) {
   const provider = getProvider();
   if (!provider) return;
   const bundleId = process.env.APNS_BUNDLE_ID;
@@ -34,6 +34,7 @@ async function pushToUser(userId, { title, body }) {
   note.sound = 'default';
   note.alert = { title, body };
   note.topic = bundleId;
+  if (climbId) note.payload = { climbId };
 
   for (const { token } of tokens) {
     try {

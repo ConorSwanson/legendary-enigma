@@ -67,6 +67,7 @@ router.post('/:id/comments', requireAuth, (req, res) => {
       pushToUser(climb.user_id, {
         title: 'New Comment',
         body: `${fromUser?.name || 'Someone'} commented on your climb of ${mountain?.name || 'a peak'}`,
+        climbId: Number(req.params.id),
       }).catch(() => {});
     } catch (_) {}
   }
