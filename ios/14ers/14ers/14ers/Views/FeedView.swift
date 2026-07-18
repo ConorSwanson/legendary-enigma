@@ -183,16 +183,19 @@ struct FeedCard: View {
                     .buttonStyle(.plain)
 
                     // Comment icon (tap to open detail)
-                    HStack(spacing: 4) {
-                        Image(systemName: "bubble.right")
-                            .font(.system(size: 15))
-                            .foregroundColor(.gray)
-                        if commentCount > 0 {
-                            Text("\(commentCount)")
-                                .font(.caption)
+                    NavigationLink(destination: ClimbDetailView(climbId: item.id)) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bubble.right")
+                                .font(.system(size: 15))
                                 .foregroundColor(.gray)
+                            if commentCount > 0 {
+                                Text("\(commentCount)")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
                         }
                     }
+                    .buttonStyle(.plain)
                     .padding(.leading, 8)
 
                     // Share button
