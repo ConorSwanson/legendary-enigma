@@ -293,6 +293,14 @@ actor APIClient {
         try await request("/users/\(id)/climbs")
     }
 
+    func followers(_ id: Int) async throws -> [FollowerUser] {
+        try await request("/users/\(id)/followers")
+    }
+
+    func following(_ id: Int) async throws -> [FollowerUser] {
+        try await request("/users/\(id)/following")
+    }
+
     func follow(_ id: Int) async throws {
         try await requestVoid("/users/\(id)/follow", method: "POST")
     }

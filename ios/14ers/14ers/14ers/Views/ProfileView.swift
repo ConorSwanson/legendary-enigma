@@ -32,6 +32,7 @@ struct HomeView: View {
                     VStack(spacing: 20) {
                         nameAndBio
                         if let s = stats { statsGrid(s) }
+                        if let s = stats { followersRow(s) }
                         if let s = stats, !s.recentClimbs.isEmpty { recentBadgesSection(s) }
                         if let s = stats, !s.recentClimbs.isEmpty { recentClimbsSection(s) }
                         signOutButton
@@ -240,6 +241,34 @@ struct HomeView: View {
             HomeStatCard(title: "Elevation", value: "\(s.totalElevation.formatted())ft")
             HomeStatCard(title: "Mountains", value: "\(s.totalMountains)")
         }
+    }
+
+    @ViewBuilder
+    private func followersRow(_ s: Stats) -> some View {
+        if let id = profile?.id {
+            HStack(spacing: 0) {
+                NavigationLink(destination: FollowerListView(userId: id, startTab: .followers)) {
+                    followStatCell(value: "\(s.followers ?? 0)", label: "Followers")
+                }
+                .buttonStyle(.plain)
+                Divider().frame(height: 32).background(Color.white.opacity(0.1))
+                NavigationLink(destination: FollowerListView(userId: id, startTab: .following)) {
+                    followStatCell(value: "\(s.following ?? 0)", label: "Following")
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.vertical, 12)
+            .background(card)
+            .cornerRadius(12)
+        }
+    }
+
+    private func followStatCell(value: String, label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value).font(.headline.bold()).foregroundColor(.white)
+            Text(label).font(.caption2).foregroundColor(.gray)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Recent Badges
@@ -912,9 +941,15 @@ struct UserProfileView: View {
             Divider().frame(height: 32).background(Color.white.opacity(0.1))
             userStatCell(value: "\(p.uniquePeaks ?? 0)", label: "Peaks")
             Divider().frame(height: 32).background(Color.white.opacity(0.1))
-            userStatCell(value: "\(followerCount)", label: "Followers")
+            NavigationLink(destination: FollowerListView(userId: userId, startTab: .followers)) {
+                userStatCell(value: "\(followerCount)", label: "Followers")
+            }
+            .buttonStyle(.plain)
             Divider().frame(height: 32).background(Color.white.opacity(0.1))
-            userStatCell(value: "\(p.following ?? 0)", label: "Following")
+            NavigationLink(destination: FollowerListView(userId: userId, startTab: .following)) {
+                userStatCell(value: "\(p.following ?? 0)", label: "Following")
+            }
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 12)
         .background(card)
@@ -1025,5 +1060,114 @@ struct UserProfileView: View {
             isFollowing = prev
             followerCount += prev ? 1 : -1
         }
+    }
+}
+
+// MARK: - Follower / Following list
+
+struct FollowerListView: View {
+    enum FollowTab { case followers, following }
+
+    let userId: Int
+    let startTab: FollowTab
+
+    @State private var tab: FollowTab
+    @State private var followers: [FollowerUser] = []
+    @State private var following: [FollowerUser] = []
+    @State private var isLoading = false
+
+    init(userId: Int, startTab: FollowTab = .followers) {
+        self.userId = userId
+        self.startTab = startTab
+        _tab = State(initialValue: startTab)
+    }
+
+    private var displayed: [FollowerUser] { tab == .followers ? followers : following }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Picker("", selection: $tab) {
+                Text("Followers").tag(FollowTab.followers)
+                Text("Following").tag(FollowTab.following)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.vertical, 10)
+
+            if isLoading {
+                Spacer()
+                ProgressView().tint(.white)
+                Spacer()
+            } else if displayed.isEmpty {
+                Spacer()
+                Text(tab == .followers ? "No followers yet" : "Not following anyone")
+                    .foregroundColor(.gray)
+                Spacer()
+            } else {
+                List(displayed) { user in
+                    NavigationLink(destination: UserProfileView(userId: user.id)) {
+                        FollowerRow(user: user)
+                    }
+                    .listRowBackground(card)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+            }
+        }
+        .background(bg.ignoresSafeArea())
+        .navigationTitle("Connections")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+    }
+
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+        async let f = APIClient.shared.followers(userId)
+        async let fo = APIClient.shared.following(userId)
+        followers = (try? await f) ?? []
+        following = (try? await fo) ?? []
+    }
+}
+
+private struct FollowerRow: View {
+    let user: FollowerUser
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Group {
+                if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
+                        else { placeholder }
+                    }
+                } else { placeholder }
+            }
+            .frame(width: 40, height: 40)
+            .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(user.name)
+                    .font(.subheadline.bold())
+                    .foregroundColor(.white)
+                if let bio = user.bio, !bio.isEmpty {
+                    Text(bio)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var placeholder: some View {
+        Circle()
+            .fill(sky.opacity(0.2))
+            .overlay(
+                Text(user.name.prefix(1).uppercased())
+                    .font(.caption.bold())
+                    .foregroundColor(sky)
+            )
     }
 }

@@ -95,6 +95,8 @@ struct Stats: Codable, Sendable {
     let climbedIds: [Int]
     let recentClimbs: [RecentClimb]
     let ascentCounts: [AscentCount]
+    let followers: Int?
+    let following: Int?
 
     enum CodingKeys: String, CodingKey {
         case totalClimbs    = "total_climbs"
@@ -104,6 +106,18 @@ struct Stats: Codable, Sendable {
         case climbedIds     = "climbed_ids"
         case recentClimbs   = "recent_climbs"
         case ascentCounts   = "ascent_counts"
+        case followers, following
+    }
+}
+
+struct FollowerUser: Codable, Identifiable, Sendable {
+    let id: Int
+    let name: String
+    let bio: String?
+    let avatarUrl: String?
+    enum CodingKeys: String, CodingKey {
+        case id, name, bio
+        case avatarUrl = "avatar_url"
     }
 }
 

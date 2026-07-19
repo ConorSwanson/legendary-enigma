@@ -79,6 +79,36 @@ router.delete('/:id/follow', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// GET /api/users/:id/followers
+router.get('/:id/followers', requireAuth, (req, res) => {
+  const base = `${req.protocol}://${req.get('host')}`;
+  const users = getDb().prepare(`
+    SELECT u.id, u.name, u.bio, u.avatar_path
+    FROM follows f JOIN users u ON u.id = f.follower_id
+    WHERE f.following_id = ?
+    ORDER BY f.created_at DESC LIMIT 200
+  `).all(req.params.id);
+  res.json(users.map(u => ({
+    id: u.id, name: u.name, bio: u.bio,
+    avatar_url: u.avatar_path ? `${base}/uploads/${u.avatar_path}` : null,
+  })));
+});
+
+// GET /api/users/:id/following
+router.get('/:id/following', requireAuth, (req, res) => {
+  const base = `${req.protocol}://${req.get('host')}`;
+  const users = getDb().prepare(`
+    SELECT u.id, u.name, u.bio, u.avatar_path
+    FROM follows f JOIN users u ON u.id = f.following_id
+    WHERE f.follower_id = ?
+    ORDER BY f.created_at DESC LIMIT 200
+  `).all(req.params.id);
+  res.json(users.map(u => ({
+    id: u.id, name: u.name, bio: u.bio,
+    avatar_url: u.avatar_path ? `${base}/uploads/${u.avatar_path}` : null,
+  })));
+});
+
 // GET /api/users/:id/climbs — public climbs of a user
 router.get('/:id/climbs', requireAuth, (req, res) => {
   const db = getDb();

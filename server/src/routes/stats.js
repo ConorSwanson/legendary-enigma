@@ -55,7 +55,10 @@ router.get('/', requireAuth, (req, res) => {
     'SELECT mountain_id AS id, COUNT(*) AS count FROM climbs WHERE user_id = ? GROUP BY mountain_id'
   ).all(uid);
 
-  res.json({ ...totals, total_mountains, by_month, by_year, top_mountains, recent_climbs, climbed_ids, ascent_counts });
+  const { followers } = db.prepare('SELECT COUNT(*) AS followers FROM follows WHERE following_id = ?').get(uid);
+  const { following } = db.prepare('SELECT COUNT(*) AS following FROM follows WHERE follower_id = ?').get(uid);
+
+  res.json({ ...totals, total_mountains, by_month, by_year, top_mountains, recent_climbs, climbed_ids, ascent_counts, followers, following });
 });
 
 module.exports = router;
