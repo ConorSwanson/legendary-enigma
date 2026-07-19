@@ -105,16 +105,20 @@ struct FeedCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let photoUrl = item.photoUrl, let url = URL(string: photoUrl) {
-                AsyncImage(url: url) { img in
-                    img.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    card.frame(height: 180)
+            Group {
+                if let photoUrl = item.photoUrl, let url = URL(string: photoUrl) {
+                    AsyncImage(url: url) { img in
+                        img.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        card
+                    }
+                } else {
+                    MountainPlaceholder(mountainId: item.mountainId)
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 200)
-                .clipped()
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: 200)
+            .clipped()
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top) {

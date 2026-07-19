@@ -41,16 +41,20 @@ struct ClimbDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if let climb {
-                    if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
-                        AsyncImage(url: url) { img in
-                            img.resizable().aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            card
+                    Group {
+                        if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
+                            AsyncImage(url: url) { img in
+                                img.resizable().aspectRatio(contentMode: .fill)
+                            } placeholder: {
+                                card
+                            }
+                        } else {
+                            MountainPlaceholder(mountainId: climb.mountainId)
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 280)
-                        .clipped()
                     }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 280)
+                    .clipped()
 
                     VStack(alignment: .leading, spacing: 16) {
                         // Title row with badge inline
