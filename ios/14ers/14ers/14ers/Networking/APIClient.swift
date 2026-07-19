@@ -254,6 +254,10 @@ actor APIClient {
         try await request("/climbs/\(id)/like", method: "POST")
     }
 
+    func climbLikes(_ id: Int) async throws -> [FollowerUser] {
+        try await request("/climbs/\(id)/likes")
+    }
+
     // MARK: - Comments
 
     func comments(climbId: Int) async throws -> [Comment] {

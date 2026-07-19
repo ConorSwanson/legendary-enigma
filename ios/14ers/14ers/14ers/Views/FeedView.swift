@@ -90,6 +90,7 @@ struct FeedCard: View {
     @State private var liked: Bool
     @State private var likeCount: Int
     private let commentCount: Int
+    @State private var showLikes = false
 
     init(item: FeedItem) {
         self.item = item
@@ -167,20 +168,23 @@ struct FeedCard: View {
 
                     Spacer()
 
-                    // Like button
-                    Button(action: toggleLike) {
-                        HStack(spacing: 4) {
+                    // Like button (heart = toggle, count = see who liked)
+                    HStack(spacing: 2) {
+                        Button(action: toggleLike) {
                             Image(systemName: liked ? "heart.fill" : "heart")
                                 .font(.system(size: 15))
                                 .foregroundColor(liked ? .red : .gray)
-                            if likeCount > 0 {
+                        }
+                        .buttonStyle(.plain)
+                        if likeCount > 0 {
+                            Button { showLikes = true } label: {
                                 Text("\(likeCount)")
                                     .font(.caption)
                                     .foregroundColor(liked ? .red : .gray)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
-                    .buttonStyle(.plain)
 
                     // Comment icon (tap to open detail)
                     NavigationLink(destination: ClimbDetailView(climbId: item.id)) {
@@ -212,6 +216,9 @@ struct FeedCard: View {
         }
         .background(card)
         .cornerRadius(14)
+        .sheet(isPresented: $showLikes) {
+            LikesListView(climbId: item.id)
+        }
     }
 
     private var avatarPlaceholder: some View {

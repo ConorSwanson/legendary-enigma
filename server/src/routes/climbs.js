@@ -163,6 +163,21 @@ router.delete('/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// GET /api/climbs/:id/likes — list users who liked
+router.get('/:id/likes', requireAuth, (req, res) => {
+  const base = `${req.protocol}://${req.get('host')}`;
+  const users = getDb().prepare(`
+    SELECT u.id, u.name, u.avatar_path
+    FROM climb_likes cl JOIN users u ON u.id = cl.user_id
+    WHERE cl.climb_id = ?
+    ORDER BY cl.created_at DESC LIMIT 200
+  `).all(req.params.id);
+  res.json(users.map(u => ({
+    id: u.id, name: u.name, bio: null,
+    avatar_url: u.avatar_path ? `${base}/uploads/${u.avatar_path}` : null,
+  })));
+});
+
 // POST /api/climbs/:id/like — toggle like
 router.post('/:id/like', requireAuth, (req, res) => {
   const db = getDb();

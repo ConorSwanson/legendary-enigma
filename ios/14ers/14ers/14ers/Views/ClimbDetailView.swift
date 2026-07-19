@@ -16,6 +16,7 @@ struct ClimbDetailView: View {
     @State private var likeCount = 0
     @State private var showEdit = false
     @State private var showDeleteConfirm = false
+    @State private var showLikes = false
     @State private var badgeUIImage: UIImage?
     @State private var ascentCount: Int = 0
     @State private var otherAscents: [Climb] = []
@@ -112,10 +113,7 @@ struct ClimbDetailView: View {
                                 iconButton(systemImage: "pencil", tint: .white) { showEdit = true }
                             }
 
-                            Button { toggleLike() } label: {
-                                likeIcon
-                            }
-                            .buttonStyle(.plain)
+                            likeControls
 
                             shareButton
 
@@ -161,23 +159,35 @@ struct ClimbDetailView: View {
                 }
             }
         }
+        .sheet(isPresented: $showLikes) {
+            LikesListView(climbId: climbId)
+        }
         .task { await load() }
     }
 
     @ViewBuilder
-    private var likeIcon: some View {
-        HStack(spacing: 5) {
-            Image(systemName: liked ? "heart.fill" : "heart")
-                .font(.system(size: 20))
-                .foregroundColor(liked ? .red : Color(white: 0.6))
-            if likeCount > 0 {
-                Text("\(likeCount)")
-                    .font(.caption.bold())
+    private var likeControls: some View {
+        HStack(spacing: 0) {
+            Button { toggleLike() } label: {
+                Image(systemName: liked ? "heart.fill" : "heart")
+                    .font(.system(size: 20))
                     .foregroundColor(liked ? .red : Color(white: 0.6))
+                    .padding(.vertical, 8)
+                    .padding(.leading, 12)
+                    .padding(.trailing, likeCount > 0 ? 6 : 12)
+            }
+            .buttonStyle(.plain)
+            if likeCount > 0 {
+                Button { showLikes = true } label: {
+                    Text("\(likeCount)")
+                        .font(.caption.bold())
+                        .foregroundColor(liked ? .red : Color(white: 0.6))
+                        .padding(.vertical, 8)
+                        .padding(.trailing, 12)
+                }
+                .buttonStyle(.plain)
             }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
         .background(Color.white.opacity(0.08))
         .cornerRadius(20)
     }
@@ -619,5 +629,91 @@ struct EditClimbView: View {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+}
+
+// MARK: - Likes List
+
+struct LikesListView: View {
+    let climbId: Int
+    @State private var users: [FollowerUser] = []
+    @State private var isLoading = true
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            Group {
+                if isLoading {
+                    ProgressView().tint(.white)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if users.isEmpty {
+                    Text("No likes yet")
+                        .foregroundColor(.gray)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List(users) { user in
+                        NavigationLink(destination: UserProfileView(userId: user.id)) {
+                            LikeRow(user: user)
+                        }
+                        .listRowBackground(card)
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .background(bg.ignoresSafeArea())
+            .navigationTitle("Liked by")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(trailing: Button("Done") { dismiss() })
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        do { users = try await APIClient.shared.climbLikes(climbId) } catch {}
+        isLoading = false
+    }
+}
+
+private struct LikeRow: View {
+    let user: FollowerUser
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Group {
+                if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
+                        else { avatarPlaceholder }
+                    }
+                } else {
+                    avatarPlaceholder
+                }
+            }
+            .frame(width: 36, height: 36)
+            .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(user.name)
+                    .font(.subheadline.bold())
+                    .foregroundColor(.white)
+                if let bio = user.bio, !bio.isEmpty {
+                    Text(bio)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var avatarPlaceholder: some View {
+        Circle()
+            .fill(sky.opacity(0.2))
+            .overlay(
+                Text(user.name.prefix(1).uppercased())
+                    .font(.caption.bold())
+                    .foregroundColor(sky)
+            )
     }
 }
