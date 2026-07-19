@@ -351,6 +351,24 @@ struct LogClimbView: View {
             photoImage = Image(uiImage: uiImage)
         }
         detectPeakFromExif(raw)
+        extractDateFromExif(raw)
+    }
+
+    private func extractDateFromExif(_ data: Data) {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any]
+        else { return }
+
+        let exif = props[kCGImagePropertyExifDictionary as String] as? [String: Any]
+        let tiff = props[kCGImagePropertyTIFFDictionary as String] as? [String: Any]
+        let dateString = exif?[kCGImagePropertyExifDateTimeOriginal as String] as? String
+            ?? tiff?[kCGImagePropertyTIFFDateTime as String] as? String
+
+        guard let str = dateString else { return }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        if let d = formatter.date(from: str) { date = d }
     }
 
     private func detectPeakFromExif(_ data: Data) {
