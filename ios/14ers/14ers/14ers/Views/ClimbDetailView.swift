@@ -167,29 +167,28 @@ struct ClimbDetailView: View {
 
     @ViewBuilder
     private var likeControls: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 8) {
             Button { toggleLike() } label: {
                 Image(systemName: liked ? "heart.fill" : "heart")
                     .font(.system(size: 20))
                     .foregroundColor(liked ? .red : Color(white: 0.6))
                     .padding(.vertical, 8)
-                    .padding(.leading, 12)
-                    .padding(.trailing, likeCount > 0 ? 6 : 12)
+                    .padding(.horizontal, 12)
+                    .background(Color.white.opacity(0.08))
+                    .cornerRadius(20)
             }
             .buttonStyle(.plain)
+
             if likeCount > 0 {
                 Button { showLikes = true } label: {
-                    Text("\(likeCount)")
+                    Text("\(likeCount) like\(likeCount == 1 ? "" : "s")")
                         .font(.caption.bold())
-                        .foregroundColor(liked ? .red : Color(white: 0.6))
-                        .padding(.vertical, 8)
-                        .padding(.trailing, 12)
+                        .foregroundColor(liked ? .red : Color(white: 0.5))
+                        .underline()
                 }
                 .buttonStyle(.plain)
             }
         }
-        .background(Color.white.opacity(0.08))
-        .cornerRadius(20)
     }
 
     @ViewBuilder
