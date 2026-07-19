@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import PhotosUI
 
 private let bg      = Color(red: 3/255,  green: 7/255,  blue: 18/255)
 private let card    = Color(red: 17/255, green: 24/255, blue: 39/255)
@@ -481,6 +482,10 @@ struct EditClimbView: View {
     @State private var visibility: String
     @State private var isSaving = false
     @State private var error: String?
+    @State private var pickerItem: PhotosPickerItem?
+    @State private var newPhotoData: Data?
+    @State private var newPhotoImage: Image?
+    @State private var removePhoto = false
     @Environment(\.dismiss) private var dismiss
 
     init(climb: Climb, mountains: [Mountain], onSave: @escaping (Climb) -> Void) {
@@ -507,6 +512,46 @@ struct EditClimbView: View {
                 Section("Date") {
                     DatePicker("Date", selection: $date, in: ...Date(), displayedComponents: .date)
                 }
+                Section("Photo") {
+                    if let img = newPhotoImage {
+                        img.resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(maxWidth: .infinity).frame(height: 160)
+                            .clipped()
+                            .cornerRadius(8)
+                            .listRowInsets(EdgeInsets())
+                    } else if let urlStr = climb.photoUrl, let url = URL(string: urlStr), !removePhoto {
+                        AsyncImage(url: url) { phase in
+                            if let img = phase.image {
+                                img.resizable().aspectRatio(contentMode: .fill)
+                            } else {
+                                Color.gray.opacity(0.2)
+                            }
+                        }
+                        .frame(maxWidth: .infinity).frame(height: 160)
+                        .clipped()
+                        .cornerRadius(8)
+                        .listRowInsets(EdgeInsets())
+                    }
+
+                    PhotosPicker(selection: $pickerItem, matching: .images) {
+                        let hasPhoto = newPhotoData != nil || (climb.photoUrl != nil && !removePhoto)
+                        Label(hasPhoto ? "Replace Photo" : "Add Photo", systemImage: "photo")
+                    }
+
+                    if newPhotoData != nil || (climb.photoUrl != nil && !removePhoto) {
+                        Button("Remove Photo", role: .destructive) {
+                            pickerItem = nil; newPhotoData = nil; newPhotoImage = nil; removePhoto = true
+                        }
+                    }
+                    if removePhoto && newPhotoData == nil {
+                        HStack(spacing: 6) {
+                            Image(systemName: "xmark.circle").foregroundColor(.secondary)
+                            Text("Photo will be removed").font(.caption).foregroundColor(.secondary)
+                        }
+                        Button("Keep Existing Photo") { removePhoto = false }
+                    }
+                }
                 Section("Notes") {
                     TextEditor(text: $notes).frame(minHeight: 80)
                 }
@@ -531,6 +576,28 @@ struct EditClimbView: View {
                 .disabled(isSaving)
             )
         }
+        .onChange(of: pickerItem) { Task { await loadPhoto() } }
+    }
+
+    private func loadPhoto() async {
+        guard let item = pickerItem,
+              let raw = try? await item.loadTransferable(type: Data.self) else { return }
+        let compressed = compressPhoto(raw)
+        newPhotoData = compressed
+        removePhoto = false
+        if let uiImg = UIImage(data: compressed) { newPhotoImage = Image(uiImage: uiImg) }
+    }
+
+    private func compressPhoto(_ data: Data) -> Data {
+        guard let uiImage = UIImage(data: data) else { return data }
+        let maxDim: CGFloat = 1200
+        let size = uiImage.size
+        let scale = min(maxDim / max(size.width, size.height), 1.0)
+        guard scale < 1.0 else { return uiImage.jpegData(compressionQuality: 0.8) ?? data }
+        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resized = renderer.image { _ in uiImage.draw(in: CGRect(origin: .zero, size: newSize)) }
+        return resized.jpegData(compressionQuality: 0.8) ?? data
     }
 
     private func save() async {
@@ -544,7 +611,9 @@ struct EditClimbView: View {
                 mountainId: mountainId,
                 date: fmt.string(from: date),
                 notes: notes,
-                visibility: visibility
+                visibility: visibility,
+                photoData: newPhotoData,
+                removePhoto: removePhoto && newPhotoData == nil
             )
             onSave(updated)
         } catch {

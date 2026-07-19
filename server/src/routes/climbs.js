@@ -114,6 +114,9 @@ function handleUpdateClimb(req, res) {
   if (req.file) {
     deleteFile(existing.photo_path);
     photo_path = req.file.filename;
+  } else if (req.body.remove_photo === '1') {
+    deleteFile(existing.photo_path);
+    photo_path = null;
   }
 
   const vis = visibility && VALID_VISIBILITY.has(visibility) ? visibility : existing.visibility;

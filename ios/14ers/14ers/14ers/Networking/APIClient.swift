@@ -198,7 +198,9 @@ actor APIClient {
         mountainId: Int,
         date: String,
         notes: String,
-        visibility: String
+        visibility: String,
+        photoData: Data? = nil,
+        removePhoto: Bool = false
     ) async throws -> Climb {
         guard let url = URL(string: baseURL + "/api/climbs/\(id)") else {
             throw APIError.serverError("Invalid URL")
@@ -220,6 +222,16 @@ actor APIClient {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"\(k)\"\r\n\r\n".data(using: .utf8)!)
             body.append("\(v)\r\n".data(using: .utf8)!)
+        }
+        if let photo = photoData {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+            body.append(photo)
+            body.append("\r\n".data(using: .utf8)!)
+        } else if removePhoto {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"remove_photo\"\r\n\r\n".data(using: .utf8)!)
+            body.append("1\r\n".data(using: .utf8)!)
         }
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         req.httpBody = body
