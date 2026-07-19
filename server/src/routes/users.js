@@ -96,7 +96,7 @@ router.get('/:id/climbs', requireAuth, (req, res) => {
       : "visibility = 'public'";
 
   const climbs = db.prepare(`
-    SELECT c.id, c.climb_date, c.photo_path, c.visibility,
+    SELECT c.id, c.mountain_id, c.climb_date, c.notes, c.photo_path, c.visibility, c.created_at,
            m.name AS mountain_name, m.elevation, m.range
     FROM climbs c JOIN mountains m ON c.mountain_id = m.id
     WHERE c.user_id = ? AND ${visFilter}

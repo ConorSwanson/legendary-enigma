@@ -999,16 +999,14 @@ struct UserProfileView: View {
 
     private func load() async {
         do {
-            async let p = APIClient.shared.userProfile(userId)
-            async let cs = APIClient.shared.userClimbs(userId)
-            let (fetchedProfile, fetchedClimbs) = try await (p, cs)
+            let fetchedProfile = try await APIClient.shared.userProfile(userId)
             profile = fetchedProfile
-            climbs = fetchedClimbs
             isFollowing = fetchedProfile.isFollowing ?? false
             followerCount = fetchedProfile.followers ?? 0
         } catch {
             self.error = error.localizedDescription
         }
+        climbs = (try? await APIClient.shared.userClimbs(userId)) ?? []
     }
 
     private func toggleFollow() async {
