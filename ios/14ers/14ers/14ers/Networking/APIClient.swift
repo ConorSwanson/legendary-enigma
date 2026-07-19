@@ -84,7 +84,8 @@ actor APIClient {
     }
 
     private func requestVoid(_ path: String, method: String = "POST") async throws {
-        let _: [String: String] = try await request(path, method: method)
+        struct SuccessResponse: Decodable { let success: Bool }
+        let _: SuccessResponse = try await request(path, method: method)
     }
 
     // MARK: - Auth
