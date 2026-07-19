@@ -447,6 +447,7 @@ struct LogClimbView: View {
         suggestedAssets = []
         didSearch = false
         photoAccessDenied = false
+        userState.selectedTab = 1
     }
 }
 
