@@ -230,6 +230,15 @@ function initDb() {
   });
   seedMountains(MOUNTAINS);
 
+  // Explicit migration for mountains added after initial deploy (INSERT OR IGNORE
+  // silently skips if a name conflict exists with a different ID).
+  MOUNTAINS.forEach(([id, name, elevation, range]) => {
+    if (!db.prepare('SELECT 1 FROM mountains WHERE id = ?').get(id)) {
+      db.prepare('DELETE FROM mountains WHERE name = ?').run(name);
+      db.prepare('INSERT INTO mountains (id, name, elevation, range) VALUES (?, ?, ?, ?)').run(id, name, elevation, range);
+    }
+  });
+
   db.prepare('INSERT OR IGNORE INTO profile (id, name) VALUES (1, ?)').run('Climber');
 
   // Seed App Store review account (idempotent — no-op if already exists)
