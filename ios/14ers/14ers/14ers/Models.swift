@@ -293,6 +293,7 @@ extension Notification.Name {
     static let climbDeleted    = Notification.Name("climbDeleted")
     static let climbLogged     = Notification.Name("climbLogged")
     static let navigateToClimb = Notification.Name("navigateToClimb")
+    static let climbLikeChanged = Notification.Name("climbLikeChanged")
 }
 
 // MARK: - Helpers

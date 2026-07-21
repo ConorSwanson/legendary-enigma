@@ -65,6 +65,14 @@ struct FeedView: View {
                 items.removeAll { $0.id == deletedId }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .climbLikeChanged)) { note in
+            guard let info = note.userInfo,
+                  let id = info["climbId"] as? Int,
+                  let liked = info["liked"] as? Bool, let count = info["count"] as? Int,
+                  let idx = items.firstIndex(where: { $0.id == id }) else { return }
+            items[idx].isLiked = liked
+            items[idx].likeCount = count
+        }
     }
 
     private func load() async {
@@ -230,6 +238,13 @@ struct FeedCard: View {
         .sheet(isPresented: $showLikes) {
             LikesListView(climbId: item.id)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .climbLikeChanged)) { note in
+            guard let info = note.userInfo,
+                  let id = info["climbId"] as? Int, id == item.id,
+                  let l = info["liked"] as? Bool, let c = info["count"] as? Int else { return }
+            liked = l
+            likeCount = c
+        }
     }
 
     private var avatarPlaceholder: some View {
@@ -246,13 +261,21 @@ struct FeedCard: View {
         let prev = liked
         liked = !prev
         likeCount += prev ? -1 : 1
+        postLikeChange()
         Task {
             do {
                 let r = try await APIClient.shared.likeClimb(item.id)
-                await MainActor.run { liked = r.liked; likeCount = r.count }
+                await MainActor.run { liked = r.liked; likeCount = r.count; postLikeChange() }
             } catch {
-                await MainActor.run { liked = prev; likeCount += prev ? 1 : -1 }
+                await MainActor.run { liked = prev; likeCount += prev ? 1 : -1; postLikeChange() }
             }
         }
+    }
+
+    private func postLikeChange() {
+        NotificationCenter.default.post(
+            name: .climbLikeChanged, object: nil,
+            userInfo: ["climbId": item.id, "liked": liked, "count": likeCount]
+        )
     }
 }

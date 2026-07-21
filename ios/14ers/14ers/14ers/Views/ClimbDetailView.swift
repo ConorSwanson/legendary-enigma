@@ -414,16 +414,26 @@ struct ClimbDetailView: View {
         let prev = liked
         liked = !prev
         likeCount += prev ? -1 : 1
+        postLikeChange()
         Task {
             do {
                 let r = try await APIClient.shared.likeClimb(climbId)
                 liked = r.liked
                 likeCount = r.count
+                postLikeChange()
             } catch {
                 liked = prev
                 likeCount += prev ? 1 : -1
+                postLikeChange()
             }
         }
+    }
+
+    private func postLikeChange() {
+        NotificationCenter.default.post(
+            name: .climbLikeChanged, object: nil,
+            userInfo: ["climbId": climbId, "liked": liked, "count": likeCount]
+        )
     }
 
     private func deleteClimb() async {
