@@ -70,6 +70,9 @@ struct HomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: .climbLogged)) { _ in
             Task { await load() }
         }
+        .onChange(of: userState.selectedTab) { newTab in
+            if newTab == 0 { Task { await load() } }
+        }
         .onChange(of: avatarPickerItem) { handleAvatarPick() }
         .onChange(of: backgroundPickerItem) { handleBackgroundPick() }
     }
@@ -370,12 +373,13 @@ struct HomeView: View {
     // MARK: - Load
 
     private func load() async {
-        async let p = APIClient.shared.myProfile()
-        async let s = APIClient.shared.stats()
-        if let (profileResult, statsResult) = try? await (p, s) {
+        // Decoupled so a transient failure in one call can't blank the other.
+        if let profileResult = try? await APIClient.shared.myProfile() {
             profile = profileResult
-            stats = statsResult
             userState.avatarUrl = profileResult.avatarUrl
+        }
+        if let statsResult = try? await APIClient.shared.stats() {
+            stats = statsResult
         }
     }
 
