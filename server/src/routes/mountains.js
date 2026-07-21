@@ -4,9 +4,14 @@ const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
 
 router.get('/', (_req, res) => {
-  const mountains = getDb()
-    .prepare('SELECT * FROM mountains ORDER BY elevation DESC')
-    .all();
+  const mountains = getDb().prepare(`
+    SELECT m.*, (
+      SELECT MAX(c.climb_date) FROM climbs c
+      WHERE c.mountain_id = m.id AND c.visibility = 'public'
+    ) AS last_activity
+    FROM mountains m
+    ORDER BY m.elevation DESC
+  `).all();
   res.json(mountains);
 });
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import MapKit
 
 private let bg      = Color(red: 3/255,  green: 7/255,  blue: 18/255)
 private let card    = Color(red: 17/255, green: 24/255, blue: 39/255)
@@ -7,17 +8,21 @@ private let sky     = Color(red: 56/255, green: 189/255, blue: 248/255)
 
 struct MountainsView: View {
     enum SortOption: String, CaseIterable, Identifiable {
-        case elevationDesc = "Highest first"
-        case elevationAsc  = "Lowest first"
-        case nameAsc       = "Name (A–Z)"
+        case recentActivity = "Recent activity"
+        case elevationDesc  = "Highest first"
+        case elevationAsc   = "Lowest first"
+        case nameAsc        = "Name (A–Z)"
         var id: String { rawValue }
     }
+
+    enum ViewMode { case list, map }
 
     @State private var mountains: [Mountain] = []
     @State private var climbedIds: Set<Int> = []
     @State private var search = ""
     @State private var rangeFilter: String? = nil   // nil = all ranges
     @State private var sort: SortOption = .elevationDesc
+    @State private var viewMode: ViewMode = .list
     @State private var isLoading = false
     @EnvironmentObject var userState: UserState
 
@@ -36,6 +41,9 @@ struct MountainsView: View {
         case .elevationDesc: list.sort { $0.elevation > $1.elevation }
         case .elevationAsc:  list.sort { $0.elevation < $1.elevation }
         case .nameAsc:       list.sort { $0.name < $1.name }
+        case .recentActivity:
+            // Most recent public climb first; peaks with no activity sink to the bottom.
+            list.sort { ($0.lastActivity ?? "") > ($1.lastActivity ?? "") }
         }
         return list
     }
@@ -45,7 +53,9 @@ struct MountainsView: View {
             VStack(spacing: 0) {
                 filterBar
 
-                if isLoading && mountains.isEmpty {
+                if viewMode == .map {
+                    MountainsMapView(mountains: filtered, climbedIds: climbedIds)
+                } else if isLoading && mountains.isEmpty {
                     Spacer(); ProgressView().tint(.white); Spacer()
                 } else if filtered.isEmpty {
                     Spacer()
@@ -70,7 +80,17 @@ struct MountainsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
-                ToolbarItem(placement: .navigationBarTrailing) { NotificationBellButton() }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack(spacing: 14) {
+                        Button {
+                            withAnimation { viewMode = viewMode == .list ? .map : .list }
+                        } label: {
+                            Image(systemName: viewMode == .list ? "map" : "list.bullet")
+                                .foregroundColor(sky)
+                        }
+                        NotificationBellButton()
+                    }
+                }
             }
         }
         .task { await load() }
@@ -187,5 +207,62 @@ private struct MountainRow: View {
         .padding(10)
         .background(card)
         .cornerRadius(12)
+    }
+}
+
+// MARK: - Map view
+
+private struct MountainsMapView: View {
+    let mountains: [Mountain]
+    let climbedIds: Set<Int>
+
+    @State private var selected: Mountain?
+    @State private var navActive = false
+
+    private static let coords: [Int: CLLocationCoordinate2D] = Dictionary(
+        uniqueKeysWithValues: allPeakCoordinates.map {
+            ($0.mountainId, CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude))
+        }
+    )
+
+    private static let coloradoRegion = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 38.9, longitude: -106.3),
+        span: MKCoordinateSpan(latitudeDelta: 4.2, longitudeDelta: 5.0)
+    )
+
+    var body: some View {
+        Map(initialPosition: .region(Self.coloradoRegion)) {
+            ForEach(mountains) { m in
+                if let coord = Self.coords[m.id] {
+                    Annotation(m.name, coordinate: coord) {
+                        Button {
+                            selected = m
+                            navActive = true
+                        } label: {
+                            pin(climbed: climbedIds.contains(m.id))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .mapStyle(.standard(elevation: .realistic))
+        .background(
+            NavigationLink(isActive: $navActive) {
+                if let m = selected {
+                    MountainDetailView(mountainId: m.id, fallbackName: m.name)
+                }
+            } label: { EmptyView() }
+        )
+    }
+
+    private func pin(climbed: Bool) -> some View {
+        Image(systemName: "mountain.2.fill")
+            .font(.system(size: 12))
+            .foregroundColor(climbed ? Color(red: 3/255, green: 7/255, blue: 18/255) : .white)
+            .padding(7)
+            .background(Circle().fill(climbed ? emerald : Color.black.opacity(0.6)))
+            .overlay(Circle().stroke(climbed ? Color.white.opacity(0.7) : Color.white.opacity(0.5), lineWidth: 1.5))
+            .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
     }
 }

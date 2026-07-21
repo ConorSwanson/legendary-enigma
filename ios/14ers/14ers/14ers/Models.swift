@@ -7,6 +7,12 @@ struct Mountain: Codable, Identifiable, Sendable {
     let name: String
     let elevation: Int
     let range: String
+    let lastActivity: String?   // most recent public climb date, if any
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, elevation, range
+        case lastActivity = "last_activity"
+    }
 }
 
 // MARK: - Climb
