@@ -137,14 +137,17 @@ struct MountainsView: View {
                     filterChip(icon: "line.3.horizontal.decrease.circle", text: rangeFilter ?? "All Ranges")
                 }
 
-                Menu {
-                    ForEach(SortOption.allCases) { opt in
-                        Button { sort = opt } label: {
-                            Label(opt.rawValue, systemImage: sort == opt ? "checkmark" : "")
+                // Sort order is only meaningful in the list — hide it on the map.
+                if viewMode == .list {
+                    Menu {
+                        ForEach(SortOption.allCases) { opt in
+                            Button { sort = opt } label: {
+                                Label(opt.rawValue, systemImage: sort == opt ? "checkmark" : "")
+                            }
                         }
+                    } label: {
+                        filterChip(icon: "arrow.up.arrow.down", text: sort.rawValue)
                     }
-                } label: {
-                    filterChip(icon: "arrow.up.arrow.down", text: sort.rawValue)
                 }
 
                 Spacer()
