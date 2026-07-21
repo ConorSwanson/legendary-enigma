@@ -287,12 +287,12 @@ actor APIClient {
 
     // MARK: - Feed
 
-    func feedDiscover(page: Int = 1) async throws -> [FeedItem] {
-        try await request("/feed/discover?page=\(page)")
+    func feedDiscover(page: Int = 1, sort: String = "chronological") async throws -> [FeedItem] {
+        try await request("/feed/discover?page=\(page)&sort=\(sort)")
     }
 
-    func feedFollowing(page: Int = 1) async throws -> [FeedItem] {
-        try await request("/feed?page=\(page)")
+    func feedFollowing(page: Int = 1, sort: String = "chronological") async throws -> [FeedItem] {
+        try await request("/feed?page=\(page)&sort=\(sort)")
     }
 
     // MARK: - Profile

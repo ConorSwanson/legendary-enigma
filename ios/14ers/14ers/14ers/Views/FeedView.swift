@@ -8,19 +8,49 @@ private let sky     = Color(red: 56/255,  green: 189/255, blue: 248/255)
 struct FeedView: View {
     enum FeedTab: String, CaseIterable { case discover = "Discover", following = "Following" }
 
+    enum SortMode: String, CaseIterable, Identifiable {
+        case chronological = "Chronological"
+        case activity       = "Recent Activity"
+        var id: String { rawValue }
+        var apiValue: String { self == .chronological ? "chronological" : "activity" }
+    }
+
     @State private var feedTab: FeedTab = .discover
+    @State private var sortMode: SortMode = .chronological
     @State private var items: [FeedItem] = []
     @State private var isLoading = false
+    @State private var isLoadingMore = false
+    @State private var page = 1
+    @State private var canLoadMore = true
     @State private var error: String?
     @EnvironmentObject var userState: UserState
 
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                Picker("Feed", selection: $feedTab) {
-                    ForEach(FeedTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                HStack(spacing: 10) {
+                    Picker("Feed", selection: $feedTab) {
+                        ForEach(FeedTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Menu {
+                        ForEach(SortMode.allCases) { mode in
+                            Button {
+                                sortMode = mode
+                            } label: {
+                                Label(mode.rawValue, systemImage: sortMode == mode ? "checkmark" : "")
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.subheadline)
+                            .foregroundColor(sky)
+                            .padding(8)
+                            .background(card)
+                            .clipShape(Circle())
+                    }
                 }
-                .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.vertical, 10)
 
@@ -41,6 +71,14 @@ struct FeedView: View {
                         LazyVStack(spacing: 12) {
                             ForEach(items) { item in
                                 FeedCard(item: item)
+                                    .onAppear {
+                                        if item.id == items.suffix(5).first?.id {
+                                            Task { await loadMore() }
+                                        }
+                                    }
+                            }
+                            if isLoadingMore {
+                                ProgressView().tint(.white).padding(.vertical, 16)
                             }
                         }
                         .padding()
@@ -57,6 +95,10 @@ struct FeedView: View {
         }
         .task { await load() }
         .onChange(of: feedTab) {
+            items = []
+            Task { await load() }
+        }
+        .onChange(of: sortMode) {
             items = []
             Task { await load() }
         }
@@ -78,17 +120,47 @@ struct FeedView: View {
     private func load() async {
         isLoading = true
         defer { isLoading = false }
+        page = 1
+        canLoadMore = true
         do {
-            items = try await feedTab == .discover
-                ? APIClient.shared.feedDiscover()
-                : APIClient.shared.feedFollowing()
-            ImageCache.shared.prefetch(items.flatMap { item in
-                [item.photoUrl.flatMap { URL(string: $0) },
-                 item.userAvatarUrl.flatMap { URL(string: $0) }]
-            })
+            let fetched = try await feedTab == .discover
+                ? APIClient.shared.feedDiscover(page: 1, sort: sortMode.apiValue)
+                : APIClient.shared.feedFollowing(page: 1, sort: sortMode.apiValue)
+            items = fetched
+            if fetched.count < 30 { canLoadMore = false }
+            prefetchImages(fetched)
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    private func loadMore() async {
+        guard !isLoadingMore, canLoadMore else { return }
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        let nextPage = page + 1
+        do {
+            let more = try await feedTab == .discover
+                ? APIClient.shared.feedDiscover(page: nextPage, sort: sortMode.apiValue)
+                : APIClient.shared.feedFollowing(page: nextPage, sort: sortMode.apiValue)
+            if more.isEmpty {
+                canLoadMore = false
+            } else {
+                items.append(contentsOf: more)
+                page = nextPage
+                if more.count < 30 { canLoadMore = false }
+                prefetchImages(more)
+            }
+        } catch {
+            // Silently keep what's already loaded; next scroll attempt will retry.
+        }
+    }
+
+    private func prefetchImages(_ list: [FeedItem]) {
+        ImageCache.shared.prefetch(list.flatMap { item in
+            [item.photoUrl.flatMap { URL(string: $0) },
+             item.userAvatarUrl.flatMap { URL(string: $0) }]
+        })
     }
 }
 

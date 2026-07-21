@@ -8,9 +8,20 @@ function withPhotoUrl(r, req) {
   return { ...r, photo_url: r.photo_path ? `${base}/uploads/${r.photo_path}` : null };
 }
 
+// 'chronological' orders by the date the climb happened (default); 'activity'
+// orders by when it was posted, so an old climb logged just now still shows
+// up near the top instead of sinking to where its climb_date would place it.
+// c.id DESC breaks ties deterministically (created_at has 1-second resolution,
+// so concurrent posts in the same second would otherwise sort arbitrarily).
+function orderClause(sort) {
+  return sort === 'activity'
+    ? 'c.created_at DESC, c.id DESC'
+    : 'c.climb_date DESC, c.created_at DESC, c.id DESC';
+}
+
 // GET /api/feed — climbs from people you follow
 router.get('/', requireAuth, (req, res) => {
-  const { page = '1' } = req.query;
+  const { page = '1', sort } = req.query;
   const offset = (Number(page) - 1) * 30;
 
   const rows = getDb().prepare(`
@@ -27,7 +38,7 @@ router.get('/', requireAuth, (req, res) => {
         SELECT following_id FROM follows WHERE follower_id = ?
       )
       AND c.visibility IN ('public','followers')
-    ORDER BY c.climb_date DESC, c.created_at DESC
+    ORDER BY ${orderClause(sort)}
     LIMIT 30 OFFSET ?
   `).all(req.user.id, req.user.id, offset).map(r => ({
     ...withPhotoUrl(r, req),
@@ -42,7 +53,7 @@ router.get('/', requireAuth, (req, res) => {
 
 // GET /api/feed/discover — all public climbs
 router.get('/discover', requireAuth, (req, res) => {
-  const { page = '1' } = req.query;
+  const { page = '1', sort } = req.query;
   const offset = (Number(page) - 1) * 30;
 
   const rows = getDb().prepare(`
@@ -56,7 +67,7 @@ router.get('/discover', requireAuth, (req, res) => {
     JOIN mountains m ON c.mountain_id = m.id
     JOIN users u ON c.user_id = u.id
     WHERE c.visibility = 'public'
-    ORDER BY c.climb_date DESC, c.created_at DESC
+    ORDER BY ${orderClause(sort)}
     LIMIT 30 OFFSET ?
   `).all(req.user.id, offset).map(r => ({
     ...withPhotoUrl(r, req),
