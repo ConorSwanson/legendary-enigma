@@ -467,18 +467,21 @@ struct CommentRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Group {
-                if let urlStr = comment.userAvatarUrl, let url = URL(string: urlStr) {
-                    AsyncImage(url: url) { phase in
-                        if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
-                        else { avatarPlaceholder }
+            NavigationLink(destination: UserProfileView(userId: comment.userId)) {
+                Group {
+                    if let urlStr = comment.userAvatarUrl, let url = URL(string: urlStr) {
+                        AsyncImage(url: url) { phase in
+                            if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
+                            else { avatarPlaceholder }
+                        }
+                    } else {
+                        avatarPlaceholder
                     }
-                } else {
-                    avatarPlaceholder
                 }
+                .frame(width: 28, height: 28)
+                .clipShape(Circle())
             }
-            .frame(width: 28, height: 28)
-            .clipShape(Circle())
+            .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
