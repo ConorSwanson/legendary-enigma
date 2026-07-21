@@ -21,6 +21,8 @@ struct HomeView: View {
     @State private var showDeleteConfirm = false
     @State private var isDeletingAccount = false
     @State private var showDeletedToast = false
+    @State private var deepLinkClimbId: Int?
+    @State private var isDeepLinkActive = false
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var userState: UserState
 
@@ -55,8 +57,23 @@ struct HomeView: View {
                         .padding(.bottom, 16)
                 }
             }
+            .background(
+                NavigationLink(
+                    isActive: $isDeepLinkActive,
+                    destination: {
+                        if let id = deepLinkClimbId { ClimbDetailView(climbId: id) }
+                    },
+                    label: { EmptyView() }
+                )
+            )
         }
         .task { await load() }
+        .onChange(of: userState.pendingClimbId) { newValue in
+            guard let id = newValue else { return }
+            userState.pendingClimbId = nil
+            deepLinkClimbId = id
+            isDeepLinkActive = true
+        }
         .onChange(of: userState.climbWasDeleted) { newValue in
             guard newValue else { return }
             userState.climbWasDeleted = false
@@ -310,14 +327,19 @@ struct HomeView: View {
     @ViewBuilder
     private func recentClimbsSection(_ s: Stats) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Recent Climbs")
-                .font(.headline)
-                .foregroundColor(.white)
-            ForEach(s.recentClimbs) { climb in
-                NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
-                    HomeClimbRow(climb: climb)
+            HStack {
+                Text("Recent Climbs")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                Spacer()
+                NavigationLink(destination: ClimbHistoryView()) {
+                    Text("See All")
+                        .font(.caption)
+                        .foregroundColor(sky)
                 }
-                .buttonStyle(.plain)
+            }
+            ForEach(s.recentClimbs) { climb in
+                HomeClimbRow(climb: climb)
             }
         }
     }
@@ -454,40 +476,50 @@ private struct HomeClimbRow: View {
 
     var body: some View {
         HStack {
-            if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
-                CachedAsyncImage(url: url) { img in
-                    img.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    RoundedRectangle(cornerRadius: 8).fill(card)
-                }
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            } else {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(card)
-                    .frame(width: 48, height: 48)
-                    .overlay(
-                        Image(systemName: "mountain.2")
-                            .foregroundColor(.gray)
-                            .font(.caption)
-                    )
+            NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+                photoThumb
             }
+            .buttonStyle(.plain)
+
             VStack(alignment: .leading, spacing: 3) {
-                Text(climb.mountainName)
-                    .font(.subheadline.bold())
-                    .foregroundColor(.white)
+                NavigationLink(destination: MountainDetailView(mountainId: climb.mountainId, fallbackName: climb.mountainName)) {
+                    Text(climb.mountainName)
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                }
+                .buttonStyle(.plain)
                 Text(climb.climbDate.shortClimbDate())
                     .font(.caption)
                     .foregroundColor(.gray)
             }
             Spacer()
-            Text("\(climb.elevation.formatted())ft")
-                .font(.caption.bold())
-                .foregroundColor(emerald)
+            NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+                Text("\(climb.elevation.formatted())ft")
+                    .font(.caption.bold())
+                    .foregroundColor(emerald)
+            }
+            .buttonStyle(.plain)
         }
         .padding()
         .background(card)
         .cornerRadius(10)
+    }
+
+    @ViewBuilder
+    private var photoThumb: some View {
+        if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
+            CachedAsyncImage(url: url) { img in
+                img.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+                RoundedRectangle(cornerRadius: 8).fill(card)
+            }
+            .frame(width: 48, height: 48)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        } else {
+            MountainPlaceholder(mountainId: climb.mountainId)
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
     }
 }
 
@@ -619,7 +651,7 @@ struct NotificationsView: View {
                     List(notifications) { item in
                         NotificationRow(item: item) {
                             guard let climbId = item.climbId else { return }
-                            userState.selectedTab = 3
+                            userState.selectedTab = 0
                             dismiss()
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                                 userState.pendingClimbId = climbId
@@ -994,46 +1026,57 @@ struct UserProfileView: View {
                 .font(.headline)
                 .foregroundColor(.white)
             ForEach(climbs) { climb in
-                NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
-                    userClimbRow(climb)
-                }
-                .buttonStyle(.plain)
+                userClimbRow(climb)
             }
         }
     }
 
     private func userClimbRow(_ climb: Climb) -> some View {
         HStack {
-            if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
-                CachedAsyncImage(url: url) { img in
-                    img.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    RoundedRectangle(cornerRadius: 8).fill(card)
-                }
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            } else {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(card)
-                    .frame(width: 48, height: 48)
-                    .overlay(Image(systemName: "mountain.2").foregroundColor(.gray).font(.caption))
+            NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+                photoThumb(climb)
             }
+            .buttonStyle(.plain)
+
             VStack(alignment: .leading, spacing: 3) {
-                Text(climb.mountainName)
-                    .font(.subheadline.bold())
-                    .foregroundColor(.white)
+                NavigationLink(destination: MountainDetailView(mountainId: climb.mountainId, fallbackName: climb.mountainName)) {
+                    Text(climb.mountainName)
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                }
+                .buttonStyle(.plain)
                 Text(climb.climbDate.shortClimbDate())
                     .font(.caption)
                     .foregroundColor(.gray)
             }
             Spacer()
-            Text("\(climb.elevation.formatted())ft")
-                .font(.caption.bold())
-                .foregroundColor(emerald)
+            NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+                Text("\(climb.elevation.formatted())ft")
+                    .font(.caption.bold())
+                    .foregroundColor(emerald)
+            }
+            .buttonStyle(.plain)
         }
         .padding()
         .background(card)
         .cornerRadius(10)
+    }
+
+    @ViewBuilder
+    private func photoThumb(_ climb: Climb) -> some View {
+        if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
+            CachedAsyncImage(url: url) { img in
+                img.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+                RoundedRectangle(cornerRadius: 8).fill(card)
+            }
+            .frame(width: 48, height: 48)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        } else {
+            MountainPlaceholder(mountainId: climb.mountainId)
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
     }
 
     private func load() async {

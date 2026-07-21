@@ -17,8 +17,8 @@ struct MainTabView: View {
                 .tabItem { Label("Log", systemImage: "plus.circle.fill") }
                 .tag(2)
 
-            HistoryView()
-                .tabItem { Label("History", systemImage: "clock.fill") }
+            MountainsView()
+                .tabItem { Label("14ers", systemImage: "mountain.2.fill") }
                 .tag(3)
         }
         .tint(Color(red: 56/255, green: 189/255, blue: 248/255))

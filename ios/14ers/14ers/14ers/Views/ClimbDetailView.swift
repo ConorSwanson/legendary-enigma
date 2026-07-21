@@ -90,9 +90,18 @@ struct ClimbDetailView: View {
                         // Title row with badge inline
                         HStack(alignment: .top, spacing: 12) {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(climb.mountainName)
-                                    .font(.title2.bold())
-                                    .foregroundColor(.white)
+                                NavigationLink(destination: MountainDetailView(mountainId: climb.mountainId, fallbackName: climb.mountainName)) {
+                                    HStack(spacing: 5) {
+                                        Text(climb.mountainName)
+                                            .font(.title2.bold())
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption.bold())
+                                            .foregroundColor(.gray.opacity(0.5))
+                                    }
+                                }
+                                .buttonStyle(.plain)
                                 Text("\(climb.elevation.formatted()) ft")
                                     .font(.headline)
                                     .foregroundColor(emerald)

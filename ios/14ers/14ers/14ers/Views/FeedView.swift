@@ -115,51 +115,63 @@ struct FeedCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             NavigationLink(destination: ClimbDetailView(climbId: item.id)) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Group {
-                        if let photoUrl = item.photoUrl, let url = URL(string: photoUrl) {
-                            CachedAsyncImage(url: url) { img in
-                                img.resizable().aspectRatio(contentMode: .fill)
-                            } placeholder: {
-                                card
-                            }
-                        } else {
-                            MountainPlaceholder(mountainId: item.mountainId)
+                Group {
+                    if let photoUrl = item.photoUrl, let url = URL(string: photoUrl) {
+                        CachedAsyncImage(url: url) { img in
+                            img.resizable().aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            card
                         }
+                    } else {
+                        MountainPlaceholder(mountainId: item.mountainId)
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 200)
-                    .clipped()
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .top) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.mountainName)
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                Text("\(item.elevation.formatted()) ft · \(item.range)")
-                                    .font(.caption)
-                                    .foregroundColor(emerald)
-                            }
-                            Spacer()
-                            Text(item.climbDate.shortClimbDate())
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-
-                        if let notes = item.notes, !notes.isEmpty {
-                            Text(notes)
-                                .font(.caption)
-                                .foregroundColor(Color(red: 156/255, green: 163/255, blue: 175/255))
-                                .lineLimit(3)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.top, 12)
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: 200)
+                .clipped()
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        // Mountain name → MountainDetailView
+                        NavigationLink(destination: MountainDetailView(mountainId: item.mountainId, fallbackName: item.mountainName)) {
+                            Text(item.mountainName)
+                                .font(.headline)
+                                .foregroundColor(.white)
+                        }
+                        .buttonStyle(.plain)
+                        NavigationLink(destination: ClimbDetailView(climbId: item.id)) {
+                            Text("\(item.elevation.formatted()) ft · \(item.range)")
+                                .font(.caption)
+                                .foregroundColor(emerald)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Spacer()
+                    NavigationLink(destination: ClimbDetailView(climbId: item.id)) {
+                        Text(item.climbDate.shortClimbDate())
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if let notes = item.notes, !notes.isEmpty {
+                    NavigationLink(destination: ClimbDetailView(climbId: item.id)) {
+                        Text(notes)
+                            .font(.caption)
+                            .foregroundColor(Color(red: 156/255, green: 163/255, blue: 175/255))
+                            .lineLimit(3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {

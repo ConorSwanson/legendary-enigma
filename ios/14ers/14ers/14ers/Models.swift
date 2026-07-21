@@ -82,6 +82,81 @@ struct FeedItem: Codable, Identifiable, Sendable {
     }
 }
 
+// MARK: - Mountain Detail
+
+struct MountainDetail: Codable, Identifiable, Sendable {
+    let id: Int
+    let name: String
+    let elevation: Int
+    let range: String
+    let heroPhotoUrl: String?
+    let totalClimbs: Int
+    let uniqueClimbers: Int
+    let userAscents: Int
+    let isClimbed: Bool
+    let byYear: [YearCount]
+    let byMonth: [MonthCount]
+    let recentSummits: [RecentSummit]
+    let recentPhotos: [RecentPhoto]
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, elevation, range
+        case heroPhotoUrl   = "hero_photo_url"
+        case totalClimbs    = "total_climbs"
+        case uniqueClimbers = "unique_climbers"
+        case userAscents    = "user_ascents"
+        case isClimbed      = "is_climbed"
+        case byYear         = "by_year"
+        case byMonth        = "by_month"
+        case recentSummits  = "recent_summits"
+        case recentPhotos   = "recent_photos"
+    }
+}
+
+struct YearCount: Codable, Identifiable, Sendable {
+    let year: String
+    let count: Int
+    var id: String { year }
+}
+
+struct MonthCount: Codable, Identifiable, Sendable {
+    let month: String   // "01".."12"
+    let count: Int
+    var id: String { month }
+}
+
+struct RecentSummit: Codable, Identifiable, Sendable {
+    let climbId: Int
+    let climbDate: String
+    let userId: Int
+    let userName: String
+    let userAvatarUrl: String?
+    var id: Int { climbId }
+
+    enum CodingKeys: String, CodingKey {
+        case climbId       = "climb_id"
+        case climbDate     = "climb_date"
+        case userId        = "user_id"
+        case userName      = "user_name"
+        case userAvatarUrl = "user_avatar_url"
+    }
+}
+
+struct RecentPhoto: Codable, Identifiable, Sendable {
+    let climbId: Int
+    let userId: Int
+    let userName: String
+    let photoUrl: String
+    var id: Int { climbId }
+
+    enum CodingKeys: String, CodingKey {
+        case climbId  = "climb_id"
+        case userId   = "user_id"
+        case userName = "user_name"
+        case photoUrl = "photo_url"
+    }
+}
+
 // MARK: - Stats
 
 struct AscentCount: Codable, Sendable {
