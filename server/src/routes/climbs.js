@@ -6,6 +6,32 @@ const { getDb, UPLOADS_DIR } = require('../db');
 const { single: uploadSingle } = require('../middleware/upload');
 const requireAuth = require('../middleware/auth');
 const { pushToUser } = require('../utils/push');
+const { levelForCount } = require('../utils/levels');
+
+// Compares unique-peak count before/after an insert; if it crossed a level
+// threshold, records a self-notification and sends a push. Call AFTER the
+// climb row exists so climb_id can be attached.
+function checkLevelUp(db, userId, beforeCount, climbId) {
+  const { c: afterCount } = db.prepare(
+    'SELECT COUNT(DISTINCT mountain_id) AS c FROM climbs WHERE user_id = ?'
+  ).get(userId);
+  if (afterCount <= beforeCount) return;
+
+  const beforeLevel = levelForCount(beforeCount).level;
+  const afterLevel = levelForCount(afterCount).level;
+  if (afterLevel <= beforeLevel) return;
+
+  const { name } = levelForCount(afterCount);
+  db.prepare(
+    "INSERT INTO notifications (user_id, from_user_id, type, climb_id, level) VALUES (?, ?, 'level_up', ?, ?)"
+  ).run(userId, userId, climbId, afterLevel);
+
+  pushToUser(userId, {
+    title: 'Rank Up! 🏔',
+    body: `You've reached ${name}!`,
+    climbId,
+  }).catch(() => {});
+}
 
 const UPLOAD_DIR = UPLOADS_DIR;
 const VALID_VISIBILITY = new Set(['public', 'followers', 'private']);
@@ -96,9 +122,16 @@ router.post('/', requireAuth, uploadSingle('photo'), (req, res) => {
   const vis = VALID_VISIBILITY.has(visibility) ? visibility : 'public';
   const photo_path = req.file ? req.file.filename : null;
 
-  const result = getDb().prepare(
+  const db = getDb();
+  const { c: beforeCount } = db.prepare(
+    'SELECT COUNT(DISTINCT mountain_id) AS c FROM climbs WHERE user_id = ?'
+  ).get(req.user.id);
+
+  const result = db.prepare(
     'INSERT INTO climbs (user_id, mountain_id, climb_date, notes, photo_path, visibility) VALUES (?, ?, ?, ?, ?, ?)'
   ).run(req.user.id, Number(mountain_id), climb_date, notes || null, photo_path, vis);
+
+  checkLevelUp(db, req.user.id, beforeCount, result.lastInsertRowid);
 
   res.status(201).json({ id: result.lastInsertRowid });
 });
@@ -124,6 +157,10 @@ function handleUpdateClimb(req, res) {
 
   const vis = visibility && VALID_VISIBILITY.has(visibility) ? visibility : existing.visibility;
 
+  const { c: beforeCount } = db.prepare(
+    'SELECT COUNT(DISTINCT mountain_id) AS c FROM climbs WHERE user_id = ?'
+  ).get(req.user.id);
+
   db.prepare(
     'UPDATE climbs SET mountain_id=?, climb_date=?, notes=?, photo_path=?, visibility=? WHERE id=?'
   ).run(
@@ -134,6 +171,8 @@ function handleUpdateClimb(req, res) {
     vis,
     req.params.id
   );
+
+  checkLevelUp(db, req.user.id, beforeCount, Number(req.params.id));
 
   const row = db.prepare(`
     SELECT c.*, m.name AS mountain_name, m.elevation, m.range,

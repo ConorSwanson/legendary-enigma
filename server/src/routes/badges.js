@@ -3,7 +3,9 @@ const router = express.Router();
 const path = require('path');
 const { Resvg } = require('@resvg/resvg-js');
 const { buildBadgeSvg } = require('../utils/patch-render-svg');
+const { buildRankMedallionSvg } = require('../utils/rank-badge-render-svg');
 const { PALETTES, RANGE_LABEL, peakByDbId } = require('../data/peaks-data');
+const { LEVELS } = require('../utils/levels');
 
 const FONT_DIR = path.join(__dirname, '../assets/fonts');
 const RESVG_OPTS = {
@@ -31,6 +33,48 @@ function badgeSvgFor(req) {
   const rangeLabel = RANGE_LABEL[peak.range] || peak.range;
   return { svg: buildBadgeSvg(peak, pal, { climbed, rangeLabel }), cacheKey: `${numericId}:${climbed ? 1 : 0}` };
 }
+
+function rankSvgFor(req) {
+  const level = parseInt(req.params.level, 10);
+  const def = LEVELS.find(l => l.level === level);
+  if (!def) return null;
+  const locked = req.query.locked === '1' || req.query.locked === 'true';
+  return { svg: buildRankMedallionSvg(level, def.name, { locked }), cacheKey: `rank:${level}:${locked ? 'lk' : 'un'}` };
+}
+
+// GET /api/badges/rank/:level/png?locked=1  — Climber Rank medallion PNG
+router.get('/rank/:level/png', (req, res) => {
+  const result = rankSvgFor(req);
+  if (!result) return res.status(404).json({ error: 'Not found' });
+  const { svg, cacheKey } = result;
+
+  if (pngCache.has(cacheKey)) {
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.send(pngCache.get(cacheKey));
+  }
+
+  try {
+    const resvg = new Resvg(svg, RESVG_OPTS);
+    const png = resvg.render().asPng();
+    pngCache.set(cacheKey, png);
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(png);
+  } catch (err) {
+    console.error('Rank SVG→PNG error:', err);
+    res.status(500).json({ error: 'render_failed' });
+  }
+});
+
+// GET /api/badges/rank/:level?locked=1  — Climber Rank medallion SVG
+router.get('/rank/:level', (req, res) => {
+  const result = rankSvgFor(req);
+  if (!result) return res.status(404).json({ error: 'Not found' });
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(result.svg);
+});
 
 // GET /api/badges/:id/png?climbed=1  — PNG for iOS AsyncImage
 router.get('/:id/png', (req, res) => {
@@ -89,5 +133,24 @@ function warmBadgeCache() {
   console.log(`[badges] Pre-rendered ${count} badge PNGs`);
 }
 
+// Pre-render all 13 rank medallions × 2 states (locked/unlocked) at startup
+function warmRankBadgeCache() {
+  let count = 0;
+  for (const def of LEVELS) {
+    for (const locked of [true, false]) {
+      const cacheKey = `rank:${def.level}:${locked ? 'lk' : 'un'}`;
+      if (pngCache.has(cacheKey)) continue;
+      try {
+        const svg = buildRankMedallionSvg(def.level, def.name, { locked });
+        const png = new Resvg(svg, RESVG_OPTS).render().asPng();
+        pngCache.set(cacheKey, png);
+        count++;
+      } catch (_) {}
+    }
+  }
+  console.log(`[badges] Pre-rendered ${count} rank medallion PNGs`);
+}
+
 module.exports = router;
 module.exports.warmBadgeCache = warmBadgeCache;
+module.exports.warmRankBadgeCache = warmRankBadgeCache;

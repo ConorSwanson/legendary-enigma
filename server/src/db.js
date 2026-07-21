@@ -222,6 +222,12 @@ function initDb() {
     db.exec('ALTER TABLE users ADD COLUMN background_path TEXT');
   }
 
+  // Migrate: add level to notifications for level_up notifications (no-op on new installs)
+  const notifColsNow = db.pragma('table_info(notifications)').map(c => c.name);
+  if (!notifColsNow.includes('level')) {
+    db.exec('ALTER TABLE notifications ADD COLUMN level INTEGER');
+  }
+
   const insertMountain = db.prepare(
     'INSERT OR IGNORE INTO mountains (id, name, elevation, range) VALUES (?, ?, ?, ?)'
   );

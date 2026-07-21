@@ -20,6 +20,12 @@ struct MainTabView: View {
             MountainsView()
                 .tabItem { Label("14ers", systemImage: "mountain.2.fill") }
                 .tag(3)
+
+            NavigationView {
+                BadgesView(isTabRoot: true)
+            }
+            .tabItem { Label("Badges", systemImage: "medal.fill") }
+            .tag(4)
         }
         .tint(Color(red: 56/255, green: 189/255, blue: 248/255))
         .onAppear {

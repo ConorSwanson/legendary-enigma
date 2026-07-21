@@ -3,6 +3,7 @@ const router = express.Router();
 const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
 const { pushToUser } = require('../utils/push');
+const { levelForCount } = require('../utils/levels');
 
 function withAvatarUrl(user) {
   return { ...user, avatar_url: user.avatar_path ? `/uploads/${user.avatar_path}` : null };
@@ -41,7 +42,9 @@ router.get('/:id', requireAuth, (req, res) => {
     'SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?'
   ).get(req.user.id, user.id);
 
-  res.json({ ...withAvatarUrl(user), total_climbs, unique_peaks, followers, following, is_following });
+  const rank = levelForCount(unique_peaks);
+
+  res.json({ ...withAvatarUrl(user), total_climbs, unique_peaks, followers, following, is_following, rank });
 });
 
 // POST /api/users/:id/follow

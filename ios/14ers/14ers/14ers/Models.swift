@@ -180,6 +180,7 @@ struct Stats: Codable, Sendable {
     let ascentCounts: [AscentCount]
     let followers: Int?
     let following: Int?
+    let rank: ClimberRank?
 
     enum CodingKeys: String, CodingKey {
         case totalClimbs    = "total_climbs"
@@ -189,9 +190,55 @@ struct Stats: Codable, Sendable {
         case climbedIds     = "climbed_ids"
         case recentClimbs   = "recent_climbs"
         case ascentCounts   = "ascent_counts"
-        case followers, following
+        case followers, following, rank
     }
 }
+
+// MARK: - Climber Rank
+
+struct ClimberRank: Codable, Sendable {
+    let level: Int
+    let name: String
+    let minPeaks: Int
+    let nextLevel: Int?
+    let nextName: String?
+    let nextMinPeaks: Int?
+    let peaksToNext: Int
+
+    enum CodingKeys: String, CodingKey {
+        case level, name
+        case minPeaks     = "min_peaks"
+        case nextLevel    = "next_level"
+        case nextName     = "next_name"
+        case nextMinPeaks = "next_min_peaks"
+        case peaksToNext  = "peaks_to_next"
+    }
+}
+
+struct ClimberLevelDef: Identifiable, Sendable {
+    let level: Int
+    let name: String
+    let minPeaks: Int
+    var id: Int { level }
+}
+
+// Mirrors server/src/utils/levels.js — used to render the full ladder
+// (locked/unlocked tiers) in the Badges tab's Climber Rank grid.
+let climberLevels: [ClimberLevelDef] = [
+    .init(level: 0,  name: "Trailhead Rookie",      minPeaks: 0),
+    .init(level: 1,  name: "Switchback Scrambler",  minPeaks: 5),
+    .init(level: 2,  name: "Ridge Runner",          minPeaks: 10),
+    .init(level: 3,  name: "Alpine Adventurer",     minPeaks: 15),
+    .init(level: 4,  name: "Summit Seeker",         minPeaks: 20),
+    .init(level: 5,  name: "Peak Bagger",           minPeaks: 25),
+    .init(level: 6,  name: "High Country Veteran",  minPeaks: 30),
+    .init(level: 7,  name: "Thin Air Master",       minPeaks: 35),
+    .init(level: 8,  name: "Fourteener Elite",      minPeaks: 40),
+    .init(level: 9,  name: "Summit Sage",           minPeaks: 45),
+    .init(level: 10, name: "Granite Guardian",      minPeaks: 50),
+    .init(level: 11, name: "Continental Conqueror", minPeaks: 55),
+    .init(level: 12, name: "Fourteener Legend",     minPeaks: 58),
+]
 
 struct FollowerUser: Codable, Identifiable, Sendable {
     let id: Int
@@ -234,9 +281,10 @@ struct UserProfile: Codable, Identifiable, Sendable {
     let followers: Int?
     let following: Int?
     let isFollowing: Bool?
+    let rank: ClimberRank?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, bio
+        case id, name, bio, rank
         case avatarUrl     = "avatar_url"
         case backgroundUrl = "background_url"
         case totalClimbs   = "total_climbs"
@@ -284,16 +332,19 @@ struct NotificationItem: Codable, Identifiable, Sendable {
     let fromUserAvatarUrl: String?
     let climbId: Int?
     let mountainName: String?
+    let level: Int?
+    let levelName: String?
     let isRead: Bool
     let createdAt: String
 
     enum CodingKeys: String, CodingKey {
-        case id, type
+        case id, type, level
         case fromUserId        = "from_user_id"
         case fromUserName      = "from_user_name"
         case fromUserAvatarUrl = "from_user_avatar_url"
         case climbId           = "climb_id"
         case mountainName      = "mountain_name"
+        case levelName         = "level_name"
         case isRead            = "is_read"
         case createdAt         = "created_at"
     }

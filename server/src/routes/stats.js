@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
+const { levelForCount } = require('../utils/levels');
 
 router.get('/', requireAuth, (req, res) => {
   const db = getDb();
@@ -58,7 +59,9 @@ router.get('/', requireAuth, (req, res) => {
   const { followers } = db.prepare('SELECT COUNT(*) AS followers FROM follows WHERE following_id = ?').get(uid);
   const { following } = db.prepare('SELECT COUNT(*) AS following FROM follows WHERE follower_id = ?').get(uid);
 
-  res.json({ ...totals, total_mountains, by_month, by_year, top_mountains, recent_climbs, climbed_ids, ascent_counts, followers, following });
+  const rank = levelForCount(totals.unique_peaks);
+
+  res.json({ ...totals, total_mountains, by_month, by_year, top_mountains, recent_climbs, climbed_ids, ascent_counts, followers, following, rank });
 });
 
 module.exports = router;

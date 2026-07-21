@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
+const { nameForLevel } = require('../utils/levels');
 
 // GET /api/notifications/unread-count  (must come before /:id-style routes)
 router.get('/unread-count', requireAuth, (req, res) => {
@@ -14,7 +15,7 @@ router.get('/unread-count', requireAuth, (req, res) => {
 // GET /api/notifications
 router.get('/', requireAuth, (req, res) => {
   const rows = getDb().prepare(`
-    SELECT n.id, n.type, n.from_user_id, n.climb_id, n.is_read, n.created_at,
+    SELECT n.id, n.type, n.from_user_id, n.climb_id, n.level, n.is_read, n.created_at,
            u.name AS from_user_name, u.avatar_path AS from_user_avatar_path,
            m.name AS mountain_name
     FROM notifications n
@@ -35,6 +36,8 @@ router.get('/', requireAuth, (req, res) => {
     from_user_avatar_url: n.from_user_avatar_path ? `${base}/uploads/${n.from_user_avatar_path}` : null,
     climb_id: n.climb_id,
     mountain_name: n.mountain_name,
+    level: n.level,
+    level_name: n.level != null ? nameForLevel(n.level) : null,
     is_read: !!n.is_read,
     created_at: n.created_at,
   })));

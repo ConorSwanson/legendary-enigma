@@ -11,12 +11,23 @@ private let rangeOrder = [
     "Elk", "Sangre de Cristo", "San Juan"
 ]
 
-// MARK: - Badge Grid
+// MARK: - Badges (Peaks + Climber Rank)
 
-struct BadgeGridView: View {
+struct BadgesView: View {
+    enum Filter: String, CaseIterable, Identifiable {
+        case peaks = "Peaks"
+        case rank  = "Climber Rank"
+        var id: String { rawValue }
+    }
+
+    var initialFilter: Filter = .peaks
+    var isTabRoot: Bool = false
+
+    @State private var filter: Filter = .peaks
     @State private var mountains: [Mountain] = []
     @State private var climbedIds: Set<Int>  = []
     @State private var ascentCounts: [Int: Int] = [:]
+    @State private var rank: ClimberRank?
     @State private var isLoading = true
 
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
@@ -33,64 +44,130 @@ struct BadgeGridView: View {
     }
 
     var body: some View {
-        ScrollView {
-            if isLoading {
-                ProgressView().tint(.white).padding(.top, 60)
-            } else {
-                VStack(alignment: .leading, spacing: 28) {
-                    HStack {
-                        Text("\(climbedIds.count) of \(mountains.count) peaks summited")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                        Spacer()
-                        ProgressView(
-                            value: mountains.isEmpty ? 0 : Double(climbedIds.count) / Double(mountains.count)
-                        )
-                        .tint(sky)
-                        .frame(width: 100)
-                    }
-                    .padding(.horizontal)
+        VStack(spacing: 0) {
+            Picker("Filter", selection: $filter) {
+                ForEach(Filter.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.vertical, 10)
 
-                    ForEach(mountainsByRange, id: \.range) { section in
-                        let sectionClimbed = section.mountains.filter { climbedIds.contains($0.id) }.count
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                Text(section.range.uppercased())
-                                    .font(.caption.bold())
-                                    .foregroundColor(emerald)
-                                    .tracking(1.5)
-                                Spacer()
-                                Text("\(sectionClimbed)/\(section.mountains.count)")
-                                    .font(.caption2)
-                                    .foregroundColor(.gray)
-                            }
-                            .padding(.horizontal)
-
-                            LazyVGrid(columns: columns, spacing: 12) {
-                                ForEach(section.mountains) { mountain in
-                                    let climbed = climbedIds.contains(mountain.id)
-                                    let count   = ascentCounts[mountain.id] ?? 0
-                                    NavigationLink(destination: BadgeDetailView(
-                                        mountain: mountain,
-                                        climbed: climbed,
-                                        ascentCount: count
-                                    )) {
-                                        BadgeTile(mountain: mountain, climbed: climbed, ascentCount: count)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(.horizontal)
-                        }
-                    }
+            ScrollView {
+                if isLoading {
+                    ProgressView().tint(.white).padding(.top, 60)
+                } else if filter == .peaks {
+                    peaksContent
+                } else {
+                    rankContent
                 }
-                .padding(.vertical)
             }
         }
         .background(bg.ignoresSafeArea())
-        .navigationTitle("Badge Collection")
+        .navigationTitle(filter == .peaks ? "Badge Collection" : "Climber Rank")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isTabRoot {
+                ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
+                ToolbarItem(placement: .navigationBarTrailing) { NotificationBellButton() }
+            }
+        }
+        .onAppear { filter = initialFilter }
         .task { await load() }
+    }
+
+    @ViewBuilder
+    private var peaksContent: some View {
+        VStack(alignment: .leading, spacing: 28) {
+            HStack {
+                Text("\(climbedIds.count) of \(mountains.count) peaks summited")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                Spacer()
+                ProgressView(
+                    value: mountains.isEmpty ? 0 : Double(climbedIds.count) / Double(mountains.count)
+                )
+                .tint(sky)
+                .frame(width: 100)
+            }
+            .padding(.horizontal)
+
+            ForEach(mountainsByRange, id: \.range) { section in
+                let sectionClimbed = section.mountains.filter { climbedIds.contains($0.id) }.count
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text(section.range.uppercased())
+                            .font(.caption.bold())
+                            .foregroundColor(emerald)
+                            .tracking(1.5)
+                        Spacer()
+                        Text("\(sectionClimbed)/\(section.mountains.count)")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                    }
+                    .padding(.horizontal)
+
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(section.mountains) { mountain in
+                            let climbed = climbedIds.contains(mountain.id)
+                            let count   = ascentCounts[mountain.id] ?? 0
+                            NavigationLink(destination: BadgeDetailView(
+                                mountain: mountain,
+                                climbed: climbed,
+                                ascentCount: count
+                            )) {
+                                BadgeTile(mountain: mountain, climbed: climbed, ascentCount: count)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
+        }
+        .padding(.vertical)
+    }
+
+    @ViewBuilder
+    private var rankContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if let rank {
+                VStack(spacing: 6) {
+                    Text(rank.name)
+                        .font(.title3.bold())
+                        .foregroundColor(.white)
+                    if let nextName = rank.nextName {
+                        Text("\(rank.peaksToNext) more peak\(rank.peaksToNext == 1 ? "" : "s") to \(nextName)")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        ProgressView(value: rankProgress(rank))
+                            .tint(emerald)
+                            .frame(maxWidth: 220)
+                    } else {
+                        Text("You've reached the top rank!")
+                            .font(.caption)
+                            .foregroundColor(emerald)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+            }
+
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(climberLevels) { def in
+                    let unlocked = (rank?.level ?? 0) >= def.level
+                    let isCurrent = rank?.level == def.level
+                    RankTile(def: def, unlocked: unlocked, isCurrent: isCurrent)
+                }
+            }
+            .padding(.horizontal)
+        }
+        .padding(.vertical)
+    }
+
+    private func rankProgress(_ rank: ClimberRank) -> Double {
+        guard let nextMin = rank.nextMinPeaks, nextMin > rank.minPeaks else { return 1 }
+        let earned = nextMin - rank.peaksToNext - rank.minPeaks
+        return min(1, max(0, Double(earned) / Double(nextMin - rank.minPeaks)))
     }
 
     private func load() async {
@@ -100,8 +177,51 @@ struct BadgeGridView: View {
             mountains = fetchedMountains
             climbedIds = Set(stats.climbedIds)
             ascentCounts = Dictionary(uniqueKeysWithValues: stats.ascentCounts.map { ($0.id, $0.count) })
+            rank = stats.rank
         }
         isLoading = false
+    }
+}
+
+// MARK: - Rank Tile
+
+private struct RankTile: View {
+    let def: ClimberLevelDef
+    let unlocked: Bool
+    let isCurrent: Bool
+
+    private var pngURL: URL? {
+        URL(string: "\(Config.apiBaseURL)/api/badges/rank/\(def.level)/png?locked=\(unlocked ? 0 : 1)")
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            CachedAsyncImage(url: pngURL) { img in
+                img.resizable().aspectRatio(contentMode: .fit)
+            } placeholder: {
+                Color.clear
+            }
+            .frame(height: 130)
+
+            Text(def.name)
+                .font(.caption.bold())
+                .foregroundColor(unlocked ? .white : .gray)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+            Text("\(def.minPeaks) peaks")
+                .font(.system(size: 9))
+                .foregroundColor(.gray.opacity(0.7))
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity)
+        .background(card)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isCurrent ? emerald : Color(red: 40/255, green: 50/255, blue: 65/255),
+                        lineWidth: isCurrent ? 2 : 1)
+        )
     }
 }
 

@@ -234,6 +234,13 @@ struct HomeView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                if let rank = stats?.rank {
+                    NavigationLink(destination: BadgesView(initialFilter: .rank)) {
+                        RankPill(rank: rank)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 2)
+                }
                 if let bio = p.bio, !bio.isEmpty {
                     Text(bio)
                         .font(.subheadline)
@@ -301,7 +308,7 @@ struct HomeView: View {
                     .font(.headline)
                     .foregroundColor(.white)
                 Spacer()
-                NavigationLink(destination: BadgeGridView()) {
+                NavigationLink(destination: BadgesView()) {
                     Text("See All")
                         .font(.caption)
                         .foregroundColor(sky)
@@ -446,6 +453,27 @@ struct HomeView: View {
         let renderer = UIGraphicsImageRenderer(size: newSize)
         let resized = renderer.image { _ in uiImage.draw(in: CGRect(origin: .zero, size: newSize)) }
         return resized.jpegData(compressionQuality: quality) ?? data
+    }
+}
+
+// MARK: - Rank Pill
+
+private struct RankPill: View {
+    let rank: ClimberRank
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "mountain.2.fill")
+                .font(.caption2)
+            Text("Level \(rank.level) · \(rank.name)")
+                .font(.caption.bold())
+        }
+        .foregroundColor(emerald)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(emerald.opacity(0.14))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(emerald.opacity(0.35), lineWidth: 1))
     }
 }
 
@@ -726,10 +754,11 @@ private struct NotificationRow: View {
 
     private var notifText: String {
         switch item.type {
-        case "like":    return "\(item.fromUserName) liked your climb on \(item.mountainName ?? "a peak")"
-        case "follow":  return "\(item.fromUserName) started following you"
-        case "comment": return "\(item.fromUserName) commented on your climb of \(item.mountainName ?? "a peak")"
-        default:        return "\(item.fromUserName) interacted with your content"
+        case "like":     return "\(item.fromUserName) liked your climb on \(item.mountainName ?? "a peak")"
+        case "follow":   return "\(item.fromUserName) started following you"
+        case "comment":  return "\(item.fromUserName) commented on your climb of \(item.mountainName ?? "a peak")"
+        case "level_up": return "🏔 You've reached \(item.levelName ?? "a new rank")!"
+        default:         return "\(item.fromUserName) interacted with your content"
         }
     }
 
@@ -956,6 +985,13 @@ struct UserProfileView: View {
                 Text(p.name)
                     .font(.title2.bold())
                     .foregroundColor(.white)
+                if let rank = p.rank {
+                    NavigationLink(destination: BadgesView(initialFilter: .rank)) {
+                        RankPill(rank: rank)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 2)
+                }
                 if let bio = p.bio, !bio.isEmpty {
                     Text(bio)
                         .font(.subheadline)
