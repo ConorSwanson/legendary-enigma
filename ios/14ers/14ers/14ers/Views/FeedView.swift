@@ -40,10 +40,7 @@ struct FeedView: View {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(items) { item in
-                                NavigationLink(destination: ClimbDetailView(climbId: item.id)) {
-                                    FeedCard(item: item)
-                                }
-                                .buttonStyle(.plain)
+                                FeedCard(item: item)
                             }
                         }
                         .padding()
@@ -105,44 +102,54 @@ struct FeedCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Group {
-                if let photoUrl = item.photoUrl, let url = URL(string: photoUrl) {
-                    AsyncImage(url: url) { img in
-                        img.resizable().aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        card
+            NavigationLink(destination: ClimbDetailView(climbId: item.id)) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Group {
+                        if let photoUrl = item.photoUrl, let url = URL(string: photoUrl) {
+                            AsyncImage(url: url) { img in
+                                img.resizable().aspectRatio(contentMode: .fill)
+                            } placeholder: {
+                                card
+                            }
+                        } else {
+                            MountainPlaceholder(mountainId: item.mountainId)
+                        }
                     }
-                } else {
-                    MountainPlaceholder(mountainId: item.mountainId)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 200)
+                    .clipped()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.mountainName)
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                Text("\(item.elevation.formatted()) ft · \(item.range)")
+                                    .font(.caption)
+                                    .foregroundColor(emerald)
+                            }
+                            Spacer()
+                            Text(item.climbDate.shortClimbDate())
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+
+                        if let notes = item.notes, !notes.isEmpty {
+                            Text(notes)
+                                .font(.caption)
+                                .foregroundColor(Color(red: 156/255, green: 163/255, blue: 175/255))
+                                .lineLimit(3)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 12)
                 }
+                .contentShape(Rectangle())
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 200)
-            .clipped()
+            .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.mountainName)
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        Text("\(item.elevation.formatted()) ft · \(item.range)")
-                            .font(.caption)
-                            .foregroundColor(emerald)
-                    }
-                    Spacer()
-                    Text(item.climbDate.shortClimbDate())
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-
-                if let notes = item.notes, !notes.isEmpty {
-                    Text(notes)
-                        .font(.caption)
-                        .foregroundColor(Color(red: 156/255, green: 163/255, blue: 175/255))
-                        .lineLimit(3)
-                }
-
                 HStack {
                     // Profile avatar + name → UserProfileView
                     NavigationLink(destination: UserProfileView(userId: item.userId)) {

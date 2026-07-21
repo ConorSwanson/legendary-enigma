@@ -24,6 +24,7 @@ struct Climb: Codable, Identifiable, Sendable {
     let createdAt: String
     let userId: Int?
     let userName: String?
+    let userAvatarUrl: String?
     var isOwner: Bool?
     var isLiked: Bool?
     var likeCount: Int?
@@ -39,6 +40,7 @@ struct Climb: Codable, Identifiable, Sendable {
         case createdAt    = "created_at"
         case userId       = "user_id"
         case userName     = "user_name"
+        case userAvatarUrl = "user_avatar_url"
         case isOwner      = "is_owner"
         case isLiked      = "is_liked"
         case likeCount    = "like_count"

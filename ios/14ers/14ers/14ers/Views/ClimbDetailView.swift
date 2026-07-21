@@ -57,6 +57,35 @@ struct ClimbDetailView: View {
                     .clipped()
 
                     VStack(alignment: .leading, spacing: 16) {
+                        // Poster row → UserProfileView (hidden for your own climbs)
+                        if climb.isOwner != true, let uid = climb.userId, let uname = climb.userName {
+                            NavigationLink(destination: UserProfileView(userId: uid)) {
+                                HStack(spacing: 10) {
+                                    Group {
+                                        if let urlStr = climb.userAvatarUrl, let url = URL(string: urlStr) {
+                                            AsyncImage(url: url) { phase in
+                                                if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
+                                                else { posterAvatarPlaceholder(uname) }
+                                            }
+                                        } else {
+                                            posterAvatarPlaceholder(uname)
+                                        }
+                                    }
+                                    .frame(width: 36, height: 36)
+                                    .clipShape(Circle())
+
+                                    Text(uname)
+                                        .font(.subheadline.bold())
+                                        .foregroundColor(.white)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption2.bold())
+                                        .foregroundColor(.gray.opacity(0.5))
+                                    Spacer()
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+
                         // Title row with badge inline
                         HStack(alignment: .top, spacing: 12) {
                             VStack(alignment: .leading, spacing: 4) {
@@ -218,6 +247,16 @@ struct ClimbDetailView: View {
             iconButtonLabel(systemImage: systemImage, tint: tint)
         }
         .buttonStyle(.plain)
+    }
+
+    private func posterAvatarPlaceholder(_ name: String) -> some View {
+        Circle()
+            .fill(sky.opacity(0.2))
+            .overlay(
+                Text(name.prefix(1).uppercased())
+                    .font(.subheadline.bold())
+                    .foregroundColor(sky)
+            )
     }
 
     private func iconButtonLabel(systemImage: String, tint: Color) -> some View {
