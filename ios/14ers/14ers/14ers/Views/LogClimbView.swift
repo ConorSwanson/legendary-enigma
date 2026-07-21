@@ -666,13 +666,10 @@ private struct ClimbSuccessView: View {
 
                     // Badge with optional repeat-ascent pill overlay
                     ZStack(alignment: .topTrailing) {
-                        AsyncImage(url: badgeURL) { phase in
-                            switch phase {
-                            case .success(let img):
-                                img.resizable().aspectRatio(contentMode: .fit)
-                            default:
-                                ProgressView().tint(emerald).frame(height: 200)
-                            }
+                        CachedAsyncImage(url: badgeURL) { img in
+                            img.resizable().aspectRatio(contentMode: .fit)
+                        } placeholder: {
+                            ProgressView().tint(emerald).frame(height: 200)
                         }
                         if ascentCount > 1 {
                             Text("×\(ascentCount)")

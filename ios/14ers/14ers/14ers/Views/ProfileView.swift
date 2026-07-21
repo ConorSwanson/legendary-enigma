@@ -85,10 +85,10 @@ struct HomeView: View {
             ZStack(alignment: .topTrailing) {
                 Group {
                     if let bgStr = profile?.backgroundUrl, let bgUrl = URL(string: bgStr) {
-                        AsyncImage(url: bgUrl) { phase in
-                            if let img = phase.image {
-                                img.resizable().aspectRatio(contentMode: .fill)
-                            } else { mountainCanvas }
+                        CachedAsyncImage(url: bgUrl) { img in
+                            img.resizable().aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            mountainCanvas
                         }
                     } else {
                         mountainCanvas
@@ -179,10 +179,10 @@ struct HomeView: View {
         if isUploadingAvatar {
             Circle().fill(card).overlay(ProgressView().tint(sky))
         } else if let avStr = profile?.avatarUrl, let avUrl = URL(string: avStr) {
-            AsyncImage(url: avUrl) { phase in
-                if let img = phase.image {
-                    img.resizable().aspectRatio(contentMode: .fill)
-                } else { avatarPlaceholder }
+            CachedAsyncImage(url: avUrl) { img in
+                img.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+                avatarPlaceholder
             }
         } else {
             avatarPlaceholder
@@ -380,6 +380,10 @@ struct HomeView: View {
         }
         if let statsResult = try? await APIClient.shared.stats() {
             stats = statsResult
+            ImageCache.shared.prefetch(statsResult.recentClimbs.flatMap { c in
+                [c.photoUrl.flatMap { URL(string: $0) },
+                 URL(string: "\(Config.apiBaseURL)/api/badges/\(c.mountainId)/png?climbed=1")]
+            })
         }
     }
 
@@ -451,12 +455,10 @@ private struct HomeClimbRow: View {
     var body: some View {
         HStack {
             if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
-                AsyncImage(url: url) { phase in
-                    if let img = phase.image {
-                        img.resizable().aspectRatio(contentMode: .fill)
-                    } else {
-                        RoundedRectangle(cornerRadius: 8).fill(card)
-                    }
+                CachedAsyncImage(url: url) { img in
+                    img.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    RoundedRectangle(cornerRadius: 8).fill(card)
                 }
                 .frame(width: 48, height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -499,25 +501,22 @@ private struct NativeBadgeThumb: View {
     }
 
     var body: some View {
-        AsyncImage(url: badgeURL) { phase in
-            switch phase {
-            case .success(let img):
-                img.resizable().aspectRatio(contentMode: .fit)
-            default:
-                ZStack {
-                    LinearGradient(
-                        colors: [
-                            Color(red: 8/255,  green: 47/255, blue: 73/255),
-                            Color(red: 20/255, green: 30/255, blue: 70/255),
-                        ],
-                        startPoint: .top, endPoint: .bottom
-                    )
-                    VStack(spacing: 4) {
-                        Image(systemName: "mountain.2.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(sky)
-                        ProgressView().tint(sky).scaleEffect(0.7)
-                    }
+        CachedAsyncImage(url: badgeURL) { img in
+            img.resizable().aspectRatio(contentMode: .fit)
+        } placeholder: {
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(red: 8/255,  green: 47/255, blue: 73/255),
+                        Color(red: 20/255, green: 30/255, blue: 70/255),
+                    ],
+                    startPoint: .top, endPoint: .bottom
+                )
+                VStack(spacing: 4) {
+                    Image(systemName: "mountain.2.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(sky)
+                    ProgressView().tint(sky).scaleEffect(0.7)
                 }
             }
         }
@@ -533,12 +532,10 @@ struct HeaderAvatar: View {
         Button { userState.selectedTab = 0 } label: {
             Group {
                 if let urlStr = userState.avatarUrl, let url = URL(string: urlStr) {
-                    AsyncImage(url: url) { phase in
-                        if let img = phase.image {
-                            img.resizable().aspectRatio(contentMode: .fill)
-                        } else {
-                            avatarPlaceholder
-                        }
+                    CachedAsyncImage(url: url) { img in
+                        img.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        avatarPlaceholder
                     }
                 } else {
                     avatarPlaceholder
@@ -661,10 +658,10 @@ private struct NotificationRow: View {
         HStack(spacing: 12) {
             Group {
                 if let urlStr = item.fromUserAvatarUrl, let url = URL(string: urlStr) {
-                    AsyncImage(url: url) { phase in
-                        if let img = phase.image {
-                            img.resizable().aspectRatio(contentMode: .fill)
-                        } else { avatarPlaceholder }
+                    CachedAsyncImage(url: url) { img in
+                        img.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        avatarPlaceholder
                     }
                 } else {
                     avatarPlaceholder
@@ -864,9 +861,10 @@ struct UserProfileView: View {
         ZStack(alignment: .bottom) {
             Group {
                 if let bgStr = profile?.backgroundUrl, let bgUrl = URL(string: bgStr) {
-                    AsyncImage(url: bgUrl) { phase in
-                        if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
-                        else { userMountainCanvas }
+                    CachedAsyncImage(url: bgUrl) { img in
+                        img.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        userMountainCanvas
                     }
                 } else {
                     userMountainCanvas
@@ -888,9 +886,10 @@ struct UserProfileView: View {
     @ViewBuilder
     private var userAvatarImage: some View {
         if let avStr = profile?.avatarUrl, let avUrl = URL(string: avStr) {
-            AsyncImage(url: avUrl) { phase in
-                if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
-                else { userAvatarPlaceholder }
+            CachedAsyncImage(url: avUrl) { img in
+                img.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+                userAvatarPlaceholder
             }
         } else {
             userAvatarPlaceholder
@@ -1006,9 +1005,10 @@ struct UserProfileView: View {
     private func userClimbRow(_ climb: Climb) -> some View {
         HStack {
             if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
-                AsyncImage(url: url) { phase in
-                    if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
-                    else { RoundedRectangle(cornerRadius: 8).fill(card) }
+                CachedAsyncImage(url: url) { img in
+                    img.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    RoundedRectangle(cornerRadius: 8).fill(card)
                 }
                 .frame(width: 48, height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -1141,9 +1141,10 @@ private struct FollowerRow: View {
         HStack(spacing: 12) {
             Group {
                 if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
-                    AsyncImage(url: url) { phase in
-                        if let img = phase.image { img.resizable().aspectRatio(contentMode: .fill) }
-                        else { placeholder }
+                    CachedAsyncImage(url: url) { img in
+                        img.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        placeholder
                     }
                 } else { placeholder }
             }

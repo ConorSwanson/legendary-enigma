@@ -89,7 +89,7 @@ private struct RecentClimbRow: View {
     var body: some View {
         HStack {
             if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
-                AsyncImage(url: url) { img in
+                CachedAsyncImage(url: url) { img in
                     img.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     card

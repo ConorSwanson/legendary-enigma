@@ -82,6 +82,10 @@ struct FeedView: View {
             items = try await feedTab == .discover
                 ? APIClient.shared.feedDiscover()
                 : APIClient.shared.feedFollowing()
+            ImageCache.shared.prefetch(items.flatMap { item in
+                [item.photoUrl.flatMap { URL(string: $0) },
+                 item.userAvatarUrl.flatMap { URL(string: $0) }]
+            })
         } catch {
             self.error = error.localizedDescription
         }
@@ -114,7 +118,7 @@ struct FeedCard: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Group {
                         if let photoUrl = item.photoUrl, let url = URL(string: photoUrl) {
-                            AsyncImage(url: url) { img in
+                            CachedAsyncImage(url: url) { img in
                                 img.resizable().aspectRatio(contentMode: .fill)
                             } placeholder: {
                                 card
@@ -164,12 +168,10 @@ struct FeedCard: View {
                         HStack(spacing: 6) {
                             Group {
                                 if let urlStr = item.userAvatarUrl, let url = URL(string: urlStr) {
-                                    AsyncImage(url: url) { phase in
-                                        if let img = phase.image {
-                                            img.resizable().aspectRatio(contentMode: .fill)
-                                        } else {
-                                            avatarPlaceholder
-                                        }
+                                    CachedAsyncImage(url: url) { img in
+                                        img.resizable().aspectRatio(contentMode: .fill)
+                                    } placeholder: {
+                                        avatarPlaceholder
                                     }
                                 } else {
                                     avatarPlaceholder

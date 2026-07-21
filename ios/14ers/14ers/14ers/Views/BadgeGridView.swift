@@ -119,24 +119,21 @@ private struct BadgeTile: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack(alignment: .topTrailing) {
-                AsyncImage(url: pngURL) { phase in
-                    switch phase {
-                    case .success(let img):
-                        img.resizable().aspectRatio(contentMode: .fit)
-                    default:
-                        ZStack {
-                            ShieldShape()
-                                .fill(LinearGradient(
-                                    colors: climbed
-                                        ? [Color(red: 18/255, green: 68/255, blue: 46/255),
-                                           Color(red: 10/255, green: 36/255, blue: 26/255)]
-                                        : [Color(red: 30/255, green: 38/255, blue: 52/255), card],
-                                    startPoint: .top, endPoint: .bottom
-                                ))
-                            ProgressView().tint(climbed ? emerald : .gray)
-                        }
-                        .aspectRatio(600.0 / 660.0, contentMode: .fit)
+                CachedAsyncImage(url: pngURL) { img in
+                    img.resizable().aspectRatio(contentMode: .fit)
+                } placeholder: {
+                    ZStack {
+                        ShieldShape()
+                            .fill(LinearGradient(
+                                colors: climbed
+                                    ? [Color(red: 18/255, green: 68/255, blue: 46/255),
+                                       Color(red: 10/255, green: 36/255, blue: 26/255)]
+                                    : [Color(red: 30/255, green: 38/255, blue: 52/255), card],
+                                startPoint: .top, endPoint: .bottom
+                            ))
+                        ProgressView().tint(climbed ? emerald : .gray)
                     }
+                    .aspectRatio(600.0 / 660.0, contentMode: .fit)
                 }
                 .frame(maxWidth: .infinity)
 
@@ -210,24 +207,21 @@ struct BadgeDetailView: View {
             VStack(spacing: 24) {
                 // Badge with count pill
                 ZStack(alignment: .topTrailing) {
-                    AsyncImage(url: pngURL) { phase in
-                        switch phase {
-                        case .success(let img):
-                            img.resizable().aspectRatio(contentMode: .fit)
-                        default:
-                            ZStack {
-                                ShieldShape()
-                                    .fill(LinearGradient(
-                                        colors: climbed
-                                            ? [Color(red: 18/255, green: 68/255, blue: 46/255),
-                                               Color(red: 10/255, green: 36/255, blue: 26/255)]
-                                            : [Color(red: 30/255, green: 38/255, blue: 52/255), card],
-                                        startPoint: .top, endPoint: .bottom
-                                    ))
-                                ProgressView().tint(climbed ? emerald : .gray)
-                            }
-                            .aspectRatio(600.0 / 660.0, contentMode: .fit)
+                    CachedAsyncImage(url: pngURL) { img in
+                        img.resizable().aspectRatio(contentMode: .fit)
+                    } placeholder: {
+                        ZStack {
+                            ShieldShape()
+                                .fill(LinearGradient(
+                                    colors: climbed
+                                        ? [Color(red: 18/255, green: 68/255, blue: 46/255),
+                                           Color(red: 10/255, green: 36/255, blue: 26/255)]
+                                        : [Color(red: 30/255, green: 38/255, blue: 52/255), card],
+                                    startPoint: .top, endPoint: .bottom
+                                ))
+                            ProgressView().tint(climbed ? emerald : .gray)
                         }
+                        .aspectRatio(600.0 / 660.0, contentMode: .fit)
                     }
                     if ascentCount > 1 {
                         AscentCountPill(count: ascentCount, size: .large)
@@ -409,13 +403,10 @@ struct BadgeCell: View {
     }
 
     var body: some View {
-        AsyncImage(url: pngURL) { phase in
-            switch phase {
-            case .success(let img):
-                img.resizable().aspectRatio(contentMode: .fit)
-            default:
-                shieldPlaceholder
-            }
+        CachedAsyncImage(url: pngURL) { img in
+            img.resizable().aspectRatio(contentMode: .fit)
+        } placeholder: {
+            shieldPlaceholder
         }
         .frame(height: 132)
     }

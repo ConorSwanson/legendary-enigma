@@ -110,7 +110,7 @@ struct ClimbRow: View {
     var body: some View {
         HStack(spacing: 12) {
             if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
-                AsyncImage(url: url) { img in
+                CachedAsyncImage(url: url) { img in
                     img.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     Color(red: 31/255, green: 41/255, blue: 55/255)
