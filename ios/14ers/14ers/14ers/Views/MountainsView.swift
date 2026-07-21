@@ -17,10 +17,18 @@ struct MountainsView: View {
 
     enum ViewMode { case list, map }
 
+    enum StatusFilter: String, CaseIterable, Identifiable {
+        case all       = "All Peaks"
+        case climbed   = "Completed"
+        case unclimbed = "Not Completed"
+        var id: String { rawValue }
+    }
+
     @State private var mountains: [Mountain] = []
     @State private var climbedIds: Set<Int> = []
     @State private var search = ""
     @State private var rangeFilter: String? = nil   // nil = all ranges
+    @State private var statusFilter: StatusFilter = .all
     @State private var sort: SortOption = .elevationDesc
     @State private var viewMode: ViewMode = .list
     @State private var mapSelection: Mountain?
@@ -34,6 +42,11 @@ struct MountainsView: View {
     private var filtered: [Mountain] {
         var list = mountains
         if let r = rangeFilter { list = list.filter { $0.range == r } }
+        switch statusFilter {
+        case .all:       break
+        case .climbed:   list = list.filter { climbedIds.contains($0.id) }
+        case .unclimbed: list = list.filter { !climbedIds.contains($0.id) }
+        }
         if !search.trimmingCharacters(in: .whitespaces).isEmpty {
             let q = search.lowercased()
             list = list.filter { $0.name.lowercased().contains(q) }
@@ -124,33 +137,47 @@ struct MountainsView: View {
             .cornerRadius(10)
 
             HStack(spacing: 10) {
-                Menu {
-                    Button { rangeFilter = nil } label: {
-                        Label("All Ranges", systemImage: rangeFilter == nil ? "checkmark" : "")
-                    }
-                    ForEach(ranges, id: \.self) { r in
-                        Button { rangeFilter = r } label: {
-                            Label(r, systemImage: rangeFilter == r ? "checkmark" : "")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        Menu {
+                            Button { rangeFilter = nil } label: {
+                                Label("All Ranges", systemImage: rangeFilter == nil ? "checkmark" : "")
+                            }
+                            ForEach(ranges, id: \.self) { r in
+                                Button { rangeFilter = r } label: {
+                                    Label(r, systemImage: rangeFilter == r ? "checkmark" : "")
+                                }
+                            }
+                        } label: {
+                            filterChip(icon: "line.3.horizontal.decrease.circle", text: rangeFilter ?? "All Ranges")
                         }
-                    }
-                } label: {
-                    filterChip(icon: "line.3.horizontal.decrease.circle", text: rangeFilter ?? "All Ranges")
-                }
 
-                // Sort order is only meaningful in the list — hide it on the map.
-                if viewMode == .list {
-                    Menu {
-                        ForEach(SortOption.allCases) { opt in
-                            Button { sort = opt } label: {
-                                Label(opt.rawValue, systemImage: sort == opt ? "checkmark" : "")
+                        Menu {
+                            ForEach(StatusFilter.allCases) { opt in
+                                Button { statusFilter = opt } label: {
+                                    Label(opt.rawValue, systemImage: statusFilter == opt ? "checkmark" : "")
+                                }
+                            }
+                        } label: {
+                            filterChip(icon: "checkmark.seal", text: statusFilter.rawValue)
+                        }
+
+                        // Sort order is only meaningful in the list — hide it on the map.
+                        if viewMode == .list {
+                            Menu {
+                                ForEach(SortOption.allCases) { opt in
+                                    Button { sort = opt } label: {
+                                        Label(opt.rawValue, systemImage: sort == opt ? "checkmark" : "")
+                                    }
+                                }
+                            } label: {
+                                filterChip(icon: "arrow.up.arrow.down", text: sort.rawValue)
                             }
                         }
-                    } label: {
-                        filterChip(icon: "arrow.up.arrow.down", text: sort.rawValue)
                     }
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
                 Text("\(filtered.count)")
                     .font(.caption.bold())
                     .foregroundColor(.gray)
