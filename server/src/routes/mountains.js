@@ -88,4 +88,30 @@ router.get('/:id', requireAuth, (req, res) => {
   });
 });
 
+// GET /api/mountains/:id/climbs?month=MM&year=YYYY — public climbs for a peak,
+// optionally filtered by calendar month (seasonality drill-in) or year.
+router.get('/:id/climbs', requireAuth, (req, res) => {
+  const db = getDb();
+  const base = `${req.protocol}://${req.get('host')}`;
+  const { month, year } = req.query;
+
+  let where = "c.mountain_id = ? AND c.visibility = 'public'";
+  const params = [Number(req.params.id)];
+  if (month) { where += " AND strftime('%m', c.climb_date) = ?"; params.push(String(month).padStart(2, '0')); }
+  if (year)  { where += " AND strftime('%Y', c.climb_date) = ?"; params.push(String(year)); }
+
+  const rows = db.prepare(`
+    SELECT c.id AS climb_id, c.climb_date, u.id AS user_id, u.name AS user_name, u.avatar_path
+    FROM climbs c JOIN users u ON u.id = c.user_id
+    WHERE ${where}
+    ORDER BY c.climb_date DESC, c.created_at DESC LIMIT 100
+  `).all(...params).map(r => ({
+    climb_id: r.climb_id, climb_date: r.climb_date,
+    user_id: r.user_id, user_name: r.user_name,
+    user_avatar_url: r.avatar_path ? `${base}/uploads/${r.avatar_path}` : null,
+  }));
+
+  res.json(rows);
+});
+
 module.exports = router;

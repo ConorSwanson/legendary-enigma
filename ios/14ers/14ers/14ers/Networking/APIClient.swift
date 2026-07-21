@@ -129,6 +129,13 @@ actor APIClient {
         try await request("/mountains/\(id)")
     }
 
+    func mountainClimbs(_ id: Int, month: String? = nil, year: String? = nil) async throws -> [RecentSummit] {
+        var query = ""
+        if let m = month { query += query.isEmpty ? "?month=\(m)" : "&month=\(m)" }
+        if let y = year { query += query.isEmpty ? "?year=\(y)" : "&year=\(y)" }
+        return try await request("/mountains/\(id)/climbs\(query)")
+    }
+
     // MARK: - Stats
 
     func stats() async throws -> Stats {

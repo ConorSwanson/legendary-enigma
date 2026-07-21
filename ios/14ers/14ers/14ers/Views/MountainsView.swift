@@ -23,6 +23,7 @@ struct MountainsView: View {
     @State private var rangeFilter: String? = nil   // nil = all ranges
     @State private var sort: SortOption = .elevationDesc
     @State private var viewMode: ViewMode = .list
+    @State private var mapSelection: Mountain?
     @State private var isLoading = false
     @EnvironmentObject var userState: UserState
 
@@ -49,12 +50,12 @@ struct MountainsView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 filterBar
 
                 if viewMode == .map {
-                    MountainsMapView(mountains: filtered, climbedIds: climbedIds)
+                    MountainsMapView(mountains: filtered, climbedIds: climbedIds, selection: $mapSelection)
                 } else if isLoading && mountains.isEmpty {
                     Spacer(); ProgressView().tint(.white); Spacer()
                 } else if filtered.isEmpty {
@@ -76,6 +77,9 @@ struct MountainsView: View {
                 }
             }
             .background(bg.ignoresSafeArea())
+            .navigationDestination(item: $mapSelection) { m in
+                MountainDetailView(mountainId: m.id, fallbackName: m.name)
+            }
             .navigationTitle("14ers")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -215,9 +219,7 @@ private struct MountainRow: View {
 private struct MountainsMapView: View {
     let mountains: [Mountain]
     let climbedIds: Set<Int>
-
-    @State private var selected: Mountain?
-    @State private var navActive = false
+    @Binding var selection: Mountain?
 
     private static let coords: [Int: CLLocationCoordinate2D] = Dictionary(
         uniqueKeysWithValues: allPeakCoordinates.map {
@@ -235,10 +237,7 @@ private struct MountainsMapView: View {
             ForEach(mountains) { m in
                 if let coord = Self.coords[m.id] {
                     Annotation(m.name, coordinate: coord) {
-                        Button {
-                            selected = m
-                            navActive = true
-                        } label: {
+                        Button { selection = m } label: {
                             pin(climbed: climbedIds.contains(m.id))
                         }
                         .buttonStyle(.plain)
@@ -247,13 +246,6 @@ private struct MountainsMapView: View {
             }
         }
         .mapStyle(.standard(elevation: .realistic))
-        .background(
-            NavigationLink(isActive: $navActive) {
-                if let m = selected {
-                    MountainDetailView(mountainId: m.id, fallbackName: m.name)
-                }
-            } label: { EmptyView() }
-        )
     }
 
     private func pin(climbed: Bool) -> some View {

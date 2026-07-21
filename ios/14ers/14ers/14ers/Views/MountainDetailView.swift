@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 private let bg      = Color(red: 3/255,  green: 7/255,  blue: 18/255)
 private let card    = Color(red: 17/255, green: 24/255, blue: 39/255)
@@ -14,6 +15,8 @@ struct MountainDetailView: View {
 
     private static let monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    private static let fullMonthNames = ["", "January", "February", "March", "April", "May", "June",
+                                        "July", "August", "September", "October", "November", "December"]
 
     var body: some View {
         ScrollView {
@@ -113,17 +116,43 @@ struct MountainDetailView: View {
     // MARK: - Charts
 
     private func byYearSection(_ d: MountainDetail) -> some View {
-        let maxCount = max(d.byYear.map(\.count).max() ?? 1, 1)
-        return VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Summits by Year")
-            HStack(alignment: .bottom, spacing: 10) {
-                ForEach(d.byYear) { yc in
-                    barColumn(label: String(yc.year.suffix(2)),
-                              value: yc.count, maxCount: maxCount, tint: emerald)
+            Chart(d.byYear) { yc in
+                AreaMark(
+                    x: .value("Year", yc.year),
+                    y: .value("Summits", yc.count)
+                )
+                .interpolationMethod(.monotone)
+                .foregroundStyle(LinearGradient(
+                    colors: [emerald.opacity(0.35), emerald.opacity(0.02)],
+                    startPoint: .top, endPoint: .bottom))
+                LineMark(
+                    x: .value("Year", yc.year),
+                    y: .value("Summits", yc.count)
+                )
+                .interpolationMethod(.monotone)
+                .foregroundStyle(emerald)
+                .lineStyle(StrokeStyle(lineWidth: 2.5))
+                PointMark(
+                    x: .value("Year", yc.year),
+                    y: .value("Summits", yc.count)
+                )
+                .foregroundStyle(emerald)
+                .symbolSize(60)
+            }
+            .chartYAxis {
+                AxisMarks(position: .leading) { _ in
+                    AxisGridLine().foregroundStyle(Color.white.opacity(0.06))
+                    AxisValueLabel().foregroundStyle(Color.gray)
                 }
             }
-            .frame(height: 120)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .chartXAxis {
+                AxisMarks { _ in
+                    AxisValueLabel().foregroundStyle(Color.gray)
+                }
+            }
+            .frame(height: 170)
             .padding()
             .background(card)
             .cornerRadius(12)
@@ -133,17 +162,25 @@ struct MountainDetailView: View {
     private func byMonthSection(_ d: MountainDetail) -> some View {
         // Fill all 12 months so seasonality reads cleanly.
         let lookup = Dictionary(uniqueKeysWithValues: d.byMonth.map { ($0.month, $0.count) })
-        let months = (1...12).map { m -> (String, Int) in
-            let key = String(format: "%02d", m)
-            return (Self.monthNames[m], lookup[key] ?? 0)
-        }
-        let maxCount = max(months.map(\.1).max() ?? 1, 1)
-        return VStack(alignment: .leading, spacing: 12) {
+        let maxCount = max(lookup.values.max() ?? 1, 1)
+        return VStack(alignment: .leading, spacing: 8) {
             sectionTitle("Seasonality")
             HStack(alignment: .bottom, spacing: 5) {
-                ForEach(months, id: \.0) { name, count in
-                    barColumn(label: String(name.prefix(1)),
-                              value: count, maxCount: maxCount, tint: sky)
+                ForEach(1...12, id: \.self) { m in
+                    let key = String(format: "%02d", m)
+                    let count = lookup[key] ?? 0
+                    let bar = barColumn(label: String(Self.monthNames[m].prefix(1)),
+                                        value: count, maxCount: maxCount, tint: sky)
+                    if count > 0 {
+                        NavigationLink(destination: MonthClimbsView(
+                            mountainId: mountainId,
+                            month: key,
+                            title: "\(Self.fullMonthNames[m]) · \(d.name)"
+                        )) { bar }
+                        .buttonStyle(.plain)
+                    } else {
+                        bar
+                    }
                 }
             }
             .frame(height: 110)
@@ -151,6 +188,9 @@ struct MountainDetailView: View {
             .padding()
             .background(card)
             .cornerRadius(12)
+            Text("Tap a month to see those summits")
+                .font(.caption2)
+                .foregroundColor(.gray.opacity(0.55))
         }
     }
 
@@ -272,5 +312,88 @@ struct MountainDetailView: View {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+}
+
+// MARK: - Month drill-in
+
+struct MonthClimbsView: View {
+    let mountainId: Int
+    let month: String   // "01".."12"
+    let title: String
+
+    @State private var climbs: [RecentSummit] = []
+    @State private var isLoading = true
+
+    var body: some View {
+        Group {
+            if isLoading {
+                ProgressView().tint(.white).frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if climbs.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "mountain.2")
+                        .font(.system(size: 40))
+                        .foregroundColor(.gray.opacity(0.4))
+                    Text("No summits this month").foregroundColor(.gray)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(climbs) { c in
+                            NavigationLink(destination: ClimbDetailView(climbId: c.climbId)) {
+                                row(c)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding()
+                }
+            }
+        }
+        .background(bg.ignoresSafeArea())
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            climbs = (try? await APIClient.shared.mountainClimbs(mountainId, month: month)) ?? []
+            isLoading = false
+        }
+    }
+
+    private func row(_ c: RecentSummit) -> some View {
+        HStack(spacing: 10) {
+            Group {
+                if let urlStr = c.userAvatarUrl, let url = URL(string: urlStr) {
+                    CachedAsyncImage(url: url) { img in
+                        img.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: { avatarPlaceholder(c.userName) }
+                } else {
+                    avatarPlaceholder(c.userName)
+                }
+            }
+            .frame(width: 34, height: 34)
+            .clipShape(Circle())
+
+            Text(c.userName)
+                .font(.subheadline.bold())
+                .foregroundColor(.white)
+            Spacer()
+            Text(c.climbDate.shortClimbDate())
+                .font(.caption)
+                .foregroundColor(.gray)
+            Image(systemName: "chevron.right")
+                .font(.caption2.bold())
+                .foregroundColor(.gray.opacity(0.4))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(card)
+        .cornerRadius(10)
+    }
+
+    private func avatarPlaceholder(_ name: String) -> some View {
+        Circle()
+            .fill(sky.opacity(0.2))
+            .overlay(Text(name.prefix(1).uppercased()).font(.caption.bold()).foregroundColor(sky))
     }
 }

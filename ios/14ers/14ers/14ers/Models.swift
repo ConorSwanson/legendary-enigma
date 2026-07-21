@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Mountain
 
-struct Mountain: Codable, Identifiable, Sendable {
+struct Mountain: Codable, Identifiable, Sendable, Hashable {
     let id: Int
     let name: String
     let elevation: Int
