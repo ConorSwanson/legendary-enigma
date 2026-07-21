@@ -653,6 +653,8 @@ struct NotificationsView: View {
     @EnvironmentObject var userState: UserState
     @State private var notifications: [NotificationItem] = []
     @State private var isLoading = true
+    @State private var selectedUserId: Int?
+    @State private var userNavActive = false
     @Environment(\.dismiss) private var dismiss
 
     private let notifBg = Color(red: 3/255, green: 7/255, blue: 18/255)
@@ -678,11 +680,15 @@ struct NotificationsView: View {
                 } else {
                     List(notifications) { item in
                         NotificationRow(item: item) {
-                            guard let climbId = item.climbId else { return }
-                            userState.selectedTab = 0
-                            dismiss()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                                userState.pendingClimbId = climbId
+                            if let climbId = item.climbId {
+                                userState.selectedTab = 0
+                                dismiss()
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                                    userState.pendingClimbId = climbId
+                                }
+                            } else {
+                                selectedUserId = item.fromUserId
+                                userNavActive = true
                             }
                         }
                         .listRowBackground(notifCard)
@@ -693,6 +699,15 @@ struct NotificationsView: View {
                     .scrollContentBackground(.hidden)
                 }
             }
+            .background(
+                NavigationLink(
+                    isActive: $userNavActive,
+                    destination: {
+                        if let uid = selectedUserId { UserProfileView(userId: uid) }
+                    },
+                    label: { EmptyView() }
+                )
+            )
             .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
