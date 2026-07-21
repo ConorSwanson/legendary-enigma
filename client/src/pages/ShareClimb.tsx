@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import MountainBadge from '../components/MountainBadge';
 import type { Mountain } from '../types';
 
@@ -64,7 +64,14 @@ export default function ShareClimb() {
         <div className="text-center space-y-3">
           <div className="text-5xl">🔒</div>
           <p className="text-white font-bold text-xl">This climb is private</p>
-          <Link to="/" className="inline-block text-sky-400 text-sm">Open 14ers Tracker</Link>
+          <a
+            href="https://testflight.apple.com/join/DpQ4UtKE"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block text-sky-400 text-sm"
+          >
+            Get 14ers Tracker
+          </a>
         </div>
       </div>
     );
@@ -127,15 +134,17 @@ export default function ShareClimb() {
         )}
 
         {/* CTA */}
-        <Link
-          to="/"
+        <a
+          href="https://testflight.apple.com/join/DpQ4UtKE"
+          target="_blank"
+          rel="noopener noreferrer"
           className="block w-full text-center font-semibold py-3 rounded-xl text-sm transition-colors"
           style={{ background: '#38BDF8', color: '#030712' }}
           onMouseEnter={e => (e.currentTarget.style.background = '#7DD3FC')}
           onMouseLeave={e => (e.currentTarget.style.background = '#38BDF8')}
         >
           Track your own 14ers →
-        </Link>
+        </a>
 
         <p className="text-center text-gray-700 text-xs mt-3">
           14ers Tracker · All 58 Colorado 14ers
