@@ -27,7 +27,10 @@ async function pushToUser(userId, { title, body, climbId }) {
 
   const db = getDb();
   const tokens = db.prepare('SELECT token FROM device_tokens WHERE user_id = ?').all(userId);
-  if (!tokens.length) return;
+  if (!tokens.length) {
+    console.warn(`[Push] No device tokens registered for user ${userId} — skipping "${title}"`);
+    return;
+  }
 
   const note = new _apn.Notification();
   note.expiry = Math.floor(Date.now() / 1000) + 3600;
