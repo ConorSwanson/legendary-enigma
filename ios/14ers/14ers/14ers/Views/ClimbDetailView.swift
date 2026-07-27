@@ -42,7 +42,23 @@ struct ClimbDetailView: View {
             VStack(alignment: .leading, spacing: 0) {
                 if let climb {
                     Group {
-                        if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
+                        if let urls = climb.photoUrls, urls.count > 1 {
+                            TabView {
+                                ForEach(urls, id: \.self) { urlStr in
+                                    if let url = URL(string: urlStr) {
+                                        CachedAsyncImage(url: url) { img in
+                                            img.resizable().aspectRatio(contentMode: .fill)
+                                        } placeholder: {
+                                            card
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .clipped()
+                                    }
+                                }
+                            }
+                            .tabViewStyle(.page(indexDisplayMode: .always))
+                            .indexViewStyle(.page(backgroundDisplayMode: .always))
+                        } else if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
                             CachedAsyncImage(url: url) { img in
                                 img.resizable().aspectRatio(contentMode: .fill)
                             } placeholder: {

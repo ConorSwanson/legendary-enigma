@@ -155,7 +155,7 @@ actor APIClient {
         try await request("/climbs/\(id)")
     }
 
-    func logClimb(mountainId: Int, date: String, notes: String?, visibility: String, photoData: Data? = nil) async throws -> Int {
+    func logClimb(mountainId: Int, date: String, notes: String?, visibility: String, photosData: [Data] = []) async throws -> Int {
         guard let url = URL(string: baseURL + "/api/climbs") else {
             throw APIError.serverError("Invalid URL")
         }
@@ -173,8 +173,8 @@ actor APIClient {
         field("climb_date", date)
         if let notes = notes { field("notes", notes) }
         field("visibility", visibility)
-        if let photo = photoData {
-            body.append(contentsOf: "--\(boundary)\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n".utf8)
+        for (i, photo) in photosData.enumerated() {
+            body.append(contentsOf: "--\(boundary)\r\nContent-Disposition: form-data; name=\"photos\"; filename=\"photo\(i).jpg\"\r\nContent-Type: image/jpeg\r\n\r\n".utf8)
             body.append(photo)
             body.append(contentsOf: "\r\n".utf8)
         }

@@ -26,6 +26,7 @@ struct Climb: Codable, Identifiable, Sendable {
     let climbDate: String
     let notes: String?
     let photoUrl: String?
+    let photoUrls: [String]?
     let visibility: String
     let createdAt: String
     let userId: Int?
@@ -43,6 +44,7 @@ struct Climb: Codable, Identifiable, Sendable {
         case elevation, range
         case climbDate    = "climb_date"
         case photoUrl     = "photo_url"
+        case photoUrls    = "photo_urls"
         case createdAt    = "created_at"
         case userId       = "user_id"
         case userName     = "user_name"
@@ -351,6 +353,10 @@ struct NotificationItem: Codable, Identifiable, Sendable {
 }
 
 // MARK: - Peak GPS Coordinates
+
+/// Shared by LogClimbView (EXIF peak-detection) and NearbyPeakPhotosView
+/// (library scan) — both match a photo's location against the 58 peaks.
+let twoMilesMeters: Double = 3_218.69
 
 struct PeakCoordinate: Sendable {
     let mountainId: Int

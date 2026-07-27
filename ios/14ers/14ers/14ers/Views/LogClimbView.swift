@@ -1,14 +1,19 @@
 import SwiftUI
 import PhotosUI
-import Photos
 import CoreLocation
 import ImageIO
 import UIKit
 
-private let twoMilesMeters: Double = 3_218.69
+private let bg      = Color(red: 3/255,   green: 7/255,   blue: 18/255)
+private let card    = Color(red: 17/255,  green: 24/255,  blue: 39/255)
+private let card2   = Color(red: 11/255,  green: 18/255,  blue: 32/255)
+private let emerald = Color(red: 52/255,  green: 211/255, blue: 153/255)
+private let sky     = Color(red: 56/255,  green: 189/255, blue: 248/255)
+private let ink     = Color(red: 3/255,   green: 7/255,   blue: 18/255)
 
 struct LogClimbView: View {
     @State private var mountains: [Mountain] = []
+    @State private var climbedIds: Set<Int> = []
     @State private var selectedMountainId: Int?
     @State private var date = Date()
     @State private var notes = ""
@@ -19,77 +24,69 @@ struct LogClimbView: View {
     @State private var successAscentCount: Int = 1
     @EnvironmentObject var userState: UserState
 
-    // Manual photo picker
-    @State private var pickerItem: PhotosPickerItem?
-    @State private var photoData: Data?
-    @State private var photoImage: Image?
+    // Photos — ordered; index 0 is the cover
+    @State private var photosData: [Data] = []
+    @State private var pickerItems: [PhotosPickerItem] = []
 
-    // Smart suggestions
-    @State private var suggestedAssets: [(asset: PHAsset, mountainId: Int)] = []
-    @State private var selectedSuggestedId: String?
-    @State private var isSearching = false
-    @State private var didSearch = false
-    @State private var photoAccessDenied = false
+    // Sheets
+    @State private var showPeakPicker = false
+    @State private var showDatePicker = false
+    @State private var showNearbyPhotos = false
 
-    // Mountain auto-detect from EXIF
+    // Soft suggestion from a manually-picked photo's EXIF GPS (tap to accept)
     @State private var detectedMountainId: Int?
     @State private var detectedMountainName: String?
-
-    // Full-size photo preview (swipeable)
-    @State private var previewStartIndex: Int?
 
     // Success modal data
     @State private var successMountain: Mountain?
     @State private var successDate: Date = Date()
     @State private var successClimbId: Int = 0
 
+    private var selectedMountain: Mountain? {
+        mountains.first(where: { $0.id == selectedMountainId })
+    }
+
     var body: some View {
         NavigationView {
-            Form {
-                peakSection
-                if let detectedId = detectedMountainId,
-                   let detectedName = detectedMountainName,
-                   selectedMountainId == nil {
-                    Section {
-                        Button { selectedMountainId = detectedId } label: {
-                            Label("Near \(detectedName) — tap to select", systemImage: "mappin.circle.fill")
-                                .font(.subheadline)
-                                .foregroundColor(.orange)
-                        }
+            ScrollView {
+                VStack(spacing: 0) {
+                    LogHeroScene()
+
+                    VStack(spacing: 12) {
+                        peakCard
+                        dateRow
+                        photosSection
+                        notesSection
+                        visibilityPills
                     }
+                    .padding()
+                    .padding(.top, -30)
                 }
-                dateSection
-                photoSection
-                notesSection
-                visibilitySection
-                if let saveError {
-                    Section {
-                        Text(saveError).foregroundColor(.red).font(.caption)
-                    }
-                }
-                saveSection
             }
+            .background(bg.ignoresSafeArea())
             .navigationTitle("Log a Climb")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
                 ToolbarItem(placement: .navigationBarTrailing) { NotificationBellButton() }
             }
+            .safeAreaInset(edge: .bottom) { ctaBar }
         }
-        .task { mountains = (try? await APIClient.shared.mountains()) ?? [] }
-        .onChange(of: pickerItem) { Task { await loadPickedPhoto() } }
-        .sheet(isPresented: Binding(get: { previewStartIndex != nil }, set: { if !$0 { previewStartIndex = nil } })) {
-            if let idx = previewStartIndex {
-                PhotoPreviewSheet(
-                    items: suggestedAssets.map { item in
-                        PhotoPreviewSheet.Item(
-                            asset: item.asset,
-                            mountainName: mountains.first(where: { $0.id == item.mountainId })?.name,
-                            date: item.asset.creationDate
-                        )
-                    },
-                    startIndex: idx
-                )
+        .task { await loadMountains() }
+        .onChange(of: pickerItems) { Task { await loadPickedPhotos() } }
+        .sheet(isPresented: $showPeakPicker) {
+            PeakPickerView(mountains: mountains, climbedIds: climbedIds) { m in
+                selectedMountainId = m.id
+                detectedMountainId = nil
+                detectedMountainName = nil
+            }
+        }
+        .sheet(isPresented: $showDatePicker) {
+            ClimbDatePickerView(date: $date)
+        }
+        .sheet(isPresented: $showNearbyPhotos) {
+            NearbyPeakPhotosView(mountains: mountains) { selections in
+                addNearbyPhotos(selections)
             }
         }
         .sheet(isPresented: $showSuccess, onDismiss: resetForm) {
@@ -99,259 +96,313 @@ struct LogClimbView: View {
         }
     }
 
-    // MARK: - Form Sections
+    // MARK: - Peak
 
     @ViewBuilder
-    private var peakSection: some View {
-        Section("Peak") {
-            if mountains.isEmpty {
-                ProgressView()
-            } else {
-                Picker("Mountain", selection: $selectedMountainId) {
-                    Text("Select a peak").tag(nil as Int?)
-                    ForEach(mountains) { m in
-                        Text("\(m.name) — \(m.elevation.formatted()) ft").tag(m.id as Int?)
+    private var peakCard: some View {
+        Button { showPeakPicker = true } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("PEAK")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(0.8)
+                        .foregroundColor(.gray)
+                    if let m = selectedMountain {
+                        Text(m.name)
+                            .font(.title3.bold())
+                            .foregroundColor(.white)
+                        Text("\(m.elevation.formatted()) ft · \(m.range)")
+                            .font(.caption.bold())
+                            .foregroundColor(emerald)
+                    } else {
+                        Text("Select a Peak")
+                            .font(.title3.bold())
+                            .foregroundColor(.gray)
                     }
                 }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundColor(.gray)
             }
+            .padding(15)
+            .background(card)
+            .cornerRadius(16)
+        }
+        .buttonStyle(.plain)
+
+        if let detectedId = detectedMountainId,
+           let detectedName = detectedMountainName,
+           selectedMountainId == nil {
+            Button {
+                selectedMountainId = detectedId
+                detectedMountainId = nil
+                detectedMountainName = nil
+            } label: {
+                Label("Near \(detectedName) — tap to select", systemImage: "mappin.circle.fill")
+                    .font(.caption.bold())
+                    .foregroundColor(.orange)
+            }
+            .padding(.horizontal, 4)
         }
     }
 
-    @ViewBuilder
-    private var dateSection: some View {
-        Section("Date") {
-            DatePicker("Climb Date", selection: $date, in: ...Date(), displayedComponents: .date)
+    // MARK: - Date
+
+    private var dateRow: some View {
+        Button { showDatePicker = true } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "calendar")
+                    .font(.subheadline)
+                    .foregroundColor(sky)
+                    .frame(width: 34, height: 34)
+                    .background(sky.opacity(0.15))
+                    .cornerRadius(10)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("CLIMB DATE")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(0.8)
+                        .foregroundColor(.gray)
+                    Text(date.formatted(date: .abbreviated, time: .omitted))
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundColor(.gray)
+            }
+            .padding(13)
+            .background(card)
+            .cornerRadius(14)
         }
+        .buttonStyle(.plain)
     }
 
+    // MARK: - Photos
+
     @ViewBuilder
-    private var photoSection: some View {
-        Section("Photo (optional)") {
-            // Suggested results
-            if !suggestedAssets.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Nearby climb photos (\(suggestedAssets.count) found)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+    private var photosSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("PHOTOS")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(0.8)
+                    .foregroundColor(.gray)
+                Spacer()
+                if !photosData.isEmpty {
+                    Text("\(photosData.count) added")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 9)
+
+            VStack(spacing: 10) {
+                if !photosData.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(suggestedAssets.indices, id: \.self) { idx in
-                                let item = suggestedAssets[idx]
-                                ZStack(alignment: .topTrailing) {
-                                    SuggestedPhotoThumb(asset: item.asset)
-                                        .frame(width: 80, height: 80)
-                                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(
-                                                    selectedSuggestedId == item.asset.localIdentifier
-                                                        ? Color.accentColor : Color.clear,
-                                                    lineWidth: 2
-                                                )
-                                        )
-                                        .onTapGesture { Task { await selectSuggested(item) } }
-                                    Button {
-                                        previewStartIndex = idx
-                                    } label: {
-                                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                            .font(.system(size: 8, weight: .bold))
-                                            .foregroundColor(.white)
-                                            .padding(4)
-                                            .background(Color.black.opacity(0.55))
-                                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                                    }
-                                    .padding(4)
-                                }
+                            ForEach(Array(photosData.enumerated()), id: \.offset) { idx, data in
+                                photoThumb(data, isCover: idx == 0) { removePhoto(at: idx) }
                             }
                         }
+                    }
+                }
+
+                VStack(spacing: 7) {
+                    Button { showNearbyPhotos = true } label: {
+                        actionButtonLabel(icon: "mappin.and.ellipse", text: "Find Prior Climb Photos", primary: true)
+                    }
+                    .buttonStyle(.plain)
+
+                    PhotosPicker(selection: $pickerItems, maxSelectionCount: 10, matching: .images) {
+                        actionButtonLabel(icon: "photo.on.rectangle", text: "Choose from Library", primary: false)
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 12)
+        }
+        .background(card)
+        .cornerRadius(16)
+    }
+
+    private func photoThumb(_ data: Data, isCover: Bool, onRemove: @escaping () -> Void) -> some View {
+        ZStack(alignment: .topTrailing) {
+            Group {
+                if let uiImage = UIImage(data: data) {
+                    Image(uiImage: uiImage).resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    card2
+                }
+            }
+            .frame(width: 64, height: 64)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(alignment: .bottom) {
+                if isCover {
+                    Text("COVER")
+                        .font(.system(size: 7, weight: .black))
+                        .foregroundColor(emerald)
+                        .padding(.horizontal, 4)
                         .padding(.vertical, 2)
-                    }
+                        .background(Color.black.opacity(0.7))
+                        .cornerRadius(4)
+                        .padding(.bottom, 3)
                 }
             }
 
-            // Find button
-            if !didSearch {
-                Button {
-                    Task { await searchNearbyPhotos() }
-                } label: {
-                    HStack {
-                        if isSearching {
-                            ProgressView().controlSize(.small)
-                        } else {
-                            Image(systemName: "mappin.and.ellipse")
-                        }
-                        Text(isSearching ? "Scanning photo library…" : "Find Nearby Climb Photos")
-                    }
-                }
-                .disabled(isSearching)
-            } else if suggestedAssets.isEmpty && !photoAccessDenied {
-                Label("No climb photos found near the 58 peaks", systemImage: "xmark.circle")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 15))
+                    .foregroundColor(.white)
+                    .background(Circle().fill(Color.black.opacity(0.6)))
             }
-
-            if photoAccessDenied {
-                Label("Allow photo access in Settings to enable this feature", systemImage: "lock.fill")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            // Browse all manually
-            PhotosPicker(selection: $pickerItem, matching: .images) {
-                HStack {
-                    if let photoImage {
-                        photoImage
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 60, height: 60)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                    }
-                    Text(photoData == nil ? "Browse All Photos" : "Change Photo")
-                        .foregroundColor(.accentColor)
-                }
-            }
-
-            if photoData != nil {
-                Button("Remove Photo", role: .destructive) { clearPhoto() }
-            }
+            .buttonStyle(.plain)
+            .offset(x: 5, y: -5)
         }
     }
 
-    @ViewBuilder
+    private func actionButtonLabel(icon: String, text: String, primary: Bool) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: icon)
+            Text(text).bold()
+        }
+        .font(.subheadline)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(primary ? sky.opacity(0.14) : card2)
+        .foregroundColor(primary ? sky : .white)
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(primary ? sky.opacity(0.4) : Color.white.opacity(0.06), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Notes
+
     private var notesSection: some View {
-        Section("Notes (optional)") {
-            TextEditor(text: $notes).frame(minHeight: 80)
-        }
-    }
+        VStack(alignment: .leading, spacing: 0) {
+            Text("NOTES")
+                .font(.system(size: 10, weight: .bold))
+                .tracking(0.8)
+                .foregroundColor(.gray)
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
 
-    @ViewBuilder
-    private var visibilitySection: some View {
-        Section("Visibility") {
-            Picker("Who can see this", selection: $visibility) {
-                Text("Public").tag("public")
-                Text("Followers").tag("followers")
-                Text("Private").tag("private")
-            }
-            .pickerStyle(.segmented)
-        }
-    }
-
-    @ViewBuilder
-    private var saveSection: some View {
-        Section {
-            Button { Task { await save() } } label: {
-                HStack {
-                    Spacer()
-                    Text(isSaving ? "Saving…" : "Log Climb").bold()
-                    Spacer()
+            ZStack(alignment: .topLeading) {
+                if notes.isEmpty {
+                    Text("How was the climb? Weather, route, partners…")
+                        .font(.subheadline)
+                        .foregroundColor(Color(white: 0.35))
+                        .padding(.horizontal, 18)
+                        .padding(.top, 8)
                 }
+                TextEditor(text: $notes)
+                    .scrollContentBackground(.hidden)
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                    .tint(sky)
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 80)
+            }
+            .padding(.bottom, 8)
+        }
+        .background(card)
+        .cornerRadius(16)
+    }
+
+    // MARK: - Visibility
+
+    private var visibilityPills: some View {
+        HStack(spacing: 8) {
+            visibilityPill(value: "public", icon: "globe", label: "Public")
+            visibilityPill(value: "followers", icon: "person.2.fill", label: "Followers")
+            visibilityPill(value: "private", icon: "lock.fill", label: "Private")
+        }
+    }
+
+    private func visibilityPill(value: String, icon: String, label: String) -> some View {
+        let isOn = visibility == value
+        return Button { visibility = value } label: {
+            HStack(spacing: 5) {
+                Image(systemName: icon).font(.caption)
+                Text(label).font(.caption.bold())
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 9)
+            .background(isOn ? sky : card)
+            .foregroundColor(isOn ? ink : .gray)
+            .cornerRadius(20)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - CTA
+
+    private var ctaBar: some View {
+        VStack(spacing: 6) {
+            if selectedMountainId == nil {
+                Text("Select a peak to continue")
+                    .font(.caption2)
+                    .foregroundColor(.gray)
+            }
+            if let saveError {
+                Text(saveError).font(.caption).foregroundColor(.red)
+            }
+            Button {
+                Task { await save() }
+            } label: {
+                Group {
+                    if isSaving {
+                        ProgressView().tint(ink)
+                    } else {
+                        Text("Log Climb").bold()
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(selectedMountainId == nil ? card : emerald)
+                .foregroundColor(selectedMountainId == nil ? .gray : ink)
+                .cornerRadius(16)
             }
             .disabled(selectedMountainId == nil || isSaving)
         }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
     }
 
-    // MARK: - Smart photo search
+    // MARK: - Photo intake
 
-    private func searchNearbyPhotos() async {
-        isSearching = true
-
-        let status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
-        guard status == .authorized || status == .limited else {
-            isSearching = false
-            didSearch = true
-            photoAccessDenied = true
-            return
-        }
-
-        let peaks = allPeakCoordinates
-
-        // Scan on background thread — return only Sendable (String, Int) pairs
-        let found: [(String, Int)] = await withCheckedContinuation { cont in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let opts = PHFetchOptions()
-                opts.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-                let result = PHAsset.fetchAssets(with: .image, options: opts)
-                var nearby: [(String, Int)] = []
-                result.enumerateObjects { asset, _, stop in
-                    guard let loc = asset.location else { return }
-                    for peak in peaks {
-                        let d = CLLocation(latitude: peak.latitude, longitude: peak.longitude)
-                            .distance(from: loc)
-                        if d <= twoMilesMeters {
-                            nearby.append((asset.localIdentifier, peak.mountainId))
-                            return
-                        }
-                    }
-                    if nearby.count >= 30 { stop.pointee = true }
-                }
-                cont.resume(returning: nearby)
-            }
-        }
-
-        // Re-fetch PHAssets on main actor by localIdentifier
-        let ids = found.map(\.0)
-        let refetch = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil)
-        var pairs: [(asset: PHAsset, mountainId: Int)] = []
-        refetch.enumerateObjects { asset, _, _ in
-            if let match = found.first(where: { $0.0 == asset.localIdentifier }) {
-                pairs.append((asset: asset, mountainId: match.1))
-            }
-        }
-
-        suggestedAssets = pairs
-        isSearching = false
-        didSearch = true
+    private func removePhoto(at index: Int) {
+        guard photosData.indices.contains(index) else { return }
+        photosData.remove(at: index)
     }
 
-    // MARK: - Select a suggested photo
-
-    private func selectSuggested(_ item: (asset: PHAsset, mountainId: Int)) async {
-        selectedSuggestedId = item.asset.localIdentifier
-        pickerItem = nil
-
-        // Auto-suggest the mountain
-        detectedMountainId = item.mountainId
-        detectedMountainName = mountains.first(where: { $0.id == item.mountainId })?.name
-
-        // Use photo's creation date as the climb date
-        if let creationDate = item.asset.creationDate {
-            date = creationDate
+    private func addNearbyPhotos(_ selections: [NearbyPhotoSelection]) {
+        let wasEmpty = photosData.isEmpty
+        for (i, sel) in selections.enumerated() {
+            photosData.append(sel.data)
+            if wasEmpty && i == 0 {
+                if selectedMountainId == nil { selectedMountainId = sel.mountainId }
+                if let d = sel.date { date = d }
+            }
         }
+    }
 
-        let opts = PHImageRequestOptions()
-        opts.deliveryMode = .highQualityFormat
-        opts.isNetworkAccessAllowed = true
-        opts.version = .current
-
-        let raw: Data? = await withCheckedContinuation { cont in
-            PHImageManager.default()
-                .requestImageDataAndOrientation(for: item.asset, options: opts) { data, _, _, _ in
-                    cont.resume(returning: data)
-                }
-        }
-
-        if let raw {
+    private func loadPickedPhotos() async {
+        guard !pickerItems.isEmpty else { return }
+        let wasEmpty = photosData.isEmpty
+        for item in pickerItems {
+            guard let raw = try? await item.loadTransferable(type: Data.self) else { continue }
             let compressed = compressPhoto(raw)
-            photoData = compressed
-            if let uiImage = UIImage(data: compressed) {
-                photoImage = Image(uiImage: uiImage)
+            photosData.append(compressed)
+            if wasEmpty && photosData.count == 1 {
+                detectPeakFromExif(raw)
+                extractDateFromExif(raw)
             }
         }
-    }
-
-    // MARK: - Manual picker load + EXIF
-
-    private func loadPickedPhoto() async {
-        guard let item = pickerItem,
-              let raw = try? await item.loadTransferable(type: Data.self) else { return }
-        let compressed = compressPhoto(raw)
-        photoData = compressed
-        selectedSuggestedId = nil
-        if let uiImage = UIImage(data: compressed) {
-            photoImage = Image(uiImage: uiImage)
-        }
-        detectPeakFromExif(raw)
-        extractDateFromExif(raw)
+        pickerItems = []
     }
 
     private func extractDateFromExif(_ data: Data) {
@@ -407,15 +458,6 @@ struct LogClimbView: View {
 
     // MARK: - Helpers
 
-    private func clearPhoto() {
-        pickerItem = nil
-        photoData = nil
-        photoImage = nil
-        selectedSuggestedId = nil
-        detectedMountainId = nil
-        detectedMountainName = nil
-    }
-
     private func compressPhoto(_ data: Data) -> Data {
         guard let uiImage = UIImage(data: data) else { return data }
         let maxDim: CGFloat = 1200
@@ -426,6 +468,11 @@ struct LogClimbView: View {
         let renderer = UIGraphicsImageRenderer(size: newSize)
         let resized = renderer.image { _ in uiImage.draw(in: CGRect(origin: .zero, size: newSize)) }
         return resized.jpegData(compressionQuality: 0.8) ?? data
+    }
+
+    private func loadMountains() async {
+        if let ms = try? await APIClient.shared.mountains() { mountains = ms }
+        if let stats = try? await APIClient.shared.stats() { climbedIds = Set(stats.climbedIds) }
     }
 
     private func save() async {
@@ -442,7 +489,7 @@ struct LogClimbView: View {
                 date: formatter.string(from: date),
                 notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes,
                 visibility: visibility,
-                photoData: photoData
+                photosData: photosData
             )
             let allAscents = (try? await APIClient.shared.climbs(mountainId: mountainId)) ?? []
             successMountain = mountains.first(where: { $0.id == mountainId })
@@ -461,139 +508,146 @@ struct LogClimbView: View {
         date = Date()
         notes = ""
         visibility = "public"
-        clearPhoto()
-        suggestedAssets = []
-        didSearch = false
-        photoAccessDenied = false
+        photosData = []
+        pickerItems = []
+        detectedMountainId = nil
+        detectedMountainName = nil
         userState.selectedTab = 1
     }
 }
 
-// MARK: - Suggested photo thumbnail
+// MARK: - Hero scene
 
-private struct SuggestedPhotoThumb: View {
-    let asset: PHAsset
-    @State private var image: UIImage?
-
-    var body: some View {
-        Group {
-            if let image {
-                Image(uiImage: image).resizable().aspectRatio(contentMode: .fill)
-            } else {
-                Color(.systemGray5)
-            }
-        }
-        .task { image = await loadThumb() }
-    }
-
-    private func loadThumb() async -> UIImage? {
-        let opts = PHImageRequestOptions()
-        opts.deliveryMode = .fastFormat
-        opts.isNetworkAccessAllowed = false
-        return await withCheckedContinuation { cont in
-            PHImageManager.default().requestImage(
-                for: asset,
-                targetSize: CGSize(width: 160, height: 160),
-                contentMode: .aspectFill,
-                options: opts
-            ) { img, _ in cont.resume(returning: img) }
-        }
-    }
-}
-
-// MARK: - Swipeable full-size photo preview
-
-private struct PhotoPreviewSheet: View {
-    struct Item {
-        let asset: PHAsset
-        let mountainName: String?
-        let date: Date?
-    }
-
-    let items: [Item]
-    let startIndex: Int
-    @State private var currentPage: Int
-    @Environment(\.dismiss) private var dismiss
-
-    init(items: [Item], startIndex: Int) {
-        self.items = items
-        self.startIndex = startIndex
-        _currentPage = State(initialValue: startIndex)
-    }
-
-    var body: some View {
-        ZStack(alignment: .topTrailing) {
-            Color.black.ignoresSafeArea()
-            TabView(selection: $currentPage) {
-                ForEach(items.indices, id: \.self) { idx in
-                    PhotoPageView(item: items[idx]).tag(idx)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: items.count > 1 ? .automatic : .never))
-            .ignoresSafeArea()
-
-            Button { dismiss() } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 30))
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(Color.white, Color.black.opacity(0.5))
-                    .padding()
-            }
-        }
-    }
-}
-
-private struct PhotoPageView: View {
-    let item: PhotoPreviewSheet.Item
-    @State private var image: UIImage?
-
+/// Generative alpenglow scene for the Log a Climb hero — sunset sky, layered
+/// ridgelines with snow-cap highlights, a few stars. Same Canvas approach as
+/// MountainPlaceholder, but a single fixed palette since this isn't tied to
+/// any specific peak.
+private struct LogHeroScene: View {
     var body: some View {
         ZStack {
-            Color.black
-            if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-            } else {
-                ProgressView().tint(.white)
-            }
-            if item.mountainName != nil || item.date != nil {
-                VStack {
-                    Spacer()
-                    VStack(spacing: 4) {
-                        if let name = item.mountainName {
-                            Text(name)
-                                .font(.headline.bold())
-                                .foregroundColor(.white)
-                        }
-                        if let d = item.date {
-                            Text(d, style: .date)
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.75))
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(Color.black.opacity(0.55))
-                    .cornerRadius(10)
-                    .padding(.bottom, 52)
-                }
-            }
-        }
-        .task { image = await loadFullImage() }
-    }
+            GeometryReader { geo in
+                let w = geo.size.width, h = geo.size.height
+                Canvas { ctx, size in
+                    ctx.fill(
+                        Path(CGRect(origin: .zero, size: size)),
+                        with: .linearGradient(
+                            Gradient(stops: [
+                                .init(color: Color(red: 52/255, green: 21/255, blue: 48/255), location: 0),
+                                .init(color: Color(red: 122/255, green: 58/255, blue: 74/255), location: 0.45),
+                                .init(color: Color(red: 201/255, green: 106/255, blue: 78/255), location: 0.75),
+                                .init(color: Color(red: 232/255, green: 146/255, blue: 90/255), location: 1),
+                            ]),
+                            startPoint: .zero,
+                            endPoint: CGPoint(x: 0, y: size.height)
+                        )
+                    )
 
-    private func loadFullImage() async -> UIImage? {
-        let opts = PHImageRequestOptions()
-        opts.deliveryMode = .highQualityFormat
-        opts.isNetworkAccessAllowed = true
-        opts.version = .current
-        return await withCheckedContinuation { cont in
-            PHImageManager.default()
-                .requestImageDataAndOrientation(for: item.asset, options: opts) { data, _, _, _ in
-                    cont.resume(returning: data.flatMap { UIImage(data: $0) })
+                    ctx.fill(
+                        Path(ellipseIn: CGRect(x: w * 0.42, y: h * 0.35, width: w * 0.9, height: w * 0.9)),
+                        with: .radialGradient(
+                            Gradient(colors: [Color(red: 1, green: 220/255, blue: 160/255).opacity(0.55), .clear]),
+                            center: CGPoint(x: w * 0.87, y: h * 0.8),
+                            startRadius: 0, endRadius: w * 0.45
+                        )
+                    )
+
+                    for star in [(0.14, 0.13, 1.3), (0.26, 0.08, 1.0), (0.44, 0.11, 1.4), (0.8, 0.07, 1.0), (0.89, 0.15, 1.2)] {
+                        ctx.fill(
+                            Path(ellipseIn: CGRect(x: w * star.0, y: h * star.1, width: star.2, height: star.2)),
+                            with: .color(.white.opacity(0.6))
+                        )
+                    }
+
+                    var far = Path()
+                    far.move(to: CGPoint(x: 0, y: h))
+                    far.addLines([
+                        CGPoint(x: 0,          y: h * 0.63),
+                        CGPoint(x: w * 0.07,   y: h * 0.48),
+                        CGPoint(x: w * 0.15,   y: h * 0.57),
+                        CGPoint(x: w * 0.23,   y: h * 0.37),
+                        CGPoint(x: w * 0.33,   y: h * 0.52),
+                        CGPoint(x: w * 0.43,   y: h * 0.33),
+                        CGPoint(x: w * 0.53,   y: h * 0.49),
+                        CGPoint(x: w * 0.63,   y: h * 0.38),
+                        CGPoint(x: w * 0.71,   y: h * 0.54),
+                        CGPoint(x: w * 0.81,   y: h * 0.43),
+                        CGPoint(x: w * 0.9,    y: h * 0.55),
+                        CGPoint(x: w,          y: h * 0.46),
+                        CGPoint(x: w,          y: h),
+                    ])
+                    far.closeSubpath()
+                    ctx.fill(far, with: .color(Color(red: 122/255, green: 74/255, blue: 94/255).opacity(0.75)))
+
+                    var mid = Path()
+                    mid.move(to: CGPoint(x: 0, y: h))
+                    mid.addLines([
+                        CGPoint(x: 0,          y: h * 0.75),
+                        CGPoint(x: w * 0.09,   y: h * 0.59),
+                        CGPoint(x: w * 0.19,   y: h * 0.7),
+                        CGPoint(x: w * 0.29,   y: h * 0.49),
+                        CGPoint(x: w * 0.39,   y: h * 0.67),
+                        CGPoint(x: w * 0.5,    y: h * 0.45),
+                        CGPoint(x: w * 0.6,    y: h * 0.63),
+                        CGPoint(x: w * 0.71,   y: h * 0.53),
+                        CGPoint(x: w * 0.8,    y: h * 0.68),
+                        CGPoint(x: w * 0.89,   y: h * 0.57),
+                        CGPoint(x: w,          y: h * 0.71),
+                        CGPoint(x: w,          y: h),
+                    ])
+                    mid.closeSubpath()
+                    ctx.fill(mid, with: .color(Color(red: 77/255, green: 44/255, blue: 66/255)))
+
+                    var near = Path()
+                    near.move(to: CGPoint(x: 0, y: h))
+                    near.addLines([
+                        CGPoint(x: 0,          y: h * 0.88),
+                        CGPoint(x: w * 0.11,   y: h * 0.67),
+                        CGPoint(x: w * 0.2,    y: h * 0.77),
+                        CGPoint(x: w * 0.31,   y: h * 0.54),
+                        CGPoint(x: w * 0.35,   y: h * 0.59),
+                        CGPoint(x: w * 0.36,   y: h * 0.54),
+                        CGPoint(x: w * 0.47,   y: h * 0.75),
+                        CGPoint(x: w * 0.57,   y: h * 0.59),
+                        CGPoint(x: w * 0.6,    y: h * 0.63),
+                        CGPoint(x: w * 0.63,   y: h * 0.59),
+                        CGPoint(x: w * 0.75,   y: h * 0.81),
+                        CGPoint(x: w * 0.87,   y: h * 0.71),
+                        CGPoint(x: w,          y: h * 0.83),
+                        CGPoint(x: w,          y: h),
+                    ])
+                    near.closeSubpath()
+                    ctx.fill(near, with: .color(Color(red: 36/255, green: 19/255, blue: 38/255)))
+
+                    let snowCap: (Double, Double, Double) -> Void = { cx, top, spread in
+                        var cap = Path()
+                        cap.move(to: CGPoint(x: w * (cx - spread), y: h * (top + 0.05)))
+                        cap.addLine(to: CGPoint(x: w * cx, y: h * top))
+                        cap.addLine(to: CGPoint(x: w * (cx + spread), y: h * (top + 0.05)))
+                        ctx.fill(cap, with: .color(Color(red: 244/255, green: 233/255, blue: 218/255).opacity(0.85)))
+                    }
+                    snowCap(0.31, 0.54, 0.035)
+                    snowCap(0.47, 0.45, 0.035)
+                    snowCap(0.6, 0.59, 0.03)
                 }
+            }
+
+            LinearGradient(
+                colors: [.clear, ink.opacity(0.15), ink.opacity(0.95)],
+                startPoint: .top, endPoint: .bottom
+            )
+
+            VStack(spacing: 6) {
+                Text("🏔️").font(.system(size: 22))
+                Text("Every summit earns a badge — let's earn one")
+                    .font(.subheadline.bold())
+                    .foregroundColor(.white.opacity(0.92))
+                    .shadow(color: .black.opacity(0.5), radius: 8, y: 2)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 24)
         }
+        .frame(height: 190)
+        .clipped()
     }
 }
 
