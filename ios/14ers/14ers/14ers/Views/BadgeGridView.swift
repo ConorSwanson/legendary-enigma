@@ -264,19 +264,21 @@ struct BadgesView: View {
 private struct LeaderboardRow: View {
     let entry: LeaderboardEntry
 
-    private var medal: String? {
+    private var medalColor: Color? {
         switch entry.position {
-        case 1: return "🥇"
-        case 2: return "🥈"
-        case 3: return "🥉"
+        case 1: return Color(red: 255/255, green: 215/255, blue: 0/255)
+        case 2: return Color(red: 197/255, green: 202/255, blue: 210/255)
+        case 3: return Color(red: 205/255, green: 133/255, blue: 63/255)
         default: return nil
         }
     }
 
     var body: some View {
         HStack(spacing: 12) {
-            if let medal {
-                Text(medal).font(.title3)
+            if let medalColor {
+                Image(systemName: "medal.fill")
+                    .font(.title3)
+                    .foregroundColor(medalColor)
                     .frame(width: 28)
             } else {
                 Text("\(entry.position)")
