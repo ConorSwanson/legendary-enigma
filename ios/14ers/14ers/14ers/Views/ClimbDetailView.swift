@@ -417,6 +417,7 @@ struct ClimbDetailView: View {
             if let data = try? JSONEncoder().encode(fetched), let json = String(data: data, encoding: .utf8) {
                 print("[ClimbDetailView] DEBUG climb \(climbId): \(json)")
             }
+            print("[ClimbDetailView] DEBUG codepoints name=\(Array(fetched.mountainName.unicodeScalars).map { $0.value }) range=\(Array(fetched.range.unicodeScalars).map { $0.value }) count.name=\(fetched.mountainName.count) count.utf8=\(fetched.mountainName.utf8.count) count.scalars=\(fetched.mountainName.unicodeScalars.count)")
             liked = fetched.isLiked ?? false
             likeCount = fetched.likeCount ?? 0
             if fetched.isOwner == true {
