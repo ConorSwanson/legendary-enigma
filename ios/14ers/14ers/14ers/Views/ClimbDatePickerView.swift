@@ -24,7 +24,7 @@ struct ClimbDatePickerView: View {
 
     private var years: [Int] {
         let current = Calendar.current.component(.year, from: Date())
-        return Array((current - 60)...current).reversed()
+        return Array(((current - 60)...current).reversed())
     }
 
     init(date: Binding<Date>) {

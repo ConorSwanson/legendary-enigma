@@ -618,16 +618,14 @@ private struct LogHeroScene: View {
                     near.closeSubpath()
                     ctx.fill(near, with: .color(Color(red: 36/255, green: 19/255, blue: 38/255)))
 
-                    let snowCap: (Double, Double, Double) -> Void = { cx, top, spread in
+                    let snowTint = Color(red: 244/255, green: 233/255, blue: 218/255).opacity(0.85)
+                    for (cx, top, spread) in [(0.31, 0.54, 0.035), (0.47, 0.45, 0.035), (0.6, 0.59, 0.03)] {
                         var cap = Path()
                         cap.move(to: CGPoint(x: w * (cx - spread), y: h * (top + 0.05)))
                         cap.addLine(to: CGPoint(x: w * cx, y: h * top))
                         cap.addLine(to: CGPoint(x: w * (cx + spread), y: h * (top + 0.05)))
-                        ctx.fill(cap, with: .color(Color(red: 244/255, green: 233/255, blue: 218/255).opacity(0.85)))
+                        ctx.fill(cap, with: .color(snowTint))
                     }
-                    snowCap(0.31, 0.54, 0.035)
-                    snowCap(0.47, 0.45, 0.035)
-                    snowCap(0.6, 0.59, 0.03)
                 }
             }
 
