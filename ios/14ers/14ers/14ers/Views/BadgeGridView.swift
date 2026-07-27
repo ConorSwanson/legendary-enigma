@@ -40,6 +40,7 @@ struct BadgesView: View {
     @State private var leaderboardScope: LeaderboardScope = .global
     @State private var leaderboard: [LeaderboardEntry] = []
     @State private var isLoadingLeaderboard = false
+    @State private var selectedUserId: Int?
 
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
 
@@ -83,6 +84,9 @@ struct BadgesView: View {
                 ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
                 ToolbarItem(placement: .navigationBarTrailing) { NotificationBellButton() }
             }
+        }
+        .navigationDestination(item: $selectedUserId) { id in
+            UserProfileView(userId: id)
         }
         .onAppear { filter = initialFilter }
         .task { await load() }
@@ -221,7 +225,12 @@ struct BadgesView: View {
             } else {
                 VStack(spacing: 1) {
                     ForEach(leaderboard) { entry in
-                        LeaderboardRow(entry: entry)
+                        Button {
+                            selectedUserId = entry.userId
+                        } label: {
+                            LeaderboardRow(entry: entry)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 12))
