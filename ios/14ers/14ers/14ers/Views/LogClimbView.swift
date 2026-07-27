@@ -635,7 +635,10 @@ private struct LogHeroScene: View {
             )
 
             VStack(spacing: 6) {
-                Text("🏔️").font(.system(size: 22))
+                Image(systemName: "mountain.2.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.white.opacity(0.92))
+                    .shadow(color: .black.opacity(0.5), radius: 8, y: 2)
                 Text("Every summit earns a badge — let's earn one")
                     .font(.subheadline.bold())
                     .foregroundColor(.white.opacity(0.92))
