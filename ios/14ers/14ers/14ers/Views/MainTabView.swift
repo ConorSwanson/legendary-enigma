@@ -21,7 +21,7 @@ struct MainTabView: View {
                 .tabItem { Label("14ers", systemImage: "mountain.2.fill") }
                 .tag(3)
 
-            NavigationView {
+            NavigationStack {
                 BadgesView(isTabRoot: true)
             }
             .tabItem { Label("Badges", systemImage: "medal.fill") }

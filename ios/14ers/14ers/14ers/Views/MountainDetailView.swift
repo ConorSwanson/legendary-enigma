@@ -12,6 +12,7 @@ struct MountainDetailView: View {
 
     @State private var detail: MountainDetail?
     @State private var error: String?
+    @State private var selectedClimbId: Int?
 
     private static let monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -42,6 +43,9 @@ struct MountainDetailView: View {
         .background(bg.ignoresSafeArea())
         .navigationTitle(detail?.name ?? fallbackName ?? "Mountain")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $selectedClimbId) { id in
+            ClimbDetailView(climbId: id)
+        }
         .task { await load() }
     }
 
@@ -217,7 +221,9 @@ struct MountainDetailView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     ForEach(d.recentPhotos) { photo in
-                        NavigationLink(destination: ClimbDetailView(climbId: photo.climbId)) {
+                        Button {
+                            selectedClimbId = photo.climbId
+                        } label: {
                             CachedAsyncImage(url: URL(string: photo.photoUrl)) { img in
                                 img.resizable().aspectRatio(contentMode: .fill)
                             } placeholder: {

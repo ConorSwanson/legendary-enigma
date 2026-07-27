@@ -309,7 +309,9 @@ struct HomeView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     ForEach(s.recentClimbs) { climb in
-                        NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+                        Button {
+                            deepLinkClimbId = climb.id
+                        } label: {
                             NativeBadgeThumb(climb: climb)
                                 .frame(width: 100, height: 120)
                                 .cornerRadius(10)

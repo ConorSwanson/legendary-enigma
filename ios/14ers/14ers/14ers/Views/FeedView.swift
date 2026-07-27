@@ -26,7 +26,7 @@ struct FeedView: View {
     @EnvironmentObject var userState: UserState
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
                     Picker("Feed", selection: $feedTab) {
