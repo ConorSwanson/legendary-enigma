@@ -3,7 +3,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const { getDb, UPLOADS_DIR } = require('../db');
-const { single: uploadSingle } = require('../middleware/upload');
+const { single: uploadSingle, array: uploadArray } = require('../middleware/upload');
 const requireAuth = require('../middleware/auth');
 const { pushToUser } = require('../utils/push');
 const { levelForCount } = require('../utils/levels');
@@ -46,6 +46,17 @@ function deleteFile(filename) {
   if (!filename) return;
   const p = path.join(UPLOAD_DIR, filename);
   if (fs.existsSync(p)) fs.unlinkSync(p);
+}
+
+// All photos for a climb, cover first. Falls back to the legacy single
+// photo_path for climbs logged before climb_photos existed.
+function photoUrlsFor(db, climbId, req, fallbackPhotoPath) {
+  const base = `${req.protocol}://${req.get('host')}`;
+  const rows = db.prepare(
+    'SELECT photo_path FROM climb_photos WHERE climb_id = ? ORDER BY position ASC'
+  ).all(climbId);
+  if (rows.length) return rows.map(r => `${base}/uploads/${r.photo_path}`);
+  return fallbackPhotoPath ? [`${base}/uploads/${fallbackPhotoPath}`] : [];
 }
 
 // GET /api/climbs — own climbs only
@@ -107,20 +118,24 @@ router.get('/:id', requireAuth, (req, res) => {
 
   const base = `${req.protocol}://${req.get('host')}`;
   const user_avatar_url = row.user_avatar_path ? `${base}/uploads/${row.user_avatar_path}` : null;
+  const photo_urls = photoUrlsFor(getDb(), row.id, req, row.photo_path);
 
-  res.json({ ...withPhotoUrl(row, req), user_avatar_url, is_owner: row.user_id === req.user.id, is_liked: !!row.is_liked, like_count: row.like_count ?? 0, comment_count: row.comment_count ?? 0 });
+  res.json({ ...withPhotoUrl(row, req), photo_urls, user_avatar_url, is_owner: row.user_id === req.user.id, is_liked: !!row.is_liked, like_count: row.like_count ?? 0, comment_count: row.comment_count ?? 0 });
 });
 
-// POST /api/climbs
-router.post('/', requireAuth, uploadSingle('photo'), (req, res) => {
+// POST /api/climbs — accepts multiple photos under the "photos" field; the
+// first becomes the legacy cover (climbs.photo_path) so every existing
+// consumer (feed, badges, share cards) keeps working unchanged.
+router.post('/', requireAuth, uploadArray('photos', 10), (req, res) => {
   const { mountain_id, climb_date, notes, visibility = 'public' } = req.body;
+  const photoFiles = req.files || [];
   if (!mountain_id || !climb_date) {
-    if (req.file) deleteFile(req.file.filename);
+    photoFiles.forEach(f => deleteFile(f.filename));
     return res.status(400).json({ error: 'mountain_id and climb_date are required' });
   }
 
   const vis = VALID_VISIBILITY.has(visibility) ? visibility : 'public';
-  const photo_path = req.file ? req.file.filename : null;
+  const cover = photoFiles[0]?.filename || null;
 
   const db = getDb();
   const { c: beforeCount } = db.prepare(
@@ -129,11 +144,17 @@ router.post('/', requireAuth, uploadSingle('photo'), (req, res) => {
 
   const result = db.prepare(
     'INSERT INTO climbs (user_id, mountain_id, climb_date, notes, photo_path, visibility) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(req.user.id, Number(mountain_id), climb_date, notes || null, photo_path, vis);
+  ).run(req.user.id, Number(mountain_id), climb_date, notes || null, cover, vis);
 
-  checkLevelUp(db, req.user.id, beforeCount, result.lastInsertRowid);
+  const climbId = result.lastInsertRowid;
+  if (photoFiles.length) {
+    const insertPhoto = db.prepare('INSERT INTO climb_photos (climb_id, photo_path, position) VALUES (?, ?, ?)');
+    photoFiles.forEach((f, i) => insertPhoto.run(climbId, f.filename, i));
+  }
 
-  res.status(201).json({ id: result.lastInsertRowid });
+  checkLevelUp(db, req.user.id, beforeCount, climbId);
+
+  res.status(201).json({ id: climbId });
 });
 
 function handleUpdateClimb(req, res) {
@@ -147,11 +168,22 @@ function handleUpdateClimb(req, res) {
   const { mountain_id, climb_date, notes, visibility } = req.body;
   let photo_path = existing.photo_path;
 
+  // This edit sheet only knows about a single photo, so replacing/removing it
+  // replaces the whole gallery too rather than leaving orphaned entries.
+  if (req.file || req.body.remove_photo === '1') {
+    const oldPhotos = db.prepare('SELECT photo_path FROM climb_photos WHERE climb_id = ?').all(req.params.id);
+    if (oldPhotos.length) {
+      oldPhotos.forEach(p => deleteFile(p.photo_path));
+    } else {
+      deleteFile(existing.photo_path);
+    }
+    db.prepare('DELETE FROM climb_photos WHERE climb_id = ?').run(req.params.id);
+  }
+
   if (req.file) {
-    deleteFile(existing.photo_path);
     photo_path = req.file.filename;
+    db.prepare('INSERT INTO climb_photos (climb_id, photo_path, position) VALUES (?, ?, 0)').run(req.params.id, photo_path);
   } else if (req.body.remove_photo === '1') {
-    deleteFile(existing.photo_path);
     photo_path = null;
   }
 
@@ -185,7 +217,8 @@ function handleUpdateClimb(req, res) {
     WHERE c.id = ?
   `).get(req.params.id);
 
-  res.json({ ...withPhotoUrl(row, req), is_owner: true, is_liked: false, like_count: row.like_count ?? 0, comment_count: row.comment_count ?? 0 });
+  const photo_urls = photoUrlsFor(db, row.id, req, row.photo_path);
+  res.json({ ...withPhotoUrl(row, req), photo_urls, is_owner: true, is_liked: false, like_count: row.like_count ?? 0, comment_count: row.comment_count ?? 0 });
 }
 
 // PUT /api/climbs/:id
@@ -200,7 +233,12 @@ router.delete('/:id', requireAuth, (req, res) => {
   const climb = db.prepare('SELECT * FROM climbs WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
   if (!climb) return res.status(404).json({ error: 'Climb not found' });
 
-  deleteFile(climb.photo_path);
+  const photoRows = db.prepare('SELECT photo_path FROM climb_photos WHERE climb_id = ?').all(req.params.id);
+  if (photoRows.length) {
+    photoRows.forEach(p => deleteFile(p.photo_path));
+  } else {
+    deleteFile(climb.photo_path);
+  }
   db.prepare('DELETE FROM climbs WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });

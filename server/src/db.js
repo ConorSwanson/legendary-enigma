@@ -164,6 +164,15 @@ function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_comments_climb ON climb_comments(climb_id);
 
+    CREATE TABLE IF NOT EXISTS climb_photos (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      climb_id   INTEGER NOT NULL REFERENCES climbs(id) ON DELETE CASCADE,
+      photo_path TEXT    NOT NULL,
+      position   INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_climb_photos_climb ON climb_photos(climb_id);
+
     CREATE TABLE IF NOT EXISTS device_tokens (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

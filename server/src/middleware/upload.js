@@ -45,6 +45,26 @@ function single(field, opts = {}) {
   ];
 }
 
+// Drop-in replacement for multer().array(field, maxCount) — resizes every file.
+function array(field, maxCount, opts = {}) {
+  return [
+    mem.array(field, maxCount),
+    async (req, _res, next) => {
+      if (!req.files?.length) return next();
+      try {
+        for (const f of req.files) {
+          f.filename = await resizeAndSave(f.buffer, {
+            maxW: opts.maxW || 1200,
+            maxH: opts.maxH || 1200,
+            q:    opts.q    || 82,
+          });
+        }
+        next();
+      } catch (e) { next(e); }
+    },
+  ];
+}
+
 // For profile updates — handles avatar (512px) and background (1920px) in one request.
 function profileFields() {
   const OPTS = {
@@ -70,4 +90,4 @@ function profileFields() {
   ];
 }
 
-module.exports = { single, profileFields };
+module.exports = { single, array, profileFields };

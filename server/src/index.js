@@ -18,7 +18,7 @@ if (APNS_KEY && APNS_KEY_ID && APNS_TEAM_ID && APNS_BUNDLE_ID) {
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/uploads', express.static(UPLOADS_DIR, { fallthrough: false }));
 app.use('/public', express.static(path.join(__dirname, '../public')));
 
 app.use('/api/auth',      require('./routes/auth'));
