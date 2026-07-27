@@ -52,6 +52,10 @@ struct LogClimbView: View {
     // Soft suggestion from a manually-picked photo's EXIF GPS (tap to accept)
     @State private var detectedMountainId: Int?
     @State private var detectedMountainName: String?
+    // True when the current peak selection came from a photo (EXIF or geo
+    // match) rather than a manual pick — lets us clear it when the photos
+    // it was based on are all removed, without touching a manual choice.
+    @State private var mountainSetByPhoto = false
 
     // Success modal data
     @State private var successMountain: Mountain?
@@ -115,6 +119,7 @@ struct LogClimbView: View {
         .sheet(isPresented: $showPeakPicker) {
             PeakPickerView(mountains: mountains, climbedIds: climbedIds) { m in
                 selectedMountainId = m.id
+                mountainSetByPhoto = false
                 detectedMountainId = nil
                 detectedMountainName = nil
             }
@@ -172,6 +177,7 @@ struct LogClimbView: View {
            selectedMountainId == nil {
             Button {
                 selectedMountainId = detectedId
+                mountainSetByPhoto = true
                 detectedMountainId = nil
                 detectedMountainName = nil
             } label: {
@@ -441,6 +447,13 @@ struct LogClimbView: View {
     private func removePhoto(at index: Int) {
         guard photoItems.indices.contains(index) else { return }
         photoItems.remove(at: index)
+        // Once the photo(s) a peak was inferred from are all gone, drop that
+        // inference so the next photo added can suggest/select fresh instead
+        // of silently sticking to the old peak. Leave a manual pick alone.
+        if photoItems.isEmpty && mountainSetByPhoto {
+            selectedMountainId = nil
+            mountainSetByPhoto = false
+        }
     }
 
     private func setCover(at index: Int) {
@@ -454,7 +467,10 @@ struct LogClimbView: View {
         for (i, sel) in selections.enumerated() {
             photoItems.append(PhotoItem(kind: .new(data: sel.data)))
             if wasEmpty && i == 0 && !isEditing {
-                if selectedMountainId == nil { selectedMountainId = sel.mountainId }
+                if selectedMountainId == nil {
+                    selectedMountainId = sel.mountainId
+                    mountainSetByPhoto = true
+                }
                 if let d = sel.date { date = d }
             }
         }
@@ -612,6 +628,7 @@ struct LogClimbView: View {
         pickerItems = []
         detectedMountainId = nil
         detectedMountainName = nil
+        mountainSetByPhoto = false
         userState.selectedTab = 1
     }
 }
