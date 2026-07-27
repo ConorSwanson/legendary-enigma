@@ -53,6 +53,7 @@ struct ClimbDetailView: View {
     }
 
     var body: some View {
+        GeometryReader { outerGeo in
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if let climb {
@@ -216,6 +217,7 @@ struct ClimbDetailView: View {
                         .frame(maxWidth: .infinity, minHeight: 260)
                 }
             }
+            .frame(width: outerGeo.size.width, alignment: .leading)
         }
         .background(bg.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
@@ -239,6 +241,7 @@ struct ClimbDetailView: View {
             LikesListView(climbId: climbId)
         }
         .task { await load() }
+        }
     }
 
     @ViewBuilder
