@@ -9,27 +9,54 @@ struct ClimbHistoryView: View {
     @State private var climbs: [Climb] = []
     @State private var isLoading = false
     @State private var selectedClimbId: Int?
+    @State private var yearFilter: String?   // nil = all years
+    @State private var rangeFilter: String?  // nil = all ranges
+
+    private var years: [String] {
+        Array(Set(climbs.map { String($0.climbDate.prefix(4)) })).sorted(by: >)
+    }
+    private var ranges: [String] {
+        Array(Set(climbs.map(\.range))).sorted()
+    }
+    private var filtered: [Climb] {
+        var list = climbs
+        if let y = yearFilter { list = list.filter { $0.climbDate.prefix(4) == y } }
+        if let r = rangeFilter { list = list.filter { $0.range == r } }
+        return list
+    }
 
     var body: some View {
-        Group {
-            if isLoading && climbs.isEmpty {
-                ProgressView().tint(.white).frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if climbs.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "mountain.2")
-                        .font(.system(size: 48))
-                        .foregroundColor(.gray.opacity(0.4))
-                    Text("No climbs yet").foregroundColor(.gray)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 10) {
-                        ForEach(climbs) { climb in
-                            ClimbRow(climb: climb) { selectedClimbId = climb.id }
-                        }
+        VStack(spacing: 0) {
+            if !climbs.isEmpty { filterBar }
+
+            Group {
+                if isLoading && climbs.isEmpty {
+                    ProgressView().tint(.white).frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if climbs.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "mountain.2")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray.opacity(0.4))
+                        Text("No climbs yet").foregroundColor(.gray)
                     }
-                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if filtered.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 40))
+                            .foregroundColor(.gray.opacity(0.4))
+                        Text("No climbs match those filters").foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            ForEach(filtered) { climb in
+                                ClimbRow(climb: climb) { selectedClimbId = climb.id }
+                            }
+                        }
+                        .padding()
+                    }
                 }
             }
         }
@@ -41,6 +68,60 @@ struct ClimbHistoryView: View {
         }
         .task { await load() }
         .refreshable { await load() }
+    }
+
+    @ViewBuilder
+    private var filterBar: some View {
+        HStack(spacing: 10) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    Menu {
+                        Button { yearFilter = nil } label: {
+                            Label("All Years", systemImage: yearFilter == nil ? "checkmark" : "")
+                        }
+                        ForEach(years, id: \.self) { y in
+                            Button { yearFilter = y } label: {
+                                Label(y, systemImage: yearFilter == y ? "checkmark" : "")
+                            }
+                        }
+                    } label: {
+                        filterChip(icon: "calendar", text: yearFilter ?? "All Years")
+                    }
+
+                    Menu {
+                        Button { rangeFilter = nil } label: {
+                            Label("All Ranges", systemImage: rangeFilter == nil ? "checkmark" : "")
+                        }
+                        ForEach(ranges, id: \.self) { r in
+                            Button { rangeFilter = r } label: {
+                                Label(r, systemImage: rangeFilter == r ? "checkmark" : "")
+                            }
+                        }
+                    } label: {
+                        filterChip(icon: "line.3.horizontal.decrease.circle", text: rangeFilter ?? "All Ranges")
+                    }
+                }
+            }
+            Spacer(minLength: 8)
+            Text("\(filtered.count)")
+                .font(.caption.bold())
+                .foregroundColor(.gray)
+        }
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+    }
+
+    private func filterChip(icon: String, text: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon).font(.caption)
+            Text(text).font(.caption.bold()).lineLimit(1)
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(card)
+        .cornerRadius(20)
     }
 
     private func load() async {

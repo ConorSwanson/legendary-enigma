@@ -224,6 +224,25 @@ struct ClimberLevelDef: Identifiable, Sendable {
     var id: Int { level }
 }
 
+struct LeaderboardEntry: Codable, Identifiable, Sendable {
+    let position: Int
+    let isSelf: Bool
+    let rank: ClimberRank
+    let userId: Int
+    let name: String
+    let avatarUrl: String?
+    let uniquePeaks: Int
+    var id: Int { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case position, rank, name
+        case isSelf      = "is_self"
+        case userId      = "id"
+        case avatarUrl    = "avatar_url"
+        case uniquePeaks  = "unique_peaks"
+    }
+}
+
 // Mirrors server/src/utils/levels.js — used to render the full ladder
 // (locked/unlocked tiers) in the Badges tab's Climber Rank grid.
 let climberLevels: [ClimberLevelDef] = [

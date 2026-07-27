@@ -312,6 +312,15 @@ actor APIClient {
         try await request("/users/\(id)/climbs")
     }
 
+    func searchUsers(_ query: String) async throws -> [FollowerUser] {
+        let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        return try await request("/users/search?q=\(q)")
+    }
+
+    func leaderboard(scope: String) async throws -> [LeaderboardEntry] {
+        try await request("/leaderboard?scope=\(scope)")
+    }
+
     func followers(_ id: Int) async throws -> [FollowerUser] {
         try await request("/users/\(id)/followers")
     }

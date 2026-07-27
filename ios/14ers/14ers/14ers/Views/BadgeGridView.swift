@@ -11,13 +11,21 @@ private let rangeOrder = [
     "Elk", "Sangre de Cristo", "San Juan"
 ]
 
-// MARK: - Badges (Peaks + Climber Rank)
+// MARK: - Badges (Peaks + Climber Progress + Leaderboard)
 
 struct BadgesView: View {
     enum Filter: String, CaseIterable, Identifiable {
         case peaks = "Peaks"
-        case rank  = "Climber Rank"
+        case rank  = "Climber Progress"
+        case leaderboard = "Leaderboard"
         var id: String { rawValue }
+    }
+
+    enum LeaderboardScope: String, CaseIterable, Identifiable {
+        case global    = "Global"
+        case following = "Following"
+        var id: String { rawValue }
+        var apiValue: String { self == .global ? "global" : "following" }
     }
 
     var initialFilter: Filter = .peaks
@@ -29,6 +37,9 @@ struct BadgesView: View {
     @State private var ascentCounts: [Int: Int] = [:]
     @State private var rank: ClimberRank?
     @State private var isLoading = true
+    @State private var leaderboardScope: LeaderboardScope = .global
+    @State private var leaderboard: [LeaderboardEntry] = []
+    @State private var isLoadingLeaderboard = false
 
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
 
@@ -53,7 +64,9 @@ struct BadgesView: View {
             .padding(.vertical, 10)
 
             ScrollView {
-                if isLoading {
+                if filter == .leaderboard {
+                    leaderboardContent
+                } else if isLoading {
                     ProgressView().tint(.white).padding(.top, 60)
                 } else if filter == .peaks {
                     peaksContent
@@ -63,7 +76,7 @@ struct BadgesView: View {
             }
         }
         .background(bg.ignoresSafeArea())
-        .navigationTitle(filter == .peaks ? "Badge Collection" : "Climber Rank")
+        .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if isTabRoot {
@@ -73,6 +86,17 @@ struct BadgesView: View {
         }
         .onAppear { filter = initialFilter }
         .task { await load() }
+        .task(id: filter == .leaderboard ? leaderboardScope.rawValue : nil) {
+            if filter == .leaderboard { await loadLeaderboard() }
+        }
+    }
+
+    private var navigationTitle: String {
+        switch filter {
+        case .peaks: return "Badge Collection"
+        case .rank: return "Climber Progress"
+        case .leaderboard: return "Leaderboard"
+        }
     }
 
     @ViewBuilder
@@ -170,6 +194,43 @@ struct BadgesView: View {
         return min(1, max(0, Double(earned) / Double(nextMin - rank.minPeaks)))
     }
 
+    @ViewBuilder
+    private var leaderboardContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Picker("Scope", selection: $leaderboardScope) {
+                ForEach(LeaderboardScope.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+
+            if isLoadingLeaderboard {
+                ProgressView().tint(.white).frame(maxWidth: .infinity).padding(.top, 40)
+            } else if leaderboard.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "trophy")
+                        .font(.system(size: 40))
+                        .foregroundColor(.gray.opacity(0.4))
+                    Text(leaderboardScope == .following
+                         ? "Follow other climbers to see them here"
+                         : "No summits logged yet")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 50)
+            } else {
+                VStack(spacing: 1) {
+                    ForEach(leaderboard) { entry in
+                        LeaderboardRow(entry: entry)
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal)
+            }
+        }
+        .padding(.vertical)
+    }
+
     private func load() async {
         async let ms = APIClient.shared.mountains()
         async let st = APIClient.shared.stats()
@@ -180,6 +241,88 @@ struct BadgesView: View {
             rank = stats.rank
         }
         isLoading = false
+    }
+
+    private func loadLeaderboard() async {
+        isLoadingLeaderboard = true
+        leaderboard = (try? await APIClient.shared.leaderboard(scope: leaderboardScope.apiValue)) ?? []
+        isLoadingLeaderboard = false
+    }
+}
+
+// MARK: - Leaderboard Row
+
+private struct LeaderboardRow: View {
+    let entry: LeaderboardEntry
+
+    private var medal: String? {
+        switch entry.position {
+        case 1: return "🥇"
+        case 2: return "🥈"
+        case 3: return "🥉"
+        default: return nil
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if let medal {
+                Text(medal).font(.title3)
+                    .frame(width: 28)
+            } else {
+                Text("\(entry.position)")
+                    .font(.subheadline.bold())
+                    .foregroundColor(.gray)
+                    .frame(width: 28)
+            }
+
+            Group {
+                if let urlStr = entry.avatarUrl, let url = URL(string: urlStr) {
+                    CachedAsyncImage(url: url) { img in
+                        img.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        avatarPlaceholder
+                    }
+                } else {
+                    avatarPlaceholder
+                }
+            }
+            .frame(width: 36, height: 36)
+            .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.isSelf ? "You" : entry.name)
+                    .font(.subheadline.bold())
+                    .foregroundColor(.white)
+                Text(entry.rank.name)
+                    .font(.caption2)
+                    .foregroundColor(.gray)
+            }
+
+            Spacer()
+
+            Text("\(entry.uniquePeaks)")
+                .font(.subheadline.bold())
+                .foregroundColor(emerald)
+            Text(entry.uniquePeaks == 1 ? "peak" : "peaks")
+                .font(.caption2)
+                .foregroundColor(.gray)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(entry.isSelf ? emerald.opacity(0.12) : card)
+        Divider()
+            .background(Color(red: 31/255, green: 41/255, blue: 55/255))
+    }
+
+    private var avatarPlaceholder: some View {
+        Circle()
+            .fill(sky.opacity(0.2))
+            .overlay(
+                Text(entry.name.prefix(1).uppercased())
+                    .font(.caption.bold())
+                    .foregroundColor(sky)
+            )
     }
 }
 

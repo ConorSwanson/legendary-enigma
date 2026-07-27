@@ -23,6 +23,7 @@ struct FeedView: View {
     @State private var page = 1
     @State private var canLoadMore = true
     @State private var error: String?
+    @State private var showUserSearch = false
     @EnvironmentObject var userState: UserState
 
     var body: some View {
@@ -90,7 +91,17 @@ struct FeedView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
-                ToolbarItem(placement: .navigationBarTrailing) { NotificationBellButton() }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack(spacing: 14) {
+                        Button { showUserSearch = true } label: {
+                            Image(systemName: "magnifyingglass").foregroundColor(sky)
+                        }
+                        NotificationBellButton()
+                    }
+                }
+            }
+            .sheet(isPresented: $showUserSearch) {
+                UserSearchView()
             }
         }
         .task { await load() }

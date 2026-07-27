@@ -28,6 +28,7 @@ app.use('/api/climbs',    require('./routes/climbs'));
 app.use('/api/stats',     require('./routes/stats'));
 app.use('/api/profile',   require('./routes/profile'));
 app.use('/api/users',     require('./routes/users'));
+app.use('/api/leaderboard', require('./routes/leaderboard'));
 app.use('/api/feed',      require('./routes/feed'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/public/climbs', require('./routes/publicClimbs'));
