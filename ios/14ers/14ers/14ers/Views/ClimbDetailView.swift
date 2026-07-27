@@ -6,6 +6,22 @@ private let bg      = Color(red: 3/255,  green: 7/255,  blue: 18/255)
 private let card    = Color(red: 17/255, green: 24/255, blue: 39/255)
 private let emerald = Color(red: 52/255, green: 211/255, blue: 153/255)
 
+/// Temporary diagnostic: prints a view's actual on-screen frame to the
+/// console with no Xcode GUI interaction required. Remove once the
+/// clipped-layout bug is found.
+private extension View {
+    func debugFrame(_ label: String) -> some View {
+        self.background(
+            GeometryReader { geo in
+                Color.clear.onAppear {
+                    let f = geo.frame(in: .global)
+                    print("[FrameDebug] \(label): x=\(f.origin.x) y=\(f.origin.y) w=\(f.size.width) h=\(f.size.height)")
+                }
+            }
+        )
+    }
+}
+
 struct ClimbDetailView: View {
     let climbId: Int
 
@@ -40,6 +56,7 @@ struct ClimbDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if let climb {
+                    Color.clear.frame(height: 0).debugFrame("outerVStack")
                     Group {
                         if let urls = climb.photoUrls, urls.count > 1 {
                             TabView {
@@ -70,8 +87,10 @@ struct ClimbDetailView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 280)
                     .clipped()
+                    .debugFrame("heroImageGroup")
 
                     VStack(alignment: .leading, spacing: 16) {
+                        Color.clear.frame(height: 0).debugFrame("contentVStack")
                         // Poster row → UserProfileView (hidden for your own climbs)
                         if climb.isOwner != true, let uid = climb.userId, let uname = climb.userName {
                             NavigationLink(destination: UserProfileView(userId: uid)) {
@@ -105,12 +124,14 @@ struct ClimbDetailView: View {
                         // Title row with badge inline
                         HStack(alignment: .top, spacing: 12) {
                             VStack(alignment: .leading, spacing: 4) {
+                                Color.clear.frame(height: 0).debugFrame("titleRowVStack")
                                 NavigationLink(destination: MountainDetailView(mountainId: climb.mountainId, fallbackName: climb.mountainName)) {
                                     HStack(spacing: 5) {
                                         Text(climb.mountainName)
                                             .font(.title2.bold())
                                             .foregroundColor(.white)
                                             .multilineTextAlignment(.leading)
+                                            .debugFrame("mountainNameText")
                                         Image(systemName: "chevron.right")
                                             .font(.caption.bold())
                                             .foregroundColor(.gray.opacity(0.5))
