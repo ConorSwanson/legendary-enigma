@@ -3,7 +3,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const { getDb, UPLOADS_DIR } = require('../db');
-const { single: uploadSingle, array: uploadArray } = require('../middleware/upload');
+const { array: uploadArray } = require('../middleware/upload');
 const requireAuth = require('../middleware/auth');
 const { pushToUser } = require('../utils/push');
 const { levelForCount } = require('../utils/levels');
@@ -161,30 +161,51 @@ function handleUpdateClimb(req, res) {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM climbs WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
   if (!existing) {
-    if (req.file) deleteFile(req.file.filename);
+    (req.files || []).forEach(f => deleteFile(f.filename));
     return res.status(404).json({ error: 'Climb not found' });
   }
 
   const { mountain_id, climb_date, notes, visibility } = req.body;
   let photo_path = existing.photo_path;
 
-  // This edit sheet only knows about a single photo, so replacing/removing it
-  // replaces the whole gallery too rather than leaving orphaned entries.
-  if (req.file || req.body.remove_photo === '1') {
-    const oldPhotos = db.prepare('SELECT photo_path FROM climb_photos WHERE climb_id = ?').all(req.params.id);
-    if (oldPhotos.length) {
-      oldPhotos.forEach(p => deleteFile(p.photo_path));
-    } else {
+  // The edit UI now knows the full gallery (unlike the old single-photo
+  // form), so `keep_photos` — a JSON array of existing photo_path filenames,
+  // in the order the client wants them — is the full source of truth for
+  // what survives. Anything not named there gets deleted from disk; new
+  // uploads are appended after the kept ones. Only touch photos at all if
+  // the client actually sent keep_photos, so other callers that omit it
+  // (there are none today, but keep this defensive) leave the gallery alone.
+  if (req.body.keep_photos !== undefined) {
+    let keepPaths;
+    try {
+      keepPaths = JSON.parse(req.body.keep_photos);
+      if (!Array.isArray(keepPaths)) throw new Error('not an array');
+    } catch {
+      keepPaths = [];
+    }
+
+    const existingPhotos = db.prepare(
+      'SELECT photo_path FROM climb_photos WHERE climb_id = ?'
+    ).all(req.params.id);
+    const existingPathSet = new Set(existingPhotos.map(p => p.photo_path));
+    // Only ever keep paths that actually belong to this climb — never trust
+    // client-supplied filenames blindly.
+    const validKeepPaths = keepPaths.filter(p => existingPathSet.has(p));
+
+    const toDelete = existingPhotos.filter(p => !validKeepPaths.includes(p.photo_path));
+    if (toDelete.length) toDelete.forEach(p => deleteFile(p.photo_path));
+    if (!existingPhotos.length && existing.photo_path && !validKeepPaths.includes(existing.photo_path)) {
       deleteFile(existing.photo_path);
     }
-    db.prepare('DELETE FROM climb_photos WHERE climb_id = ?').run(req.params.id);
-  }
 
-  if (req.file) {
-    photo_path = req.file.filename;
-    db.prepare('INSERT INTO climb_photos (climb_id, photo_path, position) VALUES (?, ?, 0)').run(req.params.id, photo_path);
-  } else if (req.body.remove_photo === '1') {
-    photo_path = null;
+    const newPaths = (req.files || []).map(f => f.filename);
+    const finalPaths = [...validKeepPaths, ...newPaths];
+
+    db.prepare('DELETE FROM climb_photos WHERE climb_id = ?').run(req.params.id);
+    const insertPhoto = db.prepare('INSERT INTO climb_photos (climb_id, photo_path, position) VALUES (?, ?, ?)');
+    finalPaths.forEach((p, i) => insertPhoto.run(req.params.id, p, i));
+
+    photo_path = finalPaths[0] || null;
   }
 
   const vis = visibility && VALID_VISIBILITY.has(visibility) ? visibility : existing.visibility;
@@ -222,10 +243,10 @@ function handleUpdateClimb(req, res) {
 }
 
 // PUT /api/climbs/:id
-router.put('/:id', requireAuth, uploadSingle('photo'), handleUpdateClimb);
+router.put('/:id', requireAuth, uploadArray('photos', 10), handleUpdateClimb);
 
 // PATCH /api/climbs/:id (iOS client uses PATCH)
-router.patch('/:id', requireAuth, uploadSingle('photo'), handleUpdateClimb);
+router.patch('/:id', requireAuth, uploadArray('photos', 10), handleUpdateClimb);
 
 // DELETE /api/climbs/:id
 router.delete('/:id', requireAuth, (req, res) => {

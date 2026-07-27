@@ -10,7 +10,6 @@ struct ClimbDetailView: View {
     let climbId: Int
 
     @State private var climb: Climb?
-    @State private var mountains: [Mountain] = []
     @State private var error: String?
     @State private var liked = false
     @State private var likeCount = 0
@@ -209,7 +208,7 @@ struct ClimbDetailView: View {
         }
         .sheet(isPresented: $showEdit) {
             if let climb {
-                EditClimbView(climb: climb, mountains: mountains) { updated in
+                LogClimbView(existingClimb: climb) { updated in
                     self.climb = updated
                     showEdit = false
                 }
@@ -411,11 +410,9 @@ struct ClimbDetailView: View {
     private func load() async {
         do {
             async let c = APIClient.shared.climb(climbId)
-            async let ms = APIClient.shared.mountains()
             async let cs = APIClient.shared.comments(climbId: climbId)
-            let (fetched, fetchedMountains, fetchedComments) = try await (c, ms, cs)
+            let (fetched, fetchedComments) = try await (c, cs)
             climb = fetched
-            mountains = fetchedMountains
             comments = fetchedComments
             liked = fetched.isLiked ?? false
             likeCount = fetched.likeCount ?? 0
@@ -555,157 +552,6 @@ struct CommentRow: View {
                     .font(.caption2.bold())
                     .foregroundColor(sky)
             )
-    }
-}
-
-// MARK: - Edit Climb
-
-struct EditClimbView: View {
-    let climb: Climb
-    let mountains: [Mountain]
-    let onSave: (Climb) -> Void
-
-    @State private var mountainId: Int
-    @State private var date: Date
-    @State private var notes: String
-    @State private var visibility: String
-    @State private var isSaving = false
-    @State private var error: String?
-    @State private var pickerItem: PhotosPickerItem?
-    @State private var newPhotoData: Data?
-    @State private var newPhotoImage: Image?
-    @State private var removePhoto = false
-    @Environment(\.dismiss) private var dismiss
-
-    init(climb: Climb, mountains: [Mountain], onSave: @escaping (Climb) -> Void) {
-        self.climb = climb
-        self.mountains = mountains
-        self.onSave = onSave
-        _mountainId = State(initialValue: climb.mountainId)
-        let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd"
-        _date = State(initialValue: fmt.date(from: climb.climbDate) ?? Date())
-        _notes = State(initialValue: climb.notes ?? "")
-        _visibility = State(initialValue: climb.visibility)
-    }
-
-    var body: some View {
-        NavigationView {
-            Form {
-                Section("Peak") {
-                    Picker("Mountain", selection: $mountainId) {
-                        ForEach(mountains) { m in
-                            Text("\(m.name) — \(m.elevation.formatted()) ft").tag(m.id)
-                        }
-                    }
-                }
-                Section("Date") {
-                    DatePicker("Date", selection: $date, in: ...Date(), displayedComponents: .date)
-                }
-                Section("Photo") {
-                    if let img = newPhotoImage {
-                        img.resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(maxWidth: .infinity).frame(height: 160)
-                            .clipped()
-                            .cornerRadius(8)
-                            .listRowInsets(EdgeInsets())
-                    } else if let urlStr = climb.photoUrl, let url = URL(string: urlStr), !removePhoto {
-                        CachedAsyncImage(url: url) { img in
-                            img.resizable().aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            Color.gray.opacity(0.2)
-                        }
-                        .frame(maxWidth: .infinity).frame(height: 160)
-                        .clipped()
-                        .cornerRadius(8)
-                        .listRowInsets(EdgeInsets())
-                    }
-
-                    PhotosPicker(selection: $pickerItem, matching: .images) {
-                        let hasPhoto = newPhotoData != nil || (climb.photoUrl != nil && !removePhoto)
-                        Label(hasPhoto ? "Replace Photo" : "Add Photo", systemImage: "photo")
-                    }
-
-                    if newPhotoData != nil || (climb.photoUrl != nil && !removePhoto) {
-                        Button("Remove Photo", role: .destructive) {
-                            pickerItem = nil; newPhotoData = nil; newPhotoImage = nil; removePhoto = true
-                        }
-                    }
-                    if removePhoto && newPhotoData == nil {
-                        HStack(spacing: 6) {
-                            Image(systemName: "xmark.circle").foregroundColor(.secondary)
-                            Text("Photo will be removed").font(.caption).foregroundColor(.secondary)
-                        }
-                        Button("Keep Existing Photo") { removePhoto = false }
-                    }
-                }
-                Section("Notes") {
-                    TextEditor(text: $notes).frame(minHeight: 80)
-                }
-                Section("Visibility") {
-                    Picker("Visibility", selection: $visibility) {
-                        Text("Public").tag("public")
-                        Text("Followers").tag("followers")
-                        Text("Private").tag("private")
-                    }
-                    .pickerStyle(.segmented)
-                }
-                if let error {
-                    Section { Text(error).foregroundColor(.red).font(.caption) }
-                }
-            }
-            .navigationTitle("Edit Climb")
-            .navigationBarItems(
-                leading: Button("Cancel") { dismiss() },
-                trailing: Button(isSaving ? "Saving…" : "Save") {
-                    Task { await save() }
-                }
-                .disabled(isSaving)
-            )
-        }
-        .onChange(of: pickerItem) { Task { await loadPhoto() } }
-    }
-
-    private func loadPhoto() async {
-        guard let item = pickerItem,
-              let raw = try? await item.loadTransferable(type: Data.self) else { return }
-        let compressed = compressPhoto(raw)
-        newPhotoData = compressed
-        removePhoto = false
-        if let uiImg = UIImage(data: compressed) { newPhotoImage = Image(uiImage: uiImg) }
-    }
-
-    private func compressPhoto(_ data: Data) -> Data {
-        guard let uiImage = UIImage(data: data) else { return data }
-        let maxDim: CGFloat = 1200
-        let size = uiImage.size
-        let scale = min(maxDim / max(size.width, size.height), 1.0)
-        guard scale < 1.0 else { return uiImage.jpegData(compressionQuality: 0.8) ?? data }
-        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
-        let renderer = UIGraphicsImageRenderer(size: newSize)
-        let resized = renderer.image { _ in uiImage.draw(in: CGRect(origin: .zero, size: newSize)) }
-        return resized.jpegData(compressionQuality: 0.8) ?? data
-    }
-
-    private func save() async {
-        isSaving = true
-        error = nil
-        defer { isSaving = false }
-        let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd"
-        do {
-            let updated = try await APIClient.shared.updateClimb(
-                climb.id,
-                mountainId: mountainId,
-                date: fmt.string(from: date),
-                notes: notes,
-                visibility: visibility,
-                photoData: newPhotoData,
-                removePhoto: removePhoto && newPhotoData == nil
-            )
-            onSave(updated)
-        } catch {
-            self.error = error.localizedDescription
-        }
     }
 }
 

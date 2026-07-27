@@ -11,7 +11,22 @@ private let emerald = Color(red: 52/255,  green: 211/255, blue: 153/255)
 private let sky     = Color(red: 56/255,  green: 189/255, blue: 248/255)
 private let ink     = Color(red: 3/255,   green: 7/255,   blue: 18/255)
 
+/// A photo shown in the log/edit form — either already uploaded (edit mode,
+/// referenced by URL, no re-upload needed) or freshly picked on-device.
+private struct PhotoItem: Identifiable {
+    let id = UUID()
+    var kind: Kind
+    enum Kind {
+        case existing(url: String)
+        case new(data: Data)
+    }
+}
+
 struct LogClimbView: View {
+    /// Non-nil when editing a previously-logged climb rather than logging a new one.
+    var existingClimb: Climb? = nil
+    var onEditSaved: ((Climb) -> Void)? = nil
+
     @State private var mountains: [Mountain] = []
     @State private var climbedIds: Set<Int> = []
     @State private var selectedMountainId: Int?
@@ -23,9 +38,10 @@ struct LogClimbView: View {
     @State private var showSuccess = false
     @State private var successAscentCount: Int = 1
     @EnvironmentObject var userState: UserState
+    @Environment(\.dismiss) private var dismiss
 
     // Photos — ordered; index 0 is the cover
-    @State private var photosData: [Data] = []
+    @State private var photoItems: [PhotoItem] = []
     @State private var pickerItems: [PhotosPickerItem] = []
 
     // Sheets
@@ -42,15 +58,31 @@ struct LogClimbView: View {
     @State private var successDate: Date = Date()
     @State private var successClimbId: Int = 0
 
+    private var isEditing: Bool { existingClimb != nil }
+
     private var selectedMountain: Mountain? {
         mountains.first(where: { $0.id == selectedMountainId })
+    }
+
+    init(existingClimb: Climb? = nil, onEditSaved: ((Climb) -> Void)? = nil) {
+        self.existingClimb = existingClimb
+        self.onEditSaved = onEditSaved
+        if let climb = existingClimb {
+            _selectedMountainId = State(initialValue: climb.mountainId)
+            let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd"
+            _date = State(initialValue: fmt.date(from: climb.climbDate) ?? Date())
+            _notes = State(initialValue: climb.notes ?? "")
+            _visibility = State(initialValue: climb.visibility)
+            let urls = climb.photoUrls ?? climb.photoUrl.map { [$0] } ?? []
+            _photoItems = State(initialValue: urls.map { PhotoItem(kind: .existing(url: $0)) })
+        }
     }
 
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 0) {
-                    LogHeroScene()
+                    if !isEditing { LogHeroScene() }
 
                     VStack(spacing: 12) {
                         peakCard
@@ -60,15 +92,21 @@ struct LogClimbView: View {
                         visibilityPills
                     }
                     .padding()
-                    .padding(.top, -30)
+                    .padding(.top, isEditing ? 0 : -30)
                 }
             }
             .background(bg.ignoresSafeArea())
-            .navigationTitle("Log a Climb")
+            .navigationTitle(isEditing ? "Edit Climb" : "Log a Climb")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
-                ToolbarItem(placement: .navigationBarTrailing) { NotificationBellButton() }
+                if isEditing {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") { dismiss() }.foregroundColor(sky)
+                    }
+                } else {
+                    ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
+                    ToolbarItem(placement: .navigationBarTrailing) { NotificationBellButton() }
+                }
             }
             .safeAreaInset(edge: .bottom) { ctaBar }
         }
@@ -186,8 +224,8 @@ struct LogClimbView: View {
                     .tracking(0.8)
                     .foregroundColor(.gray)
                 Spacer()
-                if !photosData.isEmpty {
-                    Text("\(photosData.count) added")
+                if !photoItems.isEmpty {
+                    Text("\(photoItems.count) added")
                         .font(.caption2)
                         .foregroundColor(.gray)
                 }
@@ -197,11 +235,11 @@ struct LogClimbView: View {
             .padding(.bottom, 9)
 
             VStack(spacing: 10) {
-                if !photosData.isEmpty {
+                if !photoItems.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(Array(photosData.enumerated()), id: \.offset) { idx, data in
-                                photoThumb(data, isCover: idx == 0) { removePhoto(at: idx) }
+                            ForEach(Array(photoItems.enumerated()), id: \.element.id) { idx, item in
+                                photoThumb(item, isCover: idx == 0) { removePhoto(at: idx) }
                             }
                         }
                     }
@@ -225,13 +263,26 @@ struct LogClimbView: View {
         .cornerRadius(16)
     }
 
-    private func photoThumb(_ data: Data, isCover: Bool, onRemove: @escaping () -> Void) -> some View {
+    private func photoThumb(_ item: PhotoItem, isCover: Bool, onRemove: @escaping () -> Void) -> some View {
         ZStack(alignment: .topTrailing) {
             Group {
-                if let uiImage = UIImage(data: data) {
-                    Image(uiImage: uiImage).resizable().aspectRatio(contentMode: .fill)
-                } else {
-                    card2
+                switch item.kind {
+                case .new(let data):
+                    if let uiImage = UIImage(data: data) {
+                        Image(uiImage: uiImage).resizable().aspectRatio(contentMode: .fill)
+                    } else {
+                        card2
+                    }
+                case .existing(let urlString):
+                    if let url = URL(string: urlString) {
+                        CachedAsyncImage(url: url) { img in
+                            img.resizable().aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            card2
+                        }
+                    } else {
+                        card2
+                    }
                 }
             }
             .frame(width: 64, height: 64)
@@ -356,7 +407,7 @@ struct LogClimbView: View {
                     if isSaving {
                         ProgressView().tint(ink)
                     } else {
-                        Text("Log Climb").bold()
+                        Text(isEditing ? "Save Changes" : "Log Climb").bold()
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -375,15 +426,15 @@ struct LogClimbView: View {
     // MARK: - Photo intake
 
     private func removePhoto(at index: Int) {
-        guard photosData.indices.contains(index) else { return }
-        photosData.remove(at: index)
+        guard photoItems.indices.contains(index) else { return }
+        photoItems.remove(at: index)
     }
 
     private func addNearbyPhotos(_ selections: [NearbyPhotoSelection]) {
-        let wasEmpty = photosData.isEmpty
+        let wasEmpty = photoItems.isEmpty
         for (i, sel) in selections.enumerated() {
-            photosData.append(sel.data)
-            if wasEmpty && i == 0 {
+            photoItems.append(PhotoItem(kind: .new(data: sel.data)))
+            if wasEmpty && i == 0 && !isEditing {
                 if selectedMountainId == nil { selectedMountainId = sel.mountainId }
                 if let d = sel.date { date = d }
             }
@@ -392,12 +443,12 @@ struct LogClimbView: View {
 
     private func loadPickedPhotos() async {
         guard !pickerItems.isEmpty else { return }
-        let wasEmpty = photosData.isEmpty
+        let wasEmpty = photoItems.isEmpty
         for item in pickerItems {
             guard let raw = try? await item.loadTransferable(type: Data.self) else { continue }
             let compressed = compressPhoto(raw)
-            photosData.append(compressed)
-            if wasEmpty && photosData.count == 1 {
+            photoItems.append(PhotoItem(kind: .new(data: compressed)))
+            if wasEmpty && photoItems.count == 1 && !isEditing {
                 detectPeakFromExif(raw)
                 extractDateFromExif(raw)
             }
@@ -483,13 +534,43 @@ struct LogClimbView: View {
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
+        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let climb = existingClimb {
+            let keepPaths = photoItems.compactMap { item -> String? in
+                guard case .existing(let urlString) = item.kind else { return nil }
+                return URL(string: urlString)?.lastPathComponent
+            }
+            let newPhotos = photoItems.compactMap { item -> Data? in
+                guard case .new(let data) = item.kind else { return nil }
+                return data
+            }
+            do {
+                let updated = try await APIClient.shared.updateClimb(
+                    climb.id,
+                    mountainId: mountainId,
+                    date: formatter.string(from: date),
+                    notes: trimmedNotes,
+                    visibility: visibility,
+                    keepPhotoPaths: keepPaths,
+                    newPhotosData: newPhotos
+                )
+                NotificationCenter.default.post(name: .climbLogged, object: updated.id)
+                onEditSaved?(updated)
+                dismiss()
+            } catch {
+                self.saveError = error.localizedDescription
+            }
+            return
+        }
+
         do {
             let newClimbId = try await APIClient.shared.logClimb(
                 mountainId: mountainId,
                 date: formatter.string(from: date),
-                notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes,
+                notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
                 visibility: visibility,
-                photosData: photosData
+                photosData: photoItems.compactMap { if case .new(let data) = $0.kind { return data } else { return nil } }
             )
             let allAscents = (try? await APIClient.shared.climbs(mountainId: mountainId)) ?? []
             successMountain = mountains.first(where: { $0.id == mountainId })
@@ -508,7 +589,7 @@ struct LogClimbView: View {
         date = Date()
         notes = ""
         visibility = "public"
-        photosData = []
+        photoItems = []
         pickerItems = []
         detectedMountainId = nil
         detectedMountainName = nil

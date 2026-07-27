@@ -205,14 +205,19 @@ actor APIClient {
         }
     }
 
+    /// - Parameters:
+    ///   - keepPhotoPaths: filenames (not full URLs) of existing photos to retain, in the
+    ///     desired final order — e.g. the last path component of each `photo_urls` entry
+    ///     the user didn't remove. Anything already on the climb but omitted here is deleted.
+    ///   - newPhotosData: any newly-added photos, appended after the kept ones.
     func updateClimb(
         _ id: Int,
         mountainId: Int,
         date: String,
         notes: String,
         visibility: String,
-        photoData: Data? = nil,
-        removePhoto: Bool = false
+        keepPhotoPaths: [String],
+        newPhotosData: [Data] = []
     ) async throws -> Climb {
         guard let url = URL(string: baseURL + "/api/climbs/\(id)") else {
             throw APIError.serverError("Invalid URL")
@@ -225,25 +230,23 @@ actor APIClient {
             req.setValue("Bearer \(tok)", forHTTPHeaderField: "Authorization")
         }
         var body = Data()
+        let keepJSON = (try? JSONEncoder().encode(keepPhotoPaths)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
         for (k, v) in [
             ("mountain_id", String(mountainId)),
             ("climb_date", date),
             ("notes", notes),
             ("visibility", visibility),
+            ("keep_photos", keepJSON),
         ] {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"\(k)\"\r\n\r\n".data(using: .utf8)!)
             body.append("\(v)\r\n".data(using: .utf8)!)
         }
-        if let photo = photoData {
+        for (i, photo) in newPhotosData.enumerated() {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"photos\"; filename=\"photo\(i).jpg\"\r\nContent-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
             body.append(photo)
             body.append("\r\n".data(using: .utf8)!)
-        } else if removePhoto {
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"remove_photo\"\r\n\r\n".data(using: .utf8)!)
-            body.append("1\r\n".data(using: .utf8)!)
         }
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         req.httpBody = body
