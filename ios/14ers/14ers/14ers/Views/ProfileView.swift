@@ -340,7 +340,7 @@ struct HomeView: View {
                 }
             }
             ForEach(s.recentClimbs) { climb in
-                HomeClimbRow(climb: climb)
+                HomeClimbRow(climb: climb) { deepLinkClimbId = climb.id }
             }
         }
     }
@@ -495,36 +495,31 @@ private struct HomeStatCard: View {
 
 private struct HomeClimbRow: View {
     let climb: RecentClimb
+    let onTap: () -> Void
 
     var body: some View {
-        HStack {
-            NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+        Button(action: onTap) {
+            HStack {
                 photoThumb
-            }
-            .buttonStyle(.plain)
 
-            VStack(alignment: .leading, spacing: 3) {
-                NavigationLink(destination: MountainDetailView(mountainId: climb.mountainId, fallbackName: climb.mountainName)) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(climb.mountainName)
                         .font(.subheadline.bold())
                         .foregroundColor(.white)
+                    Text(climb.climbDate.shortClimbDate())
+                        .font(.caption)
+                        .foregroundColor(.gray)
                 }
-                .buttonStyle(.plain)
-                Text(climb.climbDate.shortClimbDate())
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
-            Spacer()
-            NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+                Spacer()
                 Text("\(climb.elevation.formatted())ft")
                     .font(.caption.bold())
                     .foregroundColor(emerald)
             }
-            .buttonStyle(.plain)
+            .padding()
+            .background(card)
+            .cornerRadius(10)
         }
-        .padding()
-        .background(card)
-        .cornerRadius(10)
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -898,6 +893,7 @@ struct UserProfileView: View {
     @State private var followerCount = 0
     @State private var isTogglingFollow = false
     @State private var error: String?
+    @State private var selectedClimbId: Int?
 
     var body: some View {
         ScrollView {
@@ -915,6 +911,9 @@ struct UserProfileView: View {
         .background(bg.ignoresSafeArea())
         .navigationTitle(profile?.name ?? "Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $selectedClimbId) { id in
+            ClimbDetailView(climbId: id)
+        }
         .task { await load() }
     }
 
@@ -1069,34 +1068,30 @@ struct UserProfileView: View {
     }
 
     private func userClimbRow(_ climb: Climb) -> some View {
-        HStack {
-            NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+        Button {
+            selectedClimbId = climb.id
+        } label: {
+            HStack {
                 photoThumb(climb)
-            }
-            .buttonStyle(.plain)
 
-            VStack(alignment: .leading, spacing: 3) {
-                NavigationLink(destination: MountainDetailView(mountainId: climb.mountainId, fallbackName: climb.mountainName)) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(climb.mountainName)
                         .font(.subheadline.bold())
                         .foregroundColor(.white)
+                    Text(climb.climbDate.shortClimbDate())
+                        .font(.caption)
+                        .foregroundColor(.gray)
                 }
-                .buttonStyle(.plain)
-                Text(climb.climbDate.shortClimbDate())
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
-            Spacer()
-            NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+                Spacer()
                 Text("\(climb.elevation.formatted())ft")
                     .font(.caption.bold())
                     .foregroundColor(emerald)
             }
-            .buttonStyle(.plain)
+            .padding()
+            .background(card)
+            .cornerRadius(10)
         }
-        .padding()
-        .background(card)
-        .cornerRadius(10)
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder

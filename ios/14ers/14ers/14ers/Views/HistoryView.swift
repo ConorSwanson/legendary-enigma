@@ -8,6 +8,7 @@ private let emerald = Color(red: 52/255, green: 211/255, blue: 153/255)
 struct ClimbHistoryView: View {
     @State private var climbs: [Climb] = []
     @State private var isLoading = false
+    @State private var selectedClimbId: Int?
 
     var body: some View {
         Group {
@@ -25,7 +26,7 @@ struct ClimbHistoryView: View {
                 ScrollView {
                     LazyVStack(spacing: 10) {
                         ForEach(climbs) { climb in
-                            ClimbRow(climb: climb)
+                            ClimbRow(climb: climb) { selectedClimbId = climb.id }
                         }
                     }
                     .padding()
@@ -35,6 +36,9 @@ struct ClimbHistoryView: View {
         .background(bg.ignoresSafeArea())
         .navigationTitle("My Climbs")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $selectedClimbId) { id in
+            ClimbDetailView(climbId: id)
+        }
         .task { await load() }
         .refreshable { await load() }
     }
@@ -46,45 +50,41 @@ struct ClimbHistoryView: View {
     }
 }
 
-/// Row where the whole card opens the climb, but the mountain name opens the
-/// mountain detail (sibling links — no nesting).
+/// Tapping anywhere in the row opens the climb — there isn't enough room in
+/// this compact layout for a separate mountain-detail tap target too (that's
+/// still reachable from within the full ClimbDetailView).
 struct ClimbRow: View {
     let climb: Climb
+    let onTap: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
                 photoThumb
-            }
-            .buttonStyle(.plain)
 
-            VStack(alignment: .leading, spacing: 3) {
-                NavigationLink(destination: MountainDetailView(mountainId: climb.mountainId, fallbackName: climb.mountainName)) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(climb.mountainName)
                         .font(.subheadline.bold())
                         .foregroundColor(.white)
+                    Text("\(climb.elevation.formatted()) ft · \(climb.range)")
+                        .font(.caption)
+                        .foregroundColor(emerald)
+                    Text(climb.climbDate.shortClimbDate())
+                        .font(.caption)
+                        .foregroundColor(.gray)
                 }
-                .buttonStyle(.plain)
-                Text("\(climb.elevation.formatted()) ft · \(climb.range)")
-                    .font(.caption)
-                    .foregroundColor(emerald)
-                Text(climb.climbDate.shortClimbDate())
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
 
-            Spacer()
+                Spacer()
 
-            NavigationLink(destination: ClimbDetailView(climbId: climb.id)) {
                 Image(systemName: "chevron.right")
                     .font(.caption2.bold())
                     .foregroundColor(.gray.opacity(0.4))
             }
-            .buttonStyle(.plain)
+            .padding(10)
+            .background(card)
+            .cornerRadius(12)
         }
-        .padding(10)
-        .background(card)
-        .cornerRadius(12)
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
