@@ -8,6 +8,15 @@ private let card    = Color(red: 17/255, green: 24/255, blue: 39/255)
 private let emerald = Color(red: 52/255, green: 211/255, blue: 153/255)
 private let sky     = Color(red: 56/255, green: 189/255, blue: 248/255)
 
+private let photoGridColumns = 3
+private let photoGridSpacing: CGFloat = 6
+private let photoGridHorizontalPadding: CGFloat = 16
+
+private var photoGridCellSize: CGFloat {
+    let totalSpacing = photoGridHorizontalPadding * 2 + photoGridSpacing * CGFloat(photoGridColumns - 1)
+    return (UIScreen.main.bounds.width - totalSpacing) / CGFloat(photoGridColumns)
+}
+
 /// A photo selected in NearbyPeakPhotosView, with the peak/date already known
 /// from the geo-match — no EXIF re-parsing needed by the caller.
 struct NearbyPhotoSelection {
@@ -83,19 +92,20 @@ struct NearbyPeakPhotosView: View {
                                         .padding(.top, 10)
                                         .padding(.bottom, 6)
 
-                                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)], spacing: 6) {
+                                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: photoGridSpacing), count: photoGridColumns), spacing: photoGridSpacing) {
                                         ForEach(group.items) { match in
                                             PhotoMatchCell(
                                                 match: match,
                                                 mountainName: mountains.first(where: { $0.id == match.mountainId })?.name ?? "Peak",
-                                                isSelected: selectedIds.contains(match.id)
+                                                isSelected: selectedIds.contains(match.id),
+                                                cellSize: photoGridCellSize
                                             )
                                             .onTapGesture { toggle(match.id) }
                                         }
                                     }
                                 }
                             }
-                            .padding(.horizontal)
+                            .padding(.horizontal, photoGridHorizontalPadding)
                             .padding(.bottom, 90)
                         }
                     }
@@ -244,6 +254,7 @@ private struct PhotoMatchCell: View {
     let match: NearbyPeakPhotosView.PhotoMatch
     let mountainName: String
     let isSelected: Bool
+    let cellSize: CGFloat
 
     @State private var thumb: UIImage?
 
@@ -251,12 +262,12 @@ private struct PhotoMatchCell: View {
         ZStack(alignment: .bottomLeading) {
             Group {
                 if let thumb {
-                    Image(uiImage: thumb).resizable().aspectRatio(contentMode: .fill)
+                    Image(uiImage: thumb).resizable().scaledToFill()
                 } else {
                     card
                 }
             }
-            .aspectRatio(1, contentMode: .fill)
+            .frame(width: cellSize, height: cellSize)
             .clipped()
 
             Text(mountainName)
@@ -291,23 +302,25 @@ private struct PhotoMatchCell: View {
                 Spacer()
             }
         }
-        .aspectRatio(1, contentMode: .fit)
+        .frame(width: cellSize, height: cellSize)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(isSelected ? emerald : Color.white.opacity(0.06), lineWidth: isSelected ? 2 : 1)
         )
-        .task { thumb = await loadThumb() }
+        .task(id: match.id) { thumb = await loadThumb() }
     }
 
     private func loadThumb() async -> UIImage? {
         let opts = PHImageRequestOptions()
-        opts.deliveryMode = .fastFormat
+        opts.deliveryMode = .highQualityFormat
+        opts.resizeMode = .exact
         opts.isNetworkAccessAllowed = false
+        let pixelSize = cellSize * UIScreen.main.scale
         return await withCheckedContinuation { cont in
             PHImageManager.default().requestImage(
                 for: match.asset,
-                targetSize: CGSize(width: 200, height: 200),
+                targetSize: CGSize(width: pixelSize, height: pixelSize),
                 contentMode: .aspectFill,
                 options: opts
             ) { img, _ in cont.resume(returning: img) }
