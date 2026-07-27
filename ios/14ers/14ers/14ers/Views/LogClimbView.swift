@@ -239,9 +239,14 @@ struct LogClimbView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             ForEach(Array(photoItems.enumerated()), id: \.element.id) { idx, item in
-                                photoThumb(item, isCover: idx == 0) { removePhoto(at: idx) }
+                                photoThumb(item, isCover: idx == 0, onSetCover: { setCover(at: idx) }) { removePhoto(at: idx) }
                             }
                         }
+                    }
+                    if photoItems.count > 1 {
+                        Text("Tap a photo to make it the cover")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
                     }
                 }
 
@@ -263,7 +268,7 @@ struct LogClimbView: View {
         .cornerRadius(16)
     }
 
-    private func photoThumb(_ item: PhotoItem, isCover: Bool, onRemove: @escaping () -> Void) -> some View {
+    private func photoThumb(_ item: PhotoItem, isCover: Bool, onSetCover: @escaping () -> Void, onRemove: @escaping () -> Void) -> some View {
         ZStack(alignment: .topTrailing) {
             Group {
                 switch item.kind {
@@ -287,6 +292,10 @@ struct LogClimbView: View {
             }
             .frame(width: 64, height: 64)
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isCover ? emerald : Color.clear, lineWidth: 2)
+            )
             .overlay(alignment: .bottom) {
                 if isCover {
                     Text("COVER")
@@ -299,6 +308,8 @@ struct LogClimbView: View {
                         .padding(.bottom, 3)
                 }
             }
+            .contentShape(Rectangle())
+            .onTapGesture { if !isCover { onSetCover() } }
 
             Button(action: onRemove) {
                 Image(systemName: "xmark.circle.fill")
@@ -428,6 +439,12 @@ struct LogClimbView: View {
     private func removePhoto(at index: Int) {
         guard photoItems.indices.contains(index) else { return }
         photoItems.remove(at: index)
+    }
+
+    private func setCover(at index: Int) {
+        guard photoItems.indices.contains(index), index != 0 else { return }
+        let item = photoItems.remove(at: index)
+        photoItems.insert(item, at: 0)
     }
 
     private func addNearbyPhotos(_ selections: [NearbyPhotoSelection]) {
