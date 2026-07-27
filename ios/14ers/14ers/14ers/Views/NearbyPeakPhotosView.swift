@@ -92,15 +92,25 @@ struct NearbyPeakPhotosView: View {
                                         .padding(.top, 10)
                                         .padding(.bottom, 6)
 
-                                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: photoGridSpacing), count: photoGridColumns), spacing: photoGridSpacing) {
-                                        ForEach(group.items) { match in
-                                            PhotoMatchCell(
-                                                match: match,
-                                                mountainName: mountains.first(where: { $0.id == match.mountainId })?.name ?? "Peak",
-                                                isSelected: selectedIds.contains(match.id),
-                                                cellSize: photoGridCellSize
-                                            )
-                                            .onTapGesture { toggle(match.id) }
+                                    VStack(spacing: photoGridSpacing) {
+                                        ForEach(Array(rows(for: group.items).enumerated()), id: \.offset) { _, row in
+                                            HStack(spacing: photoGridSpacing) {
+                                                ForEach(row) { match in
+                                                    PhotoMatchCell(
+                                                        match: match,
+                                                        mountainName: mountains.first(where: { $0.id == match.mountainId })?.name ?? "Peak",
+                                                        isSelected: selectedIds.contains(match.id),
+                                                        cellSize: photoGridCellSize
+                                                    )
+                                                    .onTapGesture { toggle(match.id) }
+                                                }
+                                                if row.count < photoGridColumns {
+                                                    ForEach(0..<(photoGridColumns - row.count), id: \.self) { _ in
+                                                        Color.clear
+                                                            .frame(width: photoGridCellSize, height: photoGridCellSize)
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -152,6 +162,15 @@ struct NearbyPeakPhotosView: View {
             selectedIds.remove(at: idx)
         } else {
             selectedIds.append(id)
+        }
+    }
+
+    /// Chunks matches into fixed-width rows manually rather than relying on
+    /// LazyVGrid, which — nested inside a LazyVStack/ScrollView — is prone to
+    /// giving each cell its own ungoverned size instead of a uniform grid.
+    private func rows(for items: [PhotoMatch]) -> [[PhotoMatch]] {
+        stride(from: 0, to: items.count, by: photoGridColumns).map {
+            Array(items[$0..<min($0 + photoGridColumns, items.count)])
         }
     }
 
