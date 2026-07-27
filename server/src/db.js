@@ -245,13 +245,34 @@ function initDb() {
   });
   seedMountains(MOUNTAINS);
 
-  // Explicit migration for mountains added after initial deploy (INSERT OR IGNORE
-  // silently skips if a name conflict exists with a different ID).
+  // Reconcile every mountain to its canonical row on every boot. This is
+  // stronger than the INSERT OR IGNORE above: that silently no-ops if a row
+  // with the same id already exists (even with stale/wrong data), or if a
+  // name conflict blocks the insert. UPDATE-by-id fixes wrong data in place
+  // without touching the id (safe — climbs.mountain_id keeps pointing at the
+  // same row). The name column is UNIQUE, so any other row already holding
+  // this name has to be resolved first — otherwise both the update and the
+  // insert path below can fail the constraint.
   MOUNTAINS.forEach(([id, name, elevation, range]) => {
-    if (!db.prepare('SELECT 1 FROM mountains WHERE id = ?').get(id)) {
-      db.prepare('DELETE FROM mountains WHERE name = ?').run(name);
-      db.prepare('INSERT INTO mountains (id, name, elevation, range) VALUES (?, ?, ?, ?)').run(id, name, elevation, range);
+    const conflict = db.prepare('SELECT id FROM mountains WHERE name = ? AND id != ?').get(name, id);
+    if (conflict) {
+      const { c: inUse } = db.prepare('SELECT COUNT(*) AS c FROM climbs WHERE mountain_id = ?').get(conflict.id);
+      if (inUse > 0) {
+        console.warn(`[db] Mountain "${name}" occupies id ${conflict.id} (expected ${id}) and has climbs attached — skipping to avoid orphaning data`);
+        return;
+      }
+      db.prepare('DELETE FROM mountains WHERE id = ?').run(conflict.id);
     }
+
+    const byId = db.prepare('SELECT name, elevation, range FROM mountains WHERE id = ?').get(id);
+    if (byId) {
+      if (byId.name !== name || byId.elevation !== elevation || byId.range !== range) {
+        db.prepare('UPDATE mountains SET name = ?, elevation = ?, range = ? WHERE id = ?')
+          .run(name, elevation, range, id);
+      }
+      return;
+    }
+    db.prepare('INSERT INTO mountains (id, name, elevation, range) VALUES (?, ?, ?, ?)').run(id, name, elevation, range);
   });
 
   db.prepare('INSERT OR IGNORE INTO profile (id, name) VALUES (1, ?)').run('Climber');
