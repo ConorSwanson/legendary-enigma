@@ -414,6 +414,9 @@ struct ClimbDetailView: View {
             let (fetched, fetchedComments) = try await (c, cs)
             climb = fetched
             comments = fetchedComments
+            if let data = try? JSONEncoder().encode(fetched), let json = String(data: data, encoding: .utf8) {
+                print("[ClimbDetailView] DEBUG climb \(climbId): \(json)")
+            }
             liked = fetched.isLiked ?? false
             likeCount = fetched.likeCount ?? 0
             if fetched.isOwner == true {
