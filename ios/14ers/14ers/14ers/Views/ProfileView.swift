@@ -22,12 +22,11 @@ struct HomeView: View {
     @State private var isDeletingAccount = false
     @State private var showDeletedToast = false
     @State private var deepLinkClimbId: Int?
-    @State private var isDeepLinkActive = false
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var userState: UserState
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
                     heroSection
@@ -57,22 +56,15 @@ struct HomeView: View {
                         .padding(.bottom, 16)
                 }
             }
-            .background(
-                NavigationLink(
-                    isActive: $isDeepLinkActive,
-                    destination: {
-                        if let id = deepLinkClimbId { ClimbDetailView(climbId: id) }
-                    },
-                    label: { EmptyView() }
-                )
-            )
+            .navigationDestination(item: $deepLinkClimbId) { id in
+                ClimbDetailView(climbId: id)
+            }
         }
         .task { await load() }
         .onChange(of: userState.pendingClimbId) { newValue in
             guard let id = newValue else { return }
             userState.pendingClimbId = nil
             deepLinkClimbId = id
-            isDeepLinkActive = true
         }
         .onChange(of: userState.climbWasDeleted) { newValue in
             guard newValue else { return }
@@ -654,14 +646,13 @@ struct NotificationsView: View {
     @State private var notifications: [NotificationItem] = []
     @State private var isLoading = true
     @State private var selectedUserId: Int?
-    @State private var userNavActive = false
     @Environment(\.dismiss) private var dismiss
 
     private let notifBg = Color(red: 3/255, green: 7/255, blue: 18/255)
     private let notifCard = Color(red: 17/255, green: 24/255, blue: 39/255)
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if isLoading {
                     ProgressView().tint(.white)
@@ -688,7 +679,6 @@ struct NotificationsView: View {
                                 }
                             } else {
                                 selectedUserId = item.fromUserId
-                                userNavActive = true
                             }
                         }
                         .listRowBackground(notifCard)
@@ -699,15 +689,9 @@ struct NotificationsView: View {
                     .scrollContentBackground(.hidden)
                 }
             }
-            .background(
-                NavigationLink(
-                    isActive: $userNavActive,
-                    destination: {
-                        if let uid = selectedUserId { UserProfileView(userId: uid) }
-                    },
-                    label: { EmptyView() }
-                )
-            )
+            .navigationDestination(item: $selectedUserId) { uid in
+                UserProfileView(userId: uid)
+            }
             .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
