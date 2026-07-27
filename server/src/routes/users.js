@@ -20,6 +20,19 @@ router.get('/search', requireAuth, (req, res) => {
   res.json(users.map(withAvatarUrl));
 });
 
+// GET /api/users/all?secret=X — export every registered account (protected
+// by the same env secret as /api/beta/list). No password hashes included.
+router.get('/all', (req, res) => {
+  const secret = process.env.BETA_LIST_SECRET;
+  if (!secret || req.query.secret !== secret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const rows = getDb().prepare(
+    'SELECT id, name, email, created_at FROM users ORDER BY created_at DESC'
+  ).all();
+  res.json({ count: rows.length, users: rows });
+});
+
 // GET /api/users/:id
 router.get('/:id', requireAuth, (req, res) => {
   const db = getDb();
