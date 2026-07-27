@@ -242,6 +242,8 @@ struct LogClimbView: View {
                                 photoThumb(item, isCover: idx == 0, onSetCover: { setCover(at: idx) }) { removePhoto(at: idx) }
                             }
                         }
+                        .padding(.top, 8)
+                        .padding(.trailing, 8)
                     }
                     if photoItems.count > 1 {
                         Text("Tap a photo to make it the cover")
