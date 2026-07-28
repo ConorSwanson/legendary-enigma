@@ -174,16 +174,21 @@ struct LogClimbView: View {
 
         if let detectedId = detectedMountainId,
            let detectedName = detectedMountainName,
-           selectedMountainId == nil {
+           detectedId != selectedMountainId {
             Button {
                 selectedMountainId = detectedId
                 mountainSetByPhoto = true
                 detectedMountainId = nil
                 detectedMountainName = nil
             } label: {
-                Label("Near \(detectedName) — tap to select", systemImage: "mappin.circle.fill")
-                    .font(.caption.bold())
-                    .foregroundColor(.orange)
+                Label(
+                    selectedMountainId == nil
+                        ? "Near \(detectedName) — tap to select"
+                        : "Photo looks like \(detectedName) — tap to update",
+                    systemImage: "mappin.circle.fill"
+                )
+                .font(.caption.bold())
+                .foregroundColor(.orange)
             }
             .padding(.horizontal, 4)
         }
@@ -466,11 +471,13 @@ struct LogClimbView: View {
         let wasEmpty = photoItems.isEmpty
         for (i, sel) in selections.enumerated() {
             photoItems.append(PhotoItem(kind: .new(data: sel.data)))
-            if wasEmpty && i == 0 && !isEditing {
-                if selectedMountainId == nil {
-                    selectedMountainId = sel.mountainId
-                    mountainSetByPhoto = true
-                }
+            // These photos are geo-matched to a specific peak already, and
+            // wasEmpty means the whole gallery was just cleared -- a clear
+            // enough "start fresh" signal to update the peak even mid-edit,
+            // unlike the softer EXIF suggestion banner elsewhere.
+            if wasEmpty && i == 0 {
+                selectedMountainId = sel.mountainId
+                mountainSetByPhoto = true
                 if let d = sel.date { date = d }
             }
         }
@@ -483,9 +490,14 @@ struct LogClimbView: View {
             guard let raw = try? await item.loadTransferable(type: Data.self) else { continue }
             let compressed = compressPhoto(raw)
             photoItems.append(PhotoItem(kind: .new(data: compressed)))
-            if wasEmpty && photoItems.count == 1 && !isEditing {
+            if wasEmpty && photoItems.count == 1 {
+                // Peak detection is always a tap-to-accept suggestion, so it's
+                // safe to surface even when editing and a peak is already
+                // set. Date is only auto-filled for a brand-new climb --
+                // silently moving an already-logged date on a photo swap
+                // would be surprising.
                 detectPeakFromExif(raw)
-                extractDateFromExif(raw)
+                if !isEditing { extractDateFromExif(raw) }
             }
         }
         pickerItems = []
