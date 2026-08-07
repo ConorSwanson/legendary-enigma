@@ -24,7 +24,6 @@ struct FeedView: View {
     @State private var canLoadMore = true
     @State private var error: String?
     @State private var showUserSearch = false
-    @State private var pullDistance: CGFloat = 0
     @State private var isRefreshing = false
     @EnvironmentObject var userState: UserState
 
@@ -69,16 +68,21 @@ struct FeedView: View {
                     Spacer()
                     Text("No posts yet").foregroundColor(.gray)
                     Spacer()
-                } else if #available(iOS 18.0, *) {
-                    ScrollView { feedList }
-                        .scrollBounceBehavior(.always, axes: .vertical)
-                        .onScrollGeometryChange(for: CGFloat.self) { geo in
-                            geo.contentOffset.y
-                        } action: { _, newOffset in
-                            handlePullChange(newOffset)
-                        }
                 } else {
                     ScrollView { feedList }
+                        .refreshable {
+                            isRefreshing = true
+                            await load()
+                            isRefreshing = false
+                        }
+                        .overlay(alignment: .top) {
+                            if isRefreshing {
+                                MountainRefreshBadge()
+                                    .padding(.top, 8)
+                                    .transition(.opacity.combined(with: .scale(scale: 0.6)))
+                            }
+                        }
+                        .animation(.easeOut(duration: 0.2), value: isRefreshing)
                 }
             }
             .background(bg.ignoresSafeArea())
@@ -171,8 +175,6 @@ struct FeedView: View {
 
     private var feedList: some View {
         LazyVStack(spacing: 12) {
-            MountainRefreshHeader(pullDistance: pullDistance, isRefreshing: isRefreshing)
-
             ForEach(items) { item in
                 FeedCard(item: item)
                     .onAppear {
@@ -187,54 +189,28 @@ struct FeedView: View {
         }
         .padding()
     }
-
-    private func handlePullChange(_ contentOffsetY: CGFloat) {
-        pullDistance = max(0, -contentOffsetY)
-        guard pullDistance > pullToRefreshThreshold, !isRefreshing else { return }
-        isRefreshing = true
-        Task {
-            await load()
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                isRefreshing = false
-            }
-        }
-    }
 }
 
 // MARK: - Pull to Refresh
 
-private let pullToRefreshThreshold: CGFloat = 70
-
-private struct MountainRefreshHeader: View {
-    let pullDistance: CGFloat
-    let isRefreshing: Bool
-
+private struct MountainRefreshBadge: View {
     @State private var rotationDegrees: Double = 0
 
-    private var progress: CGFloat { min(pullDistance / pullToRefreshThreshold, 1) }
-
     var body: some View {
-        HStack {
-            Spacer()
-            Image(systemName: "mountain.2.fill")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundColor(sky)
-                .rotationEffect(.degrees(rotationDegrees))
-                .scaleEffect(isRefreshing ? 1 : 0.6 + 0.4 * progress)
-                .opacity(isRefreshing ? 1 : progress)
-            Spacer()
-        }
-        .frame(height: isRefreshing ? 50 : pullDistance)
-        .onChange(of: progress) { newProgress in
-            guard !isRefreshing else { return }
-            rotationDegrees = Double(newProgress) * 180
-        }
-        .onChange(of: isRefreshing) { newValue in
-            guard newValue else { return }
-            withAnimation(.linear(duration: 0.7).repeatForever(autoreverses: false)) {
-                rotationDegrees += 360
+        Image(systemName: "mountain.2.fill")
+            .font(.system(size: 18, weight: .bold))
+            .foregroundColor(sky)
+            .padding(10)
+            .background(card)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(sky.opacity(0.3), lineWidth: 1))
+            .rotationEffect(.degrees(rotationDegrees))
+            .onAppear {
+                rotationDegrees = 0
+                withAnimation(.linear(duration: 0.7).repeatForever(autoreverses: false)) {
+                    rotationDegrees = 360
+                }
             }
-        }
     }
 }
 
