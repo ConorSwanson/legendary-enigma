@@ -69,39 +69,16 @@ struct FeedView: View {
                     Spacer()
                     Text("No posts yet").foregroundColor(.gray)
                     Spacer()
+                } else if #available(iOS 18.0, *) {
+                    ScrollView { feedList }
+                        .scrollBounceBehavior(.always, axes: .vertical)
+                        .onScrollGeometryChange(for: CGFloat.self) { geo in
+                            geo.contentOffset.y
+                        } action: { _, newOffset in
+                            handlePullChange(newOffset)
+                        }
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            MountainRefreshHeader(pullDistance: pullDistance, isRefreshing: isRefreshing)
-
-                            ForEach(items) { item in
-                                FeedCard(item: item)
-                                    .onAppear {
-                                        if item.id == items.suffix(5).first?.id {
-                                            Task { await loadMore() }
-                                        }
-                                    }
-                            }
-                            if isLoadingMore {
-                                ProgressView().tint(.white).padding(.vertical, 16)
-                            }
-                        }
-                        .padding()
-                    }
-                    .scrollBounceBehavior(.always, axes: .vertical)
-                    .onScrollGeometryChange(for: CGFloat.self) { geo in
-                        geo.contentOffset.y
-                    } action: { _, newOffset in
-                        pullDistance = max(0, -newOffset)
-                        guard pullDistance > pullToRefreshThreshold, !isRefreshing else { return }
-                        isRefreshing = true
-                        Task {
-                            await load()
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                isRefreshing = false
-                            }
-                        }
-                    }
+                    ScrollView { feedList }
                 }
             }
             .background(bg.ignoresSafeArea())
@@ -190,6 +167,37 @@ struct FeedView: View {
             [item.photoUrl.flatMap { URL(string: $0) },
              item.userAvatarUrl.flatMap { URL(string: $0) }]
         })
+    }
+
+    private var feedList: some View {
+        LazyVStack(spacing: 12) {
+            MountainRefreshHeader(pullDistance: pullDistance, isRefreshing: isRefreshing)
+
+            ForEach(items) { item in
+                FeedCard(item: item)
+                    .onAppear {
+                        if item.id == items.suffix(5).first?.id {
+                            Task { await loadMore() }
+                        }
+                    }
+            }
+            if isLoadingMore {
+                ProgressView().tint(.white).padding(.vertical, 16)
+            }
+        }
+        .padding()
+    }
+
+    private func handlePullChange(_ contentOffsetY: CGFloat) {
+        pullDistance = max(0, -contentOffsetY)
+        guard pullDistance > pullToRefreshThreshold, !isRefreshing else { return }
+        isRefreshing = true
+        Task {
+            await load()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                isRefreshing = false
+            }
+        }
     }
 }
 
