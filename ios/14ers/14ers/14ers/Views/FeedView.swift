@@ -72,14 +72,6 @@ struct FeedView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            GeometryReader { proxy in
-                                Color.clear.preference(
-                                    key: FeedScrollOffsetKey.self,
-                                    value: proxy.frame(in: .named("feedScroll")).minY
-                                )
-                            }
-                            .frame(height: 0)
-
                             MountainRefreshHeader(pullDistance: pullDistance, isRefreshing: isRefreshing)
 
                             ForEach(items) { item in
@@ -95,7 +87,16 @@ struct FeedView: View {
                             }
                         }
                         .padding()
+                        .background(
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: FeedScrollOffsetKey.self,
+                                    value: proxy.frame(in: .named("feedScroll")).minY
+                                )
+                            }
+                        )
                     }
+                    .scrollBounceBehavior(.always, axes: .vertical)
                     .coordinateSpace(name: "feedScroll")
                     .onPreferenceChange(FeedScrollOffsetKey.self) { value in
                         pullDistance = max(0, value)
