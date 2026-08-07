@@ -87,20 +87,13 @@ struct FeedView: View {
                             }
                         }
                         .padding()
-                        .background(
-                            GeometryReader { proxy in
-                                Color.clear.preference(
-                                    key: FeedScrollOffsetKey.self,
-                                    value: proxy.frame(in: .named("feedScroll")).minY
-                                )
-                            }
-                        )
                     }
                     .scrollBounceBehavior(.always, axes: .vertical)
-                    .coordinateSpace(name: "feedScroll")
-                    .onPreferenceChange(FeedScrollOffsetKey.self) { value in
-                        pullDistance = max(0, value)
-                        guard value > pullToRefreshThreshold, !isRefreshing else { return }
+                    .onScrollGeometryChange(for: CGFloat.self) { geo in
+                        geo.contentOffset.y
+                    } action: { _, newOffset in
+                        pullDistance = max(0, -newOffset)
+                        guard pullDistance > pullToRefreshThreshold, !isRefreshing else { return }
                         isRefreshing = true
                         Task {
                             await load()
@@ -203,11 +196,6 @@ struct FeedView: View {
 // MARK: - Pull to Refresh
 
 private let pullToRefreshThreshold: CGFloat = 70
-
-private struct FeedScrollOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
 
 private struct MountainRefreshHeader: View {
     let pullDistance: CGFloat
