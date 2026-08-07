@@ -19,11 +19,11 @@ async function sendSignupAlert(email) {
   if (!mailer) return;
   const notify = process.env.SMTP_NOTIFY || process.env.SMTP_USER;
   await mailer.sendMail({
-    from: `"14ers Tracker" <${process.env.SMTP_USER}>`,
+    from: `"Switchback" <${process.env.SMTP_USER}>`,
     to: notify,
     subject: '🏔️ New beta signup',
-    text: `${email} just joined the 14ers Tracker beta waitlist.`,
-    html: `<p><strong>${email}</strong> just joined the 14ers Tracker beta waitlist.</p>`,
+    text: `${email} just joined the Switchback beta waitlist.`,
+    html: `<p><strong>${email}</strong> just joined the Switchback beta waitlist.</p>`,
   });
 }
 
@@ -32,8 +32,8 @@ const PAGE = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>14ers Tracker — Join the Beta</title>
-  <meta name="description" content="Track every Colorado 14er summit. Earn badges, log climbs, and connect with other climbers. Join the beta." />
+  <title>Switchback — Track Every Summit</title>
+  <meta name="description" content="Track every summit you climb. Earn badges, log ascents, and connect with other climbers — starting with all 58 Colorado 14ers. Join the beta." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -265,17 +265,17 @@ const PAGE = `<!DOCTYPE html>
 
   <nav>
     <div class="nav-dot"></div>
-    <span class="nav-name">14ers Tracker</span>
+    <span class="nav-name">Switchback</span>
   </nav>
 
   <div class="hero">
-    <img src="/public/app-icon.png" alt="14ers Tracker" class="app-icon" />
+    <img src="/public/app-icon.png" alt="Switchback" class="app-icon" />
 
     <p class="eyebrow">iOS Beta — Coming Soon</p>
-    <h1>Track every<br/><span>Colorado summit.</span></h1>
+    <h1>Track every<br/><span>summit you climb.</span></h1>
     <p class="subtitle">
-      Log your 14er ascents, earn peak badges, and follow other climbers.
-      Built for serious Colorado hikers. Free beta launching soon.
+      Log every ascent, earn peak badges, and follow other climbers —
+      starting with all 58 Colorado 14ers. Free beta launching soon.
     </p>
 
     <form id="signup-form">
@@ -296,8 +296,8 @@ const PAGE = `<!DOCTYPE html>
   <div class="features">
     <div class="feature">
       <div class="feature-icon">🏔️</div>
-      <h3>All 58 Peaks</h3>
-      <p>Every Colorado 14er in one place. Log each summit with date, notes, and photos.</p>
+      <h3>Every Summit</h3>
+      <p>Starts with all 58 Colorado 14ers, but tracks any peak you climb — log each summit with date, notes, and photos.</p>
     </div>
     <div class="feature">
       <div class="feature-icon">🏅</div>
@@ -319,7 +319,7 @@ const PAGE = `<!DOCTYPE html>
   <div class="stats">
     <div class="stat-item">
       <span class="stat-value">58</span>
-      <span class="stat-label">Peaks tracked</span>
+      <span class="stat-label">Colorado 14ers included</span>
     </div>
     <div class="stat-item">
       <span class="stat-value">14,440</span>
@@ -332,7 +332,7 @@ const PAGE = `<!DOCTYPE html>
   </div>
 
   <footer>
-    &copy; 2026 14ers Tracker &nbsp;·&nbsp; Colorado
+    &copy; 2026 Switchback
   </footer>
 
   <script>
@@ -369,11 +369,13 @@ const PAGE = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// GET /beta — landing page
-router.get('/', (_req, res) => {
+function renderLandingPage(_req, res) {
   res.setHeader('Content-Type', 'text/html');
   res.send(PAGE);
-});
+}
+
+// GET /beta — landing page
+router.get('/', renderLandingPage);
 
 // POST /api/beta/signup — capture email
 router.post('/signup', (req, res) => {
@@ -410,3 +412,4 @@ router.get('/list', (req, res) => {
 });
 
 module.exports = router;
+module.exports.renderLandingPage = renderLandingPage;
