@@ -139,6 +139,10 @@ struct FeedView: View {
             items = fetched
             if fetched.count < 30 { canLoadMore = false }
             prefetchImages(fetched)
+        } catch is CancellationError {
+            // Refresh gesture was interrupted before the request finished; keep existing content.
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            // Same as above, surfaced by URLSession instead of Swift's native CancellationError.
         } catch {
             self.error = error.localizedDescription
         }
