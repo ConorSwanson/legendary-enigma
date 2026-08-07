@@ -24,6 +24,8 @@ struct FeedView: View {
     @State private var canLoadMore = true
     @State private var error: String?
     @State private var showUserSearch = false
+    @State private var pullDistance: CGFloat = 0
+    @State private var isRefreshing = false
     @EnvironmentObject var userState: UserState
 
     var body: some View {
@@ -70,6 +72,16 @@ struct FeedView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 12) {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: FeedScrollOffsetKey.self,
+                                    value: proxy.frame(in: .named("feedScroll")).minY
+                                )
+                            }
+                            .frame(height: 0)
+
+                            MountainRefreshHeader(pullDistance: pullDistance, isRefreshing: isRefreshing)
+
                             ForEach(items) { item in
                                 FeedCard(item: item)
                                     .onAppear {
@@ -83,6 +95,18 @@ struct FeedView: View {
                             }
                         }
                         .padding()
+                    }
+                    .coordinateSpace(name: "feedScroll")
+                    .onPreferenceChange(FeedScrollOffsetKey.self) { value in
+                        pullDistance = max(0, value)
+                        guard value > pullToRefreshThreshold, !isRefreshing else { return }
+                        isRefreshing = true
+                        Task {
+                            await load()
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                isRefreshing = false
+                            }
+                        }
                     }
                 }
             }
@@ -172,6 +196,47 @@ struct FeedView: View {
             [item.photoUrl.flatMap { URL(string: $0) },
              item.userAvatarUrl.flatMap { URL(string: $0) }]
         })
+    }
+}
+
+// MARK: - Pull to Refresh
+
+private let pullToRefreshThreshold: CGFloat = 70
+
+private struct FeedScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+private struct MountainRefreshHeader: View {
+    let pullDistance: CGFloat
+    let isRefreshing: Bool
+
+    @State private var spinning = false
+
+    private var progress: CGFloat { min(pullDistance / pullToRefreshThreshold, 1) }
+
+    var body: some View {
+        HStack {
+            Spacer()
+            Image(systemName: "mountain.2.fill")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(sky)
+                .rotationEffect(.degrees(isRefreshing ? (spinning ? 360 : 0) : Double(progress) * 180))
+                .scaleEffect(0.6 + 0.4 * progress)
+                .opacity(isRefreshing ? 1 : progress)
+            Spacer()
+        }
+        .frame(height: isRefreshing ? 50 : pullDistance)
+        .onChange(of: isRefreshing) { newValue in
+            if newValue {
+                withAnimation(.linear(duration: 0.7).repeatForever(autoreverses: false)) {
+                    spinning = true
+                }
+            } else {
+                spinning = false
+            }
+        }
     }
 }
 
