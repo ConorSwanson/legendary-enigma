@@ -209,7 +209,7 @@ private struct MountainRefreshHeader: View {
     let pullDistance: CGFloat
     let isRefreshing: Bool
 
-    @State private var spinning = false
+    @State private var rotationDegrees: Double = 0
 
     private var progress: CGFloat { min(pullDistance / pullToRefreshThreshold, 1) }
 
@@ -219,19 +219,20 @@ private struct MountainRefreshHeader: View {
             Image(systemName: "mountain.2.fill")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(sky)
-                .rotationEffect(.degrees(isRefreshing ? (spinning ? 360 : 0) : Double(progress) * 180))
-                .scaleEffect(0.6 + 0.4 * progress)
+                .rotationEffect(.degrees(rotationDegrees))
+                .scaleEffect(isRefreshing ? 1 : 0.6 + 0.4 * progress)
                 .opacity(isRefreshing ? 1 : progress)
             Spacer()
         }
         .frame(height: isRefreshing ? 50 : pullDistance)
+        .onChange(of: progress) { newProgress in
+            guard !isRefreshing else { return }
+            rotationDegrees = Double(newProgress) * 180
+        }
         .onChange(of: isRefreshing) { newValue in
-            if newValue {
-                withAnimation(.linear(duration: 0.7).repeatForever(autoreverses: false)) {
-                    spinning = true
-                }
-            } else {
-                spinning = false
+            guard newValue else { return }
+            withAnimation(.linear(duration: 0.7).repeatForever(autoreverses: false)) {
+                rotationDegrees += 360
             }
         }
     }
