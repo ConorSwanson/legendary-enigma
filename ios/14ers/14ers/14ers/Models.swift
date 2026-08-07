@@ -180,6 +180,8 @@ struct Stats: Codable, Sendable {
     let climbedIds: [Int]
     let recentClimbs: [RecentClimb]
     let ascentCounts: [AscentCount]
+    let byYear: [UserYearStat]
+    let byMonth: [MonthCount]
     let followers: Int?
     let following: Int?
     let rank: ClimberRank?
@@ -192,7 +194,22 @@ struct Stats: Codable, Sendable {
         case climbedIds     = "climbed_ids"
         case recentClimbs   = "recent_climbs"
         case ascentCounts   = "ascent_counts"
+        case byYear         = "by_year"
+        case byMonth        = "by_month"
         case followers, following, rank
+    }
+}
+
+struct UserYearStat: Codable, Identifiable, Sendable {
+    let year: String
+    let count: Int
+    let uniquePeaks: Int
+    let elevation: Int
+    var id: String { year }
+
+    enum CodingKeys: String, CodingKey {
+        case year, count, elevation
+        case uniquePeaks = "unique_peaks"
     }
 }
 

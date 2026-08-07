@@ -22,6 +22,8 @@ struct HomeView: View {
     @State private var isDeletingAccount = false
     @State private var showDeletedToast = false
     @State private var deepLinkClimbId: Int?
+    @State private var selectedStatsYear: String?
+    @State private var showStatsDeepDive = false
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var userState: UserState
 
@@ -32,7 +34,7 @@ struct HomeView: View {
                     heroSection
                     VStack(spacing: 20) {
                         nameAndBio
-                        if let s = stats { statsGrid(s) }
+                        if let s = stats { statsScrubberSection(s) }
                         if let s = stats { followersRow(s) }
                         if let s = stats, !s.recentClimbs.isEmpty { recentBadgesSection(s) }
                         if let s = stats, !s.recentClimbs.isEmpty { recentClimbsSection(s) }
@@ -253,13 +255,61 @@ struct HomeView: View {
     // MARK: - Stats
 
     @ViewBuilder
-    private func statsGrid(_ s: Stats) -> some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            HomeStatCard(title: "Total Climbs", value: "\(s.totalClimbs)")
-            HomeStatCard(title: "Unique Peaks", value: "\(s.uniquePeaks)")
-            HomeStatCard(title: "Elevation", value: "\(s.totalElevation.formatted())ft")
-            HomeStatCard(title: "Mountains", value: "\(s.totalMountains)")
+    private func statsScrubberSection(_ s: Stats) -> some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        statsYearChip(title: "All-Time", isOn: selectedStatsYear == nil) {
+                            selectedStatsYear = nil
+                        }
+                        ForEach(s.byYear.reversed()) { y in
+                            statsYearChip(title: y.year, isOn: selectedStatsYear == y.year) {
+                                selectedStatsYear = y.year
+                            }
+                        }
+                    }
+                }
+                Button { showStatsDeepDive = true } label: {
+                    Image(systemName: "chart.bar.fill")
+                        .font(.caption)
+                        .foregroundColor(sky)
+                        .frame(width: 28, height: 28)
+                        .background(card)
+                        .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+            }
+            HStack(spacing: 8) {
+                let scope = statsScope(s)
+                HomeStatCard(title: "Summits", value: "\(scope.count)")
+                HomeStatCard(title: "Unique", value: "\(scope.uniquePeaks)")
+                HomeStatCard(title: "Elevation", value: "\(scope.elevation.formatted())ft")
+            }
         }
+        .navigationDestination(isPresented: $showStatsDeepDive) {
+            StatsDeepDiveView(stats: s, initialYear: selectedStatsYear)
+        }
+    }
+
+    private func statsYearChip(title: String, isOn: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption.bold())
+                .foregroundColor(isOn ? bg : .gray)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 5)
+                .background(isOn ? emerald : card)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func statsScope(_ s: Stats) -> (count: Int, uniquePeaks: Int, elevation: Int) {
+        guard let year = selectedStatsYear, let y = s.byYear.first(where: { $0.year == year }) else {
+            return (s.totalClimbs, s.uniquePeaks, s.totalElevation)
+        }
+        return (y.count, y.uniquePeaks, y.elevation)
     }
 
     @ViewBuilder
@@ -478,18 +528,20 @@ private struct HomeStatCard: View {
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(spacing: 2) {
             Text(value)
-                .font(.title2.bold())
+                .font(.headline.bold())
                 .foregroundColor(.white)
-            Text(title)
-                .font(.caption)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Text(title.uppercased())
+                .font(.system(size: 9, weight: .bold))
                 .foregroundColor(.gray)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
         .background(card)
-        .cornerRadius(12)
+        .cornerRadius(10)
     }
 }
 

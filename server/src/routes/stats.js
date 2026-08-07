@@ -27,8 +27,13 @@ router.get('/', requireAuth, (req, res) => {
   `).all(uid);
 
   const by_year = db.prepare(`
-    SELECT strftime('%Y', climb_date) AS year, COUNT(*) AS count
-    FROM climbs WHERE user_id = ?
+    SELECT strftime('%Y', c.climb_date) AS year,
+           COUNT(*)                          AS count,
+           COUNT(DISTINCT c.mountain_id)      AS unique_peaks,
+           COALESCE(SUM(m.elevation), 0)      AS elevation
+    FROM climbs c
+    JOIN mountains m ON c.mountain_id = m.id
+    WHERE c.user_id = ?
     GROUP BY year ORDER BY year ASC
   `).all(uid);
 
