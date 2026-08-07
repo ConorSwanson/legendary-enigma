@@ -38,11 +38,12 @@ app.use('/api/beta',          require('./routes/beta'));
 app.use('/beta',              require('./routes/beta'));
 app.use('/s',             require('./routes/share'));
 
-// getswitchback.co is the marketing domain — serve the landing page at its
-// root instead of the logged-in web app, without touching any other domain.
-const LANDING_HOSTS = new Set(['getswitchback.co', 'www.getswitchback.co']);
+// www.getswitchback.co is the marketing domain — serve the landing page at
+// its root instead of the logged-in web app, without touching any other
+// domain. The bare getswitchback.co redirects to www at the DNS/registrar
+// level, so it never reaches this server with that hostname.
 app.get('/', (req, res, next) => {
-  if (LANDING_HOSTS.has(req.hostname)) {
+  if (req.hostname === 'www.getswitchback.co') {
     return require('./routes/beta').renderLandingPage(req, res);
   }
   next();
