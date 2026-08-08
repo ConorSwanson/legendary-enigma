@@ -33,6 +33,35 @@ function checkLevelUp(db, userId, beforeCount, climbId) {
   }).catch(() => {});
 }
 
+// Fans a "new_climb" notification out to every follower, mirroring the
+// followed-people feed's own visibility rule (feed.js) — followers see
+// 'public' and 'followers' climbs, never 'private' ones, so they shouldn't
+// be notified about a private climb either.
+function notifyFollowers(db, userId, climbId, vis) {
+  if (vis === 'private') return;
+
+  const followerIds = db.prepare(
+    'SELECT follower_id FROM follows WHERE following_id = ?'
+  ).all(userId).map(r => r.follower_id);
+  if (!followerIds.length) return;
+
+  const insertNotif = db.prepare(
+    "INSERT INTO notifications (user_id, from_user_id, type, climb_id) VALUES (?, ?, 'new_climb', ?)"
+  );
+  db.transaction((ids) => {
+    for (const followerId of ids) insertNotif.run(followerId, userId, climbId);
+  })(followerIds);
+
+  const fromUser = db.prepare('SELECT name FROM users WHERE id = ?').get(userId);
+  const mountain = db.prepare(
+    'SELECT m.name FROM climbs c JOIN mountains m ON c.mountain_id = m.id WHERE c.id = ?'
+  ).get(climbId);
+  const body = `${fromUser?.name || 'Someone'} just summited ${mountain?.name || 'a peak'}`;
+  for (const followerId of followerIds) {
+    pushToUser(followerId, { title: 'New Climb', body, climbId }).catch(() => {});
+  }
+}
+
 const UPLOAD_DIR = UPLOADS_DIR;
 const VALID_VISIBILITY = new Set(['public', 'followers', 'private']);
 
@@ -153,6 +182,7 @@ router.post('/', requireAuth, uploadArray('photos', 10), (req, res) => {
   }
 
   checkLevelUp(db, req.user.id, beforeCount, climbId);
+  notifyFollowers(db, req.user.id, climbId, vis);
 
   res.status(201).json({ id: climbId });
 });
