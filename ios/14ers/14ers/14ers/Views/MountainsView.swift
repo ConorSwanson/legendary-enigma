@@ -26,8 +26,11 @@ struct MountainsView: View {
 
     @State private var mountains: [Mountain] = []
     @State private var climbedIds: Set<Int> = []
+    @State private var lastClimbedByMountain: [Int: String] = [:]
+    @State private var peakLists: [PeakList] = []
     @State private var search = ""
     @State private var rangeFilter: String? = nil   // nil = all ranges
+    @State private var listFilter: String? = nil    // nil = all lists
     @State private var statusFilter: StatusFilter = .all
     @State private var sort: SortOption = .elevationDesc
     @State private var viewMode: ViewMode = .list
@@ -41,6 +44,7 @@ struct MountainsView: View {
 
     private var filtered: [Mountain] {
         var list = mountains
+        if let lk = listFilter { list = list.filter { $0.listKeys.contains(lk) } }
         if let r = rangeFilter { list = list.filter { $0.range == r } }
         switch statusFilter {
         case .all:       break
@@ -56,8 +60,10 @@ struct MountainsView: View {
         case .elevationAsc:  list.sort { $0.elevation < $1.elevation }
         case .nameAsc:       list.sort { $0.name < $1.name }
         case .recentActivity:
-            // Most recent public climb first; peaks with no activity sink to the bottom.
-            list.sort { ($0.lastActivity ?? "") > ($1.lastActivity ?? "") }
+            // This user's own most recent climb on each peak, first; peaks
+            // they've never climbed sink to the bottom. Personal activity,
+            // not everyone else's public climbs on that mountain.
+            list.sort { (lastClimbedByMountain[$0.id] ?? "") > (lastClimbedByMountain[$1.id] ?? "") }
         }
         return list
     }
@@ -140,6 +146,19 @@ struct MountainsView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         Menu {
+                            Button { listFilter = nil } label: {
+                                Label("All Lists", systemImage: listFilter == nil ? "checkmark" : "")
+                            }
+                            ForEach(peakLists) { pl in
+                                Button { listFilter = pl.key } label: {
+                                    Label(pl.name, systemImage: listFilter == pl.key ? "checkmark" : "")
+                                }
+                            }
+                        } label: {
+                            filterChip(icon: "list.bullet.rectangle", text: peakLists.first { $0.key == listFilter }?.name ?? "All Lists")
+                        }
+
+                        Menu {
                             Button { rangeFilter = nil } label: {
                                 Label("All Ranges", systemImage: rangeFilter == nil ? "checkmark" : "")
                             }
@@ -203,8 +222,15 @@ struct MountainsView: View {
     private func load() async {
         isLoading = true
         defer { isLoading = false }
-        if let ms = try? await APIClient.shared.mountains() { mountains = ms }
-        if let stats = try? await APIClient.shared.stats() { climbedIds = Set(stats.climbedIds) }
+        async let ms = APIClient.shared.mountains()
+        async let st = APIClient.shared.stats()
+        async let ls = APIClient.shared.peakLists()
+        if let ms = try? await ms { mountains = ms }
+        if let stats = try? await st {
+            climbedIds = Set(stats.climbedIds)
+            lastClimbedByMountain = Dictionary(uniqueKeysWithValues: stats.lastClimbed.map { ($0.id, $0.date) })
+        }
+        peakLists = (try? await ls) ?? []
     }
 }
 

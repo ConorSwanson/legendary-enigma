@@ -61,12 +61,19 @@ router.get('/', requireAuth, (req, res) => {
     'SELECT mountain_id AS id, COUNT(*) AS count FROM climbs WHERE user_id = ? GROUP BY mountain_id'
   ).all(uid);
 
+  // This user's own most recent climb date per mountain (for "recent
+  // activity" sorting on the Summits tab — must reflect the viewer's own
+  // climbing history, not everyone else's public activity on that peak).
+  const last_climbed = db.prepare(
+    'SELECT mountain_id AS id, MAX(climb_date) AS date FROM climbs WHERE user_id = ? GROUP BY mountain_id'
+  ).all(uid);
+
   const { followers } = db.prepare('SELECT COUNT(*) AS followers FROM follows WHERE following_id = ?').get(uid);
   const { following } = db.prepare('SELECT COUNT(*) AS following FROM follows WHERE follower_id = ?').get(uid);
 
   const rank = levelForCount(totals.unique_peaks);
 
-  res.json({ ...totals, total_mountains, by_month, by_year, top_mountains, recent_climbs, climbed_ids, ascent_counts, followers, following, rank });
+  res.json({ ...totals, total_mountains, by_month, by_year, top_mountains, recent_climbs, climbed_ids, ascent_counts, last_climbed, followers, following, rank });
 });
 
 module.exports = router;

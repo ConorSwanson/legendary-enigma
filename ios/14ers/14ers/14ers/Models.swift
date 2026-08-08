@@ -188,6 +188,15 @@ struct AscentCount: Codable, Sendable {
     let count: Int
 }
 
+// This user's own most recent climb date on a given mountain — distinct
+// from Mountain.lastActivity, which is the most recent *public* climb by
+// anyone. Used to sort/personalize the Summits tab by the viewer's own
+// activity instead of app-wide activity.
+struct LastClimbed: Codable, Sendable {
+    let id: Int
+    let date: String
+}
+
 struct Stats: Codable, Sendable {
     let totalClimbs: Int
     let uniquePeaks: Int
@@ -196,6 +205,7 @@ struct Stats: Codable, Sendable {
     let climbedIds: [Int]
     let recentClimbs: [RecentClimb]
     let ascentCounts: [AscentCount]
+    let lastClimbed: [LastClimbed]
     let byYear: [UserYearStat]
     let byMonth: [MonthCount]
     let followers: Int?
@@ -210,6 +220,7 @@ struct Stats: Codable, Sendable {
         case climbedIds     = "climbed_ids"
         case recentClimbs   = "recent_climbs"
         case ascentCounts   = "ascent_counts"
+        case lastClimbed    = "last_climbed"
         case byYear         = "by_year"
         case byMonth        = "by_month"
         case followers, following, rank
