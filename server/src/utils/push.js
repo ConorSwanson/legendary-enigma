@@ -14,7 +14,17 @@ function getProvider() {
       keyId: APNS_KEY_ID,
       teamId: APNS_TEAM_ID,
     },
-    production: process.env.NODE_ENV === 'production',
+    // Which APNs gateway to use is decided by the app's own aps-environment
+    // entitlement (sandbox while it's a development-signed build, switched
+    // to production automatically once Xcode archives for TestFlight/App
+    // Store) -- NOT by NODE_ENV, which Railway sets to 'production' for any
+    // deployed service regardless of how the client app is signed. Using
+    // NODE_ENV here silently sent every push to the wrong gateway: the
+    // server would accept the send with no error, but a sandbox-issued
+    // device token is invalid on the production gateway (and vice versa),
+    // so nothing ever arrived. Flip APNS_PRODUCTION=true only once the iOS
+    // entitlement itself is switched to 'production'.
+    production: process.env.APNS_PRODUCTION === 'true',
   });
   return _provider;
 }
