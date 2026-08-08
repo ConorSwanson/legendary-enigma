@@ -6,26 +6,37 @@ let _apn = null;
 function getProvider() {
   if (_provider) return _provider;
   const { APNS_KEY, APNS_KEY_ID, APNS_TEAM_ID } = process.env;
-  if (!APNS_KEY || !APNS_KEY_ID || !APNS_TEAM_ID) return null;
-  if (!_apn) _apn = require('@parse/node-apn');
-  _provider = new _apn.Provider({
-    token: {
-      key: Buffer.from(APNS_KEY.replace(/\\n/g, '\n')),
-      keyId: APNS_KEY_ID,
-      teamId: APNS_TEAM_ID,
-    },
-    // Which APNs gateway to use is decided by the app's own aps-environment
-    // entitlement (sandbox while it's a development-signed build, switched
-    // to production automatically once Xcode archives for TestFlight/App
-    // Store) -- NOT by NODE_ENV, which Railway sets to 'production' for any
-    // deployed service regardless of how the client app is signed. Using
-    // NODE_ENV here silently sent every push to the wrong gateway: the
-    // server would accept the send with no error, but a sandbox-issued
-    // device token is invalid on the production gateway (and vice versa),
-    // so nothing ever arrived. Flip APNS_PRODUCTION=true only once the iOS
-    // entitlement itself is switched to 'production'.
-    production: process.env.APNS_PRODUCTION === 'true',
-  });
+  if (!APNS_KEY || !APNS_KEY_ID || !APNS_TEAM_ID) {
+    console.warn('[Push] Provider not built — missing APNS_KEY/APNS_KEY_ID/APNS_TEAM_ID');
+    return null;
+  }
+  try {
+    if (!_apn) _apn = require('@parse/node-apn');
+    _provider = new _apn.Provider({
+      token: {
+        key: Buffer.from(APNS_KEY.replace(/\\n/g, '\n')),
+        keyId: APNS_KEY_ID,
+        teamId: APNS_TEAM_ID,
+      },
+      // Which APNs gateway to use is decided by the app's own aps-environment
+      // entitlement (sandbox while it's a development-signed build, switched
+      // to production automatically once Xcode archives for TestFlight/App
+      // Store) -- NOT by NODE_ENV, which Railway sets to 'production' for any
+      // deployed service regardless of how the client app is signed. Using
+      // NODE_ENV here silently sent every push to the wrong gateway: the
+      // server would accept the send with no error, but a sandbox-issued
+      // device token is invalid on the production gateway (and vice versa),
+      // so nothing ever arrived. Flip APNS_PRODUCTION=true only once the iOS
+      // entitlement itself is switched to 'production'.
+      production: process.env.APNS_PRODUCTION === 'true',
+    });
+  } catch (e) {
+    // A malformed APNS_KEY (bad line breaks, truncated when pasted into a
+    // single-line env var field, etc.) throws here -- previously this was
+    // uncaught, so it silently killed every push with zero trace anywhere.
+    console.error('[Push] Failed to build APNs provider:', e.message);
+    return null;
+  }
   return _provider;
 }
 
@@ -33,7 +44,10 @@ async function pushToUser(userId, { title, body, climbId }) {
   const provider = getProvider();
   if (!provider) return;
   const bundleId = process.env.APNS_BUNDLE_ID;
-  if (!bundleId) return;
+  if (!bundleId) {
+    console.warn('[Push] No APNS_BUNDLE_ID set — skipping push');
+    return;
+  }
 
   const db = getDb();
   const tokens = db.prepare('SELECT token FROM device_tokens WHERE user_id = ?').all(userId);
