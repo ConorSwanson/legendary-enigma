@@ -110,7 +110,7 @@ router.get('/:id', (req, res) => {
   res.send(result.svg);
 });
 
-// Pre-render all 58 peaks × 2 states (climbed/unclimbed) at startup
+// Pre-render every peak × 2 states (climbed/unclimbed) at startup
 function warmBadgeCache() {
   const { DB_ID_TO_PEAK_ID } = require('../data/peaks-data');
   let count = 0;
@@ -133,7 +133,7 @@ function warmBadgeCache() {
   console.log(`[badges] Pre-rendered ${count} badge PNGs`);
 }
 
-// Pre-render all 13 rank medallions × 2 states (locked/unlocked) at startup
+// Pre-render every rank medallion × 2 states (locked/unlocked) at startup
 function warmRankBadgeCache() {
   let count = 0;
   for (const def of LEVELS) {

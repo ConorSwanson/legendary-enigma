@@ -3,26 +3,68 @@
 // tier. Mirrors the peak-badge renderer's approach (raw SVG strings, no
 // external assets) but with much simpler coin geometry instead of shield scenes.
 
+const { LEVELS } = require('./levels');
+
 const CX = 150, CY = 195, RIM_R = 122, DISC_R = 104;
 
-// 13 material stops: grey → earth/forest → blue → copper/bronze → silver/platinum → gold → radiant.
-const TIERS = [
-  { rim: '#7d828a', rimDark: '#565a61', disc: '#4b4f57', discDark: '#33363b', accent: '#c7ccd3' }, // 0 Trailhead Rookie
-  { rim: '#8a6a4c', rimDark: '#5c4a35', disc: '#543f2c', discDark: '#3a2c1e', accent: '#d8b892' }, // 1 Switchback Scrambler
-  { rim: '#5f8a5a', rimDark: '#3f5f3c', disc: '#33502f', discDark: '#213620', accent: '#a9d29e' }, // 2 Ridge Runner
-  { rim: '#3f7a52', rimDark: '#295536', disc: '#234a31', discDark: '#163420', accent: '#8fd6a8' }, // 3 Alpine Adventurer
-  { rim: '#4c7fa0', rimDark: '#33586f', disc: '#2a4a60', discDark: '#1c3444', accent: '#a6d7ef' }, // 4 Summit Seeker
-  { rim: '#4aa0c9', rimDark: '#316f8a', disc: '#245a73', discDark: '#173e4f', accent: '#b7ecff' }, // 5 Peak Bagger
-  { rim: '#b06a3c', rimDark: '#7c4a29', disc: '#703f22', discDark: '#4a2916', accent: '#f0b57e' }, // 6 High Country Veteran
-  { rim: '#ad7d3e', rimDark: '#7a582b', disc: '#6b4c22', discDark: '#463116', accent: '#f2cb84' }, // 7 Thin Air Master
-  { rim: '#7891a8', rimDark: '#526475', disc: '#445a70', discDark: '#2e3d4c', accent: '#cfe3f2' }, // 8 Summit Elite
-  { rim: '#b9c1cb', rimDark: '#838a93', disc: '#75808c', discDark: '#525b64', accent: '#f1f4f7' }, // 9 Summit Sage
-  { rim: '#cfd6dd', rimDark: '#98a1ab', disc: '#939ba6', discDark: '#6a7178', accent: '#ffffff' }, // 10 Granite Guardian
-  { rim: '#d9a53c', rimDark: '#a3781f', disc: '#8a641f', discDark: '#5e4413', accent: '#ffe9a8' }, // 11 Continental Conqueror
-  { rim: '#e8b94a', rimDark: '#a3781f', disc: '#14213d', discDark: '#0a1226', accent: '#ffe9a8' }, // 12 Summit Legend
+// 13 band-anchor material stops: grey → earth/forest → blue → copper/bronze →
+// silver/platinum → gold → radiant. The rank ladder now has one named level
+// every 5 peaks (129 levels, grouped into these same 13 bands of ~10 each —
+// see utils/levels.js), so colors for every individual level are generated
+// by interpolating between consecutive anchors rather than hand-picking 129
+// hex values. Add a 14th anchor here if a future band is ever needed; no
+// other code changes required.
+const TIERS_BASE = [
+  { rim: '#7d828a', rimDark: '#565a61', disc: '#4b4f57', discDark: '#33363b', accent: '#c7ccd3' }, // band 0 Trailhead
+  { rim: '#8a6a4c', rimDark: '#5c4a35', disc: '#543f2c', discDark: '#3a2c1e', accent: '#d8b892' }, // band 1 Switchback
+  { rim: '#5f8a5a', rimDark: '#3f5f3c', disc: '#33502f', discDark: '#213620', accent: '#a9d29e' }, // band 2 Ridge
+  { rim: '#3f7a52', rimDark: '#295536', disc: '#234a31', discDark: '#163420', accent: '#8fd6a8' }, // band 3 Alpine
+  { rim: '#4c7fa0', rimDark: '#33586f', disc: '#2a4a60', discDark: '#1c3444', accent: '#a6d7ef' }, // band 4 Summit Seeker
+  { rim: '#4aa0c9', rimDark: '#316f8a', disc: '#245a73', discDark: '#173e4f', accent: '#b7ecff' }, // band 5 Peak Bagger
+  { rim: '#b06a3c', rimDark: '#7c4a29', disc: '#703f22', discDark: '#4a2916', accent: '#f0b57e' }, // band 6 High Country
+  { rim: '#ad7d3e', rimDark: '#7a582b', disc: '#6b4c22', discDark: '#463116', accent: '#f2cb84' }, // band 7 Thin Air
+  { rim: '#7891a8', rimDark: '#526475', disc: '#445a70', discDark: '#2e3d4c', accent: '#cfe3f2' }, // band 8 Summit Elite
+  { rim: '#b9c1cb', rimDark: '#838a93', disc: '#75808c', discDark: '#525b64', accent: '#f1f4f7' }, // band 9 Summit Sage
+  { rim: '#cfd6dd', rimDark: '#98a1ab', disc: '#939ba6', discDark: '#6a7178', accent: '#ffffff' }, // band 10 Granite Guardian
+  { rim: '#d9a53c', rimDark: '#a3781f', disc: '#8a641f', discDark: '#5e4413', accent: '#ffe9a8' }, // band 11 Continental
+  { rim: '#e8b94a', rimDark: '#a3781f', disc: '#14213d', discDark: '#0a1226', accent: '#ffe9a8' }, // band 12 Summit Legend
 ];
 
+const LEVELS_PER_BAND = 10;
+
 const LOCKED = { rim: '#3a3d44', rimDark: '#26282d', disc: '#26282d', discDark: '#1a1c1f', accent: '#565a61' };
+
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgbToHex(rgb) {
+  return '#' + rgb.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
+}
+function lerpColor(hexA, hexB, t) {
+  const a = hexToRgb(hexA), b = hexToRgb(hexB);
+  return rgbToHex(a.map((av, i) => av + (b[i] - av) * t));
+}
+function lerpTier(tierA, tierB, t) {
+  const out = {};
+  for (const key of Object.keys(tierA)) out[key] = lerpColor(tierA[key], tierB[key], t);
+  return out;
+}
+
+// Band = which of the 13 anchors this level belongs to (matches the old
+// 0-12 level numbering 1:1, so every threshold below that used to key off
+// "level" now keys off "band" and needs no other change). Within a band,
+// colors fade smoothly toward the next anchor; the top band has no further
+// anchor to fade toward, so it stays a solid color.
+function tierForLevel(level) {
+  const topBand = TIERS_BASE.length - 1;
+  const band = Math.min(Math.floor(level / LEVELS_PER_BAND), topBand);
+  if (band >= topBand) return TIERS_BASE[topBand];
+  const t = (level - band * LEVELS_PER_BAND) / LEVELS_PER_BAND;
+  return lerpTier(TIERS_BASE[band], TIERS_BASE[band + 1], t);
+}
+
+const TIERS = LEVELS.map(l => tierForLevel(l.level));
 
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
@@ -106,11 +148,16 @@ function ribbonBanner(text, color, darkColor, textColor) {
 function buildRankMedallionSvg(level, name, opts = {}) {
   const locked = !!opts.locked;
   const t = locked ? LOCKED : (TIERS[level] || TIERS[0]);
-  const peakCount = Math.min(5, 1 + Math.floor(level / 3));
-  const starCount = locked ? 0 : level >= 9 ? 3 : level >= 6 ? 2 : level >= 3 ? 1 : 0;
-  const showRibbon = !locked && level >= 6;
-  const showLaurel = !locked && level >= 9;
-  const isLegend = !locked && level === 12;
+  // Band = which of the 13 material/ornamentation stops this level falls
+  // in (see tierForLevel above) — every escalation threshold below is
+  // keyed off band, not raw level, so it scales automatically as more
+  // levels get added to a band without ever needing to be retuned.
+  const band = Math.min(Math.floor(level / LEVELS_PER_BAND), TIERS_BASE.length - 1);
+  const peakCount = Math.min(5, 1 + Math.floor(band / 3));
+  const starCount = locked ? 0 : band >= 9 ? 3 : band >= 6 ? 2 : band >= 3 ? 1 : 0;
+  const showRibbon = !locked && band >= 6;
+  const showLaurel = !locked && band >= 9;
+  const isLegend = !locked && band === TIERS_BASE.length - 1;
 
   let defs = `
     <radialGradient id="sheen-${level}-${locked ? 'lk' : 'un'}" cx="35%" cy="30%" r="75%">
@@ -193,4 +240,4 @@ function buildRankMedallionSvg(level, name, opts = {}) {
   return out;
 }
 
-module.exports = { buildRankMedallionSvg, TIERS };
+module.exports = { buildRankMedallionSvg, TIERS, TIERS_BASE };
