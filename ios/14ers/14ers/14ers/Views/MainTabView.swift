@@ -18,7 +18,7 @@ struct MainTabView: View {
                 .tag(2)
 
             MountainsView()
-                .tabItem { Label("14ers", systemImage: "mountain.2.fill") }
+                .tabItem { Label("Summits", systemImage: "mountain.2.fill") }
                 .tag(3)
 
             NavigationStack {

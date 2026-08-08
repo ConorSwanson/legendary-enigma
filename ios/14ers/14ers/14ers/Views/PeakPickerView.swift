@@ -36,7 +36,7 @@ struct PeakPickerView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass").foregroundColor(.gray)
                     TextField("", text: $search,
-                              prompt: Text("Search 58 peaks").foregroundColor(Color(white: 0.4)))
+                              prompt: Text("Search \(mountains.count) peaks").foregroundColor(Color(white: 0.4)))
                         .foregroundColor(.white)
                         .tint(sky)
                         .autocorrectionDisabled()

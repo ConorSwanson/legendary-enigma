@@ -9,11 +9,12 @@ const PALETTES = {
   MOSQUITO: {sky:'#9DC6D0',sun:'#F0E7C4',back:'#93A0AE',pL:'#A7AEB8',pM:'#7E8794',pS:'#616B7C',pD:'#4A5364',hi:'#F1EFEA',hiSh:'#CBD0D6',mid:'#54663F',pn1:'#2C4A33',pn2:'#3A5C3E',pn3:'#4C7546',bd:'#2A3640',ky:'#4E5E63',bn:'#2A3640',nm:'#E6C766',ac:'#C9A24E',sub:'#EEF2F2'},
   FRONT:    {sky:'#6FA8C4',sun:'#F3E2A8',back:'#8E96A4',pL:'#C2A98C',pM:'#9C8268',pS:'#77604B',pD:'#5A4838',hi:'#F0EBDF',hiSh:'#CFC4B0',mid:'#4E6A3E',pn1:'#284A30',pn2:'#365C3C',pn3:'#497544',bd:'#213A2C',ky:'#3E5E47',bn:'#213A2C',nm:'#E8C36A',ac:'#D8A24E',sub:'#EAF1F2'},
   TENMILE:  {sky:'#8C92C4',sun:'#E9E6D2',back:'#9AA0C2',pL:'#AEB6CE',pM:'#828BAC',pS:'#646E92',pD:'#4C5578',hi:'#F2F1EC',hiSh:'#CDD3E0',mid:'#3E5240',pn1:'#25402F',pn2:'#33523A',pn3:'#456A45',bd:'#25303A',ky:'#46566A',bn:'#25303A',nm:'#E4D9A6',ac:'#C9C06E',sub:'#EEEEF4'},
+  GORE:     {sky:'#6FA0B8',sun:'#EDE3C0',back:'#7E8CA0',pL:'#9AA6B8',pM:'#707C90',pS:'#556074',pD:'#3E4759',hi:'#EDEEF0',hiSh:'#C6CDD6',mid:'#3C5A44',pn1:'#264732',pn2:'#345C40',pn3:'#457449',bd:'#222E38',ky:'#3F5560',bn:'#222E38',nm:'#D6DCE6',ac:'#8AAAC0',sub:'#EBF0F2'},
 };
 
 const RANGE_LABEL = {
   SAWATCH:'SAWATCH', SANGRE:'SANGRE', SANJUAN:'SAN JUAN', ELK:'ELK',
-  MOSQUITO:'MOSQUITO', FRONT:'FRONT', TENMILE:'TENMILE',
+  MOSQUITO:'MOSQUITO', FRONT:'FRONT', TENMILE:'TENMILE', GORE:'GORE',
 };
 
 // ── Deterministic RNG (mirrors client) ───────────────────────────────────────
@@ -103,6 +104,10 @@ const RANGE_STYLE = {
   MOSQUITO:{ kinds: ['broad', 'pyramid', 'broad'],  sy: [122, 134], jag: 0.4 },
   FRONT:   { kinds: ['broad', 'twin', 'pyramid'],   sy: [116, 130], jag: 0.55 },
   TENMILE: { kinds: ['broad', 'pyramid'],           sy: [118, 130], jag: 0.5 },
+  GORE:    { kinds: ['serrate', 'horn', 'pyramid'],  sy: [110, 124], jag: 0.9 },
+  // All 14 explicit Sawatch peaks are hand-authored above, so no stub ever
+  // needed this range's style before -- now used by the generated 13ers.
+  SAWATCH: { kinds: ['broad', 'pyramid', 'horn'],   sy: [114, 128], jag: 0.5 },
 };
 
 const KIND_OVERRIDE = {
@@ -210,7 +215,18 @@ const STUBS = [
   ['quandary','QUANDARY','QUANDARY PEAK','14,265','TENMILE'],
 ];
 
-for (const [id, name, full, elev, range] of STUBS) {
+// ── Generated batches (one per import, e.g. Colorado 13ers) ─────────────────
+// Each batch contributes its own STUBS-shaped array + a DB id map, produced
+// by server/scripts/import-peaks.js. Listing a new batch here is the only
+// code change a future import (e.g. California 14ers) should ever need —
+// everything else is data.
+const GENERATED_BATCHES = [
+  require('./generated-co-13ers-badges'),
+];
+const GENERATED_STUBS = GENERATED_BATCHES.flatMap(b => b.STUBS);
+const GENERATED_ID_MAP = Object.assign({}, ...GENERATED_BATCHES.map(b => b.DB_ID_TO_PEAK_ID));
+
+for (const [id, name, full, elev, range] of [...STUBS, ...GENERATED_STUBS]) {
   const r = _rng(_hash(id));
   const st = RANGE_STYLE[range];
   const kind = KIND_OVERRIDE[id] || st.kinds[Math.floor(r() * st.kinds.length)];
@@ -283,6 +299,7 @@ const DB_ID_TO_PEAK_ID = {
   57: 'northeolus',
   58: 'conundrum',
 };
+Object.assign(DB_ID_TO_PEAK_ID, GENERATED_ID_MAP);
 
 const PEAK_BY_ID = Object.fromEntries(PEAKS.map(p => [p.id, p]));
 

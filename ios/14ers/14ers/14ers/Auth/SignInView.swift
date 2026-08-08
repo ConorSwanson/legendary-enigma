@@ -41,7 +41,7 @@ struct SignInView: View {
                                 .font(.system(size: 56))
                                 .foregroundColor(skyColor)
                                 .shadow(color: skyColor.opacity(0.5), radius: 16, x: 0, y: 4)
-                            Text("14ers")
+                            Text("Switchback")
                                 .font(.system(size: 42, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                             Text("Track every summit")

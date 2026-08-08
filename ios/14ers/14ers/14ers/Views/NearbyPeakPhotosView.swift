@@ -25,7 +25,7 @@ struct NearbyPhotoSelection {
     let date: Date?
 }
 
-/// Full-screen browser for geo-tagged library photos near any of the 58 peaks —
+/// Full-screen browser for geo-tagged library photos near any tracked peak —
 /// scans the *entire* library (not just recent shots), grouped by year so
 /// scrolling down is literally scrolling back through the camera roll.
 struct NearbyPeakPhotosView: View {
@@ -71,13 +71,13 @@ struct NearbyPeakPhotosView: View {
                     VStack(spacing: 10) {
                         Image(systemName: "photo.on.rectangle.angled").font(.system(size: 36)).foregroundColor(.gray.opacity(0.4))
                         Text("No climb photos found").font(.subheadline.bold()).foregroundColor(.white)
-                        Text("Nothing in your library is geo-tagged within 2 miles of a 14er.")
+                        Text("Nothing in your library is geo-tagged within 2 miles of a peak.")
                             .font(.caption).foregroundColor(.gray).multilineTextAlignment(.center).padding(.horizontal, 40)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     VStack(spacing: 0) {
-                        Text("Within 2 miles of a 14er · your whole library, newest first")
+                        Text("Within 2 miles of a peak · your whole library, newest first")
                             .font(.caption2)
                             .foregroundColor(.gray)
                             .padding(.top, 8)
@@ -184,7 +184,10 @@ struct NearbyPeakPhotosView: View {
             return
         }
 
-        let peaks = allPeakCoordinates
+        let peaks = mountains.compactMap { m -> (id: Int, location: CLLocation)? in
+            guard let lat = m.lat, let lng = m.lng else { return nil }
+            return (m.id, CLLocation(latitude: lat, longitude: lng))
+        }
         let found: [(String, Int, Date?)] = await withCheckedContinuation { cont in
             DispatchQueue.global(qos: .userInitiated).async {
                 let opts = PHFetchOptions()
@@ -194,9 +197,9 @@ struct NearbyPeakPhotosView: View {
                 result.enumerateObjects { asset, _, stop in
                     guard let loc = asset.location else { return }
                     for peak in peaks {
-                        let d = CLLocation(latitude: peak.latitude, longitude: peak.longitude).distance(from: loc)
+                        let d = peak.location.distance(from: loc)
                         if d <= twoMilesMeters {
-                            nearby.append((asset.localIdentifier, peak.mountainId, asset.creationDate))
+                            nearby.append((asset.localIdentifier, peak.id, asset.creationDate))
                             return
                         }
                     }

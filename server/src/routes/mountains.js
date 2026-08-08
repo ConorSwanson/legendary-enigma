@@ -3,16 +3,59 @@ const router = express.Router();
 const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
 
-router.get('/', (_req, res) => {
-  const mountains = getDb().prepare(`
-    SELECT m.*, (
-      SELECT MAX(c.climb_date) FROM climbs c
-      WHERE c.mountain_id = m.id AND c.visibility = 'public'
-    ) AS last_activity
-    FROM mountains m
-    ORDER BY m.elevation DESC
+// GET /api/mountains/lists — every named peak list (Colorado 14ers, Colorado
+// 13ers, ...), with a member count, so the client can build a list picker.
+router.get('/lists', (_req, res) => {
+  const lists = getDb().prepare(`
+    SELECT pl.key, pl.name, pl.region, pl.description, COUNT(plm.mountain_id) AS count
+    FROM peak_lists pl
+    LEFT JOIN peak_list_memberships plm ON plm.peak_list_id = pl.id
+    GROUP BY pl.id
+    ORDER BY pl.id ASC
   `).all();
-  res.json(mountains);
+  res.json(lists);
+});
+
+// GET /api/mountains?list=KEY — all mountains, or just one list's members
+// when ?list= is given (e.g. "co-14ers", "co-13ers").
+// Every mountain's list membership, keyed by mountain id — one cheap query
+// reused by both branches below instead of a per-row correlated subquery.
+function listKeysByMountainId(db) {
+  const rows = db.prepare(`
+    SELECT plm.mountain_id, pl.key FROM peak_list_memberships plm
+    JOIN peak_lists pl ON pl.id = plm.peak_list_id
+  `).all();
+  const map = {};
+  for (const r of rows) (map[r.mountain_id] ??= []).push(r.key);
+  return map;
+}
+
+router.get('/', (req, res) => {
+  const db = getDb();
+  const { list } = req.query;
+  const mountains = list
+    ? db.prepare(`
+        SELECT m.*, (
+          SELECT MAX(c.climb_date) FROM climbs c
+          WHERE c.mountain_id = m.id AND c.visibility = 'public'
+        ) AS last_activity
+        FROM mountains m
+        JOIN peak_list_memberships plm ON plm.mountain_id = m.id
+        JOIN peak_lists pl ON pl.id = plm.peak_list_id
+        WHERE pl.key = ?
+        ORDER BY m.elevation DESC
+      `).all(list)
+    : db.prepare(`
+        SELECT m.*, (
+          SELECT MAX(c.climb_date) FROM climbs c
+          WHERE c.mountain_id = m.id AND c.visibility = 'public'
+        ) AS last_activity
+        FROM mountains m
+        ORDER BY m.elevation DESC
+      `).all();
+
+  const listKeys = listKeysByMountainId(db);
+  res.json(mountains.map(m => ({ ...m, list_keys: listKeys[m.id] || [] })));
 });
 
 // GET /api/mountains/:id — mountain info + aggregated stats across public climbs

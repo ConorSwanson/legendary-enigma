@@ -7,12 +7,28 @@ struct Mountain: Codable, Identifiable, Sendable, Hashable {
     let name: String
     let elevation: Int
     let range: String
+    let lat: Double?
+    let lng: Double?
     let lastActivity: String?   // most recent public climb date, if any
+    let listKeys: [String]      // which peak_lists this mountain belongs to, e.g. ["co-14ers"]
 
     enum CodingKeys: String, CodingKey {
-        case id, name, elevation, range
+        case id, name, elevation, range, lat, lng
         case lastActivity = "last_activity"
+        case listKeys      = "list_keys"
     }
+}
+
+// A named, curated peak collection (Colorado 14ers, Colorado 13ers, ...).
+// See server/src/db.js's peak_lists table -- adding a future region/list is
+// just a new row there, which shows up here automatically.
+struct PeakList: Codable, Identifiable, Sendable, Hashable {
+    let key: String
+    let name: String
+    let region: String
+    let description: String?
+    let count: Int
+    var id: String { key }
 }
 
 // MARK: - Climb
@@ -261,21 +277,24 @@ struct LeaderboardEntry: Codable, Identifiable, Sendable {
 }
 
 // Mirrors server/src/utils/levels.js — used to render the full ladder
-// (locked/unlocked tiers) in the Badges tab's Climber Rank grid.
+// (locked/unlocked tiers) in the Badges tab's Climber Rank grid. Ceiling is
+// 641 (58 Colorado 14ers + 582 Colorado 13ers), not 58 — keep in sync with
+// the server; a mismatch here just skews the locked/unlocked tile grid, since
+// a user's live rank always comes from the server, not this array.
 let climberLevels: [ClimberLevelDef] = [
     .init(level: 0,  name: "Trailhead Rookie",      minPeaks: 0),
-    .init(level: 1,  name: "Switchback Scrambler",  minPeaks: 5),
-    .init(level: 2,  name: "Ridge Runner",          minPeaks: 10),
-    .init(level: 3,  name: "Alpine Adventurer",     minPeaks: 15),
-    .init(level: 4,  name: "Summit Seeker",         minPeaks: 20),
-    .init(level: 5,  name: "Peak Bagger",           minPeaks: 25),
-    .init(level: 6,  name: "High Country Veteran",  minPeaks: 30),
-    .init(level: 7,  name: "Thin Air Master",       minPeaks: 35),
-    .init(level: 8,  name: "Fourteener Elite",      minPeaks: 40),
-    .init(level: 9,  name: "Summit Sage",           minPeaks: 45),
-    .init(level: 10, name: "Granite Guardian",      minPeaks: 50),
-    .init(level: 11, name: "Continental Conqueror", minPeaks: 55),
-    .init(level: 12, name: "Fourteener Legend",     minPeaks: 58),
+    .init(level: 1,  name: "Switchback Scrambler",  minPeaks: 50),
+    .init(level: 2,  name: "Ridge Runner",          minPeaks: 110),
+    .init(level: 3,  name: "Alpine Adventurer",     minPeaks: 165),
+    .init(level: 4,  name: "Summit Seeker",         minPeaks: 220),
+    .init(level: 5,  name: "Peak Bagger",           minPeaks: 275),
+    .init(level: 6,  name: "High Country Veteran",  minPeaks: 330),
+    .init(level: 7,  name: "Thin Air Master",       minPeaks: 385),
+    .init(level: 8,  name: "Summit Elite",          minPeaks: 440),
+    .init(level: 9,  name: "Summit Sage",           minPeaks: 495),
+    .init(level: 10, name: "Granite Guardian",      minPeaks: 550),
+    .init(level: 11, name: "Continental Conqueror", minPeaks: 605),
+    .init(level: 12, name: "Summit Legend",         minPeaks: 641),
 ]
 
 struct FollowerUser: Codable, Identifiable, Sendable {
@@ -391,75 +410,9 @@ struct NotificationItem: Codable, Identifiable, Sendable {
 // MARK: - Peak GPS Coordinates
 
 /// Shared by LogClimbView (EXIF peak-detection) and NearbyPeakPhotosView
-/// (library scan) — both match a photo's location against the 58 peaks.
+/// (library scan) — both match a photo's location against Mountain.lat/lng
+/// on the already-fetched mountains list, not a separate static file.
 let twoMilesMeters: Double = 3_218.69
-
-struct PeakCoordinate: Sendable {
-    let mountainId: Int
-    let latitude: Double
-    let longitude: Double
-}
-
-nonisolated(unsafe) let allPeakCoordinates: [PeakCoordinate] = [
-    PeakCoordinate(mountainId: 1,  latitude: 39.1178, longitude: -106.4454), // Mount Elbert
-    PeakCoordinate(mountainId: 2,  latitude: 39.1875, longitude: -106.4756), // Mount Massive
-    PeakCoordinate(mountainId: 3,  latitude: 38.9244, longitude: -106.3208), // Mount Harvard
-    PeakCoordinate(mountainId: 4,  latitude: 39.3511, longitude: -106.1114), // Mount Lincoln
-    PeakCoordinate(mountainId: 5,  latitude: 39.6339, longitude: -105.8172), // Grays Peak
-    PeakCoordinate(mountainId: 6,  latitude: 38.6745, longitude: -106.2468), // Mount Antero
-    PeakCoordinate(mountainId: 7,  latitude: 39.6428, longitude: -105.8212), // Torreys Peak
-    PeakCoordinate(mountainId: 8,  latitude: 39.0097, longitude: -106.8614), // Castle Peak
-    PeakCoordinate(mountainId: 9,  latitude: 39.3972, longitude: -106.1064), // Quandary Peak
-    PeakCoordinate(mountainId: 10, latitude: 39.5883, longitude: -105.6438), // Mount Evans
-    PeakCoordinate(mountainId: 11, latitude: 40.2549, longitude: -105.6152), // Longs Peak
-    PeakCoordinate(mountainId: 12, latitude: 37.8392, longitude: -107.9917), // Mount Wilson
-    PeakCoordinate(mountainId: 13, latitude: 38.6194, longitude: -106.2397), // Mount Shavano
-    PeakCoordinate(mountainId: 14, latitude: 38.9608, longitude: -106.3603), // Mount Belford
-    PeakCoordinate(mountainId: 15, latitude: 37.9667, longitude: -105.5853), // Crestone Peak
-    PeakCoordinate(mountainId: 16, latitude: 37.9647, longitude: -105.5767), // Crestone Needle
-    PeakCoordinate(mountainId: 17, latitude: 38.7492, longitude: -106.2425), // Mount Princeton
-    PeakCoordinate(mountainId: 18, latitude: 38.8436, longitude: -106.3142), // Mount Yale
-    PeakCoordinate(mountainId: 19, latitude: 39.0706, longitude: -106.9890), // Maroon Peak
-    PeakCoordinate(mountainId: 20, latitude: 38.6253, longitude: -106.2508), // Tabeguache Peak
-    PeakCoordinate(mountainId: 21, latitude: 38.9647, longitude: -106.3383), // Mount Oxford
-    PeakCoordinate(mountainId: 22, latitude: 38.0033, longitude: -107.7922), // Mount Sneffels
-    PeakCoordinate(mountainId: 23, latitude: 39.3394, longitude: -106.1392), // Mount Democrat
-    PeakCoordinate(mountainId: 24, latitude: 39.1503, longitude: -107.0833), // Capitol Peak
-    PeakCoordinate(mountainId: 25, latitude: 38.8405, longitude: -105.0442), // Pikes Peak
-    PeakCoordinate(mountainId: 26, latitude: 39.1189, longitude: -107.0669), // Snowmass Mountain
-    PeakCoordinate(mountainId: 27, latitude: 37.6214, longitude: -107.5928), // Windom Peak
-    PeakCoordinate(mountainId: 28, latitude: 37.6272, longitude: -107.5956), // Sunlight Peak
-    PeakCoordinate(mountainId: 29, latitude: 37.9128, longitude: -107.5042), // Handies Peak
-    PeakCoordinate(mountainId: 30, latitude: 38.0606, longitude: -107.5100), // Wetterhorn Peak
-    PeakCoordinate(mountainId: 31, latitude: 39.0783, longitude: -106.9872), // North Maroon Peak
-    PeakCoordinate(mountainId: 32, latitude: 38.0597, longitude: -106.9317), // San Luis Peak
-    PeakCoordinate(mountainId: 33, latitude: 39.4669, longitude: -106.4818), // Mount of the Holy Cross
-    PeakCoordinate(mountainId: 34, latitude: 38.9453, longitude: -106.4386), // Huron Peak
-    PeakCoordinate(mountainId: 35, latitude: 38.0717, longitude: -107.4622), // Uncompahgre Peak
-    PeakCoordinate(mountainId: 36, latitude: 37.9178, longitude: -107.4250), // Sunshine Peak
-    PeakCoordinate(mountainId: 37, latitude: 39.2250, longitude: -106.1697), // Mount Sherman
-    PeakCoordinate(mountainId: 38, latitude: 37.9408, longitude: -107.4219), // Redcloud Peak
-    PeakCoordinate(mountainId: 39, latitude: 39.0714, longitude: -106.9503), // Pyramid Peak
-    PeakCoordinate(mountainId: 40, latitude: 37.8600, longitude: -107.9844), // Wilson Peak
-    PeakCoordinate(mountainId: 41, latitude: 37.5778, longitude: -105.4853), // Blanca Peak
-    PeakCoordinate(mountainId: 42, latitude: 39.0294, longitude: -106.4729), // La Plata Peak
-    PeakCoordinate(mountainId: 43, latitude: 39.3469, longitude: -106.1181), // Mount Cameron
-    PeakCoordinate(mountainId: 44, latitude: 39.3347, longitude: -106.1083), // Mount Bross
-    PeakCoordinate(mountainId: 45, latitude: 37.9797, longitude: -105.6022), // Kit Carson Peak
-    PeakCoordinate(mountainId: 46, latitude: 37.8378, longitude: -108.0061), // El Diente Peak
-    PeakCoordinate(mountainId: 47, latitude: 37.6217, longitude: -107.6222), // Mount Eolus
-    PeakCoordinate(mountainId: 48, latitude: 37.9808, longitude: -105.6067), // Challenger Point
-    PeakCoordinate(mountainId: 49, latitude: 38.9036, longitude: -106.2997), // Mount Columbia
-    PeakCoordinate(mountainId: 50, latitude: 38.9478, longitude: -106.3786), // Missouri Mountain
-    PeakCoordinate(mountainId: 51, latitude: 37.9761, longitude: -105.5553), // Humboldt Peak
-    PeakCoordinate(mountainId: 52, latitude: 39.5828, longitude: -105.7086), // Mount Bierstadt
-    PeakCoordinate(mountainId: 53, latitude: 37.1219, longitude: -105.1864), // Culebra Peak
-    PeakCoordinate(mountainId: 54, latitude: 37.5828, longitude: -105.4928), // Ellingwood Point
-    PeakCoordinate(mountainId: 55, latitude: 37.5839, longitude: -105.4450), // Mount Lindsey
-    PeakCoordinate(mountainId: 56, latitude: 37.5667, longitude: -105.4978), // Little Bear Peak
-    PeakCoordinate(mountainId: 57, latitude: 37.6228, longitude: -107.6261), // North Eolus
-    PeakCoordinate(mountainId: 58, latitude: 39.0103, longitude: -106.8561), // Conundrum Peak
-]
 
 // MARK: - App-wide notifications
 

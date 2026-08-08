@@ -78,7 +78,7 @@ export default function LogClimb() {
     setParsing(true);
     setCompressing(true);
     const [meta, compressed] = await Promise.all([
-      extractPhotoMeta(file),
+      extractPhotoMeta(file, mountains),
       compressImage(file),
     ]);
     setParsing(false);

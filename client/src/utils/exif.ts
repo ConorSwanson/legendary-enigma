@@ -1,5 +1,5 @@
 import { parse } from 'exifr';
-import { MOUNTAIN_COORDS } from '../data/mountain-coords';
+import type { Mountain } from '../types';
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371;
@@ -19,7 +19,7 @@ export interface PhotoMeta {
   distanceKm: number | null; // distance to matched mountain
 }
 
-export async function extractPhotoMeta(file: File): Promise<PhotoMeta> {
+export async function extractPhotoMeta(file: File, mountains: Mountain[]): Promise<PhotoMeta> {
   try {
     console.debug('[exif] file type:', file.type, 'size:', file.size);
     const exif = await parse(file, {
@@ -49,11 +49,12 @@ export async function extractPhotoMeta(file: File): Promise<PhotoMeta> {
       let minDist = Infinity;
       let closestId = -1;
 
-      for (const [id, coords] of Object.entries(MOUNTAIN_COORDS)) {
-        const d = haversineKm(exif.latitude, exif.longitude, coords.lat, coords.lng);
+      for (const m of mountains) {
+        if (m.lat == null || m.lng == null) continue;
+        const d = haversineKm(exif.latitude, exif.longitude, m.lat, m.lng);
         if (d < minDist) {
           minDist = d;
-          closestId = Number(id);
+          closestId = m.id;
         }
       }
 

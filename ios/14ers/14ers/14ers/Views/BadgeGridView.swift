@@ -6,11 +6,6 @@ private let sky     = Color(red: 56/255, green: 189/255, blue: 248/255)
 private let emerald = Color(red: 52/255, green: 211/255, blue: 153/255)
 private let dimCard = Color(red: 31/255, green: 41/255, blue: 55/255)
 
-private let rangeOrder = [
-    "Front Range", "Tenmile/Mosquito", "Sawatch",
-    "Elk", "Sangre de Cristo", "San Juan"
-]
-
 // MARK: - Badges (Peaks + Climber Progress + Leaderboard)
 
 struct BadgesView: View {
@@ -33,6 +28,9 @@ struct BadgesView: View {
 
     @State private var filter: Filter = .peaks
     @State private var mountains: [Mountain] = []
+    @State private var peakLists: [PeakList] = []
+    @State private var selectedListKey: String? = nil   // nil = All Summits
+    @State private var peaksSearch: String = ""
     @State private var climbedIds: Set<Int>  = []
     @State private var ascentCounts: [Int: Int] = [:]
     @State private var rank: ClimberRank?
@@ -44,15 +42,26 @@ struct BadgesView: View {
 
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
 
+    private var scopedMountains: [Mountain] {
+        var list = mountains
+        if let key = selectedListKey {
+            list = list.filter { $0.listKeys.contains(key) }
+        }
+        let q = peaksSearch.trimmingCharacters(in: .whitespaces)
+        if !q.isEmpty {
+            let lower = q.lowercased()
+            list = list.filter { $0.name.lowercased().contains(lower) }
+        }
+        return list
+    }
+
+    // Sections ordered by their tallest peak, descending -- correct for any
+    // range (current or future) with no hardcoded name list to maintain.
     private var mountainsByRange: [(range: String, mountains: [Mountain])] {
-        let grouped = Dictionary(grouping: mountains) { $0.range }
+        let grouped = Dictionary(grouping: scopedMountains) { $0.range }
         return grouped
             .map { (range: $0.key, mountains: $0.value.sorted { $0.elevation > $1.elevation }) }
-            .sorted {
-                let ai = rangeOrder.firstIndex(of: $0.range) ?? rangeOrder.count
-                let bi = rangeOrder.firstIndex(of: $1.range) ?? rangeOrder.count
-                return ai == bi ? $0.range < $1.range : ai < bi
-            }
+            .sorted { ($0.mountains.first?.elevation ?? 0) > ($1.mountains.first?.elevation ?? 0) }
     }
 
     var body: some View {
@@ -106,18 +115,66 @@ struct BadgesView: View {
     @ViewBuilder
     private var peaksContent: some View {
         VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: 10) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        listChip(title: "All Summits", isOn: selectedListKey == nil) {
+                            selectedListKey = nil
+                        }
+                        ForEach(peakLists) { list in
+                            listChip(title: list.name, isOn: selectedListKey == list.key) {
+                                selectedListKey = list.key
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass").foregroundColor(.gray)
+                    TextField("", text: $peaksSearch,
+                              prompt: Text("Search peaks").foregroundColor(Color(white: 0.4)))
+                        .foregroundColor(.white)
+                        .tint(sky)
+                        .autocorrectionDisabled()
+                    if !peaksSearch.isEmpty {
+                        Button { peaksSearch = "" } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundColor(.gray)
+                        }
+                    }
+                }
+                .padding(10)
+                .background(card)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal)
+            }
+
+            let climbedInScope = scopedMountains.filter { climbedIds.contains($0.id) }.count
             HStack {
-                Text("\(climbedIds.count) of \(mountains.count) peaks summited")
+                Text("\(climbedInScope) of \(scopedMountains.count) peaks summited")
                     .font(.subheadline)
                     .foregroundColor(.gray)
                 Spacer()
                 ProgressView(
-                    value: mountains.isEmpty ? 0 : Double(climbedIds.count) / Double(mountains.count)
+                    value: scopedMountains.isEmpty ? 0 : Double(climbedInScope) / Double(scopedMountains.count)
                 )
                 .tint(sky)
                 .frame(width: 100)
             }
             .padding(.horizontal)
+
+            if scopedMountains.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "mountain.2")
+                        .font(.system(size: 36))
+                        .foregroundColor(.gray.opacity(0.4))
+                    Text("No peaks match your search")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 40)
+            }
 
             ForEach(mountainsByRange, id: \.range) { section in
                 let sectionClimbed = section.mountains.filter { climbedIds.contains($0.id) }.count
@@ -153,6 +210,19 @@ struct BadgesView: View {
             }
         }
         .padding(.vertical)
+    }
+
+    private func listChip(title: String, isOn: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption.bold())
+                .foregroundColor(isOn ? bg : .gray)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(isOn ? emerald : card)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -243,12 +313,14 @@ struct BadgesView: View {
     private func load() async {
         async let ms = APIClient.shared.mountains()
         async let st = APIClient.shared.stats()
+        async let ls = APIClient.shared.peakLists()
         if let (fetchedMountains, stats) = try? await (ms, st) {
             mountains = fetchedMountains
             climbedIds = Set(stats.climbedIds)
             ascentCounts = Dictionary(uniqueKeysWithValues: stats.ascentCounts.map { ($0.id, $0.count) })
             rank = stats.rank
         }
+        peakLists = (try? await ls) ?? []
         isLoading = false
     }
 

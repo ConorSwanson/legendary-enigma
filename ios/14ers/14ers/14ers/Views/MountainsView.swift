@@ -93,7 +93,7 @@ struct MountainsView: View {
             .navigationDestination(item: $mapSelection) { m in
                 MountainDetailView(mountainId: m.id, fallbackName: m.name)
             }
-            .navigationTitle("14ers")
+            .navigationTitle("Summits")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
@@ -251,11 +251,12 @@ private struct MountainsMapView: View {
     let climbedIds: Set<Int>
     @Binding var selection: Mountain?
 
-    private static let coords: [Int: CLLocationCoordinate2D] = Dictionary(
-        uniqueKeysWithValues: allPeakCoordinates.map {
-            ($0.mountainId, CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude))
-        }
-    )
+    private var coords: [Int: CLLocationCoordinate2D] {
+        Dictionary(uniqueKeysWithValues: mountains.compactMap { m -> (Int, CLLocationCoordinate2D)? in
+            guard let lat = m.lat, let lng = m.lng else { return nil }
+            return (m.id, CLLocationCoordinate2D(latitude: lat, longitude: lng))
+        })
+    }
 
     private static let coloradoRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 38.9, longitude: -106.3),
@@ -263,9 +264,10 @@ private struct MountainsMapView: View {
     )
 
     var body: some View {
+        let coords = coords
         Map(initialPosition: .region(Self.coloradoRegion)) {
             ForEach(mountains) { m in
-                if let coord = Self.coords[m.id] {
+                if let coord = coords[m.id] {
                     Annotation(m.name, coordinate: coord) {
                         Button { selection = m } label: {
                             pin(climbed: climbedIds.contains(m.id))

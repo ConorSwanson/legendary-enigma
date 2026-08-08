@@ -125,6 +125,10 @@ actor APIClient {
         try await request("/mountains")
     }
 
+    func peakLists() async throws -> [PeakList] {
+        try await request("/mountains/lists")
+    }
+
     func mountainDetail(_ id: Int) async throws -> MountainDetail {
         try await request("/mountains/\(id)")
     }

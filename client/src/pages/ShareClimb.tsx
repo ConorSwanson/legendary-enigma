@@ -90,6 +90,8 @@ export default function ShareClimb() {
     name: climb.mountain_name,
     elevation: climb.elevation,
     range: climb.range,
+    lat: null,
+    lng: null,
   };
 
   const climberName = climb.user_name || 'A climber';

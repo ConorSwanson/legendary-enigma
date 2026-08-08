@@ -15,11 +15,11 @@ const TIERS = [
   { rim: '#4aa0c9', rimDark: '#316f8a', disc: '#245a73', discDark: '#173e4f', accent: '#b7ecff' }, // 5 Peak Bagger
   { rim: '#b06a3c', rimDark: '#7c4a29', disc: '#703f22', discDark: '#4a2916', accent: '#f0b57e' }, // 6 High Country Veteran
   { rim: '#ad7d3e', rimDark: '#7a582b', disc: '#6b4c22', discDark: '#463116', accent: '#f2cb84' }, // 7 Thin Air Master
-  { rim: '#7891a8', rimDark: '#526475', disc: '#445a70', discDark: '#2e3d4c', accent: '#cfe3f2' }, // 8 Fourteener Elite
+  { rim: '#7891a8', rimDark: '#526475', disc: '#445a70', discDark: '#2e3d4c', accent: '#cfe3f2' }, // 8 Summit Elite
   { rim: '#b9c1cb', rimDark: '#838a93', disc: '#75808c', discDark: '#525b64', accent: '#f1f4f7' }, // 9 Summit Sage
   { rim: '#cfd6dd', rimDark: '#98a1ab', disc: '#939ba6', discDark: '#6a7178', accent: '#ffffff' }, // 10 Granite Guardian
   { rim: '#d9a53c', rimDark: '#a3781f', disc: '#8a641f', discDark: '#5e4413', accent: '#ffe9a8' }, // 11 Continental Conqueror
-  { rim: '#e8b94a', rimDark: '#a3781f', disc: '#14213d', discDark: '#0a1226', accent: '#ffe9a8' }, // 12 Fourteener Legend
+  { rim: '#e8b94a', rimDark: '#a3781f', disc: '#14213d', discDark: '#0a1226', accent: '#ffe9a8' }, // 12 Summit Legend
 ];
 
 const LOCKED = { rim: '#3a3d44', rimDark: '#26282d', disc: '#26282d', discDark: '#1a1c1f', accent: '#565a61' };

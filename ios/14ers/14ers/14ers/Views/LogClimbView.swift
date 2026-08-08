@@ -538,20 +538,20 @@ struct LogClimbView: View {
             longitude: lonRef == "W" ? -lon : lon
         )
 
-        let nearest = allPeakCoordinates.min {
-            CLLocation(latitude: $0.latitude, longitude: $0.longitude).distance(from: photoLoc) <
-            CLLocation(latitude: $1.latitude, longitude: $1.longitude).distance(from: photoLoc)
+        let located = mountains.compactMap { m -> (Mountain, CLLocation)? in
+            guard let lat = m.lat, let lng = m.lng else { return nil }
+            return (m, CLLocation(latitude: lat, longitude: lng))
         }
-        guard let peak = nearest,
-              CLLocation(latitude: peak.latitude, longitude: peak.longitude)
-                .distance(from: photoLoc) <= twoMilesMeters
-        else {
+        let nearest = located.min {
+            $0.1.distance(from: photoLoc) < $1.1.distance(from: photoLoc)
+        }
+        guard let (peak, peakLoc) = nearest, peakLoc.distance(from: photoLoc) <= twoMilesMeters else {
             detectedMountainId = nil
             detectedMountainName = nil
             return
         }
-        detectedMountainId = peak.mountainId
-        detectedMountainName = mountains.first(where: { $0.id == peak.mountainId })?.name
+        detectedMountainId = peak.id
+        detectedMountainName = peak.name
     }
 
     // MARK: - Helpers

@@ -87,7 +87,10 @@ function initDb() {
       id        INTEGER PRIMARY KEY,
       name      TEXT    NOT NULL UNIQUE,
       elevation INTEGER NOT NULL,
-      range     TEXT    NOT NULL
+      range     TEXT    NOT NULL,
+      lat       REAL,
+      lng       REAL,
+      source    TEXT
     );
 
     CREATE TABLE IF NOT EXISTS users (
@@ -187,6 +190,25 @@ function initDb() {
       email      TEXT    NOT NULL UNIQUE,
       created_at TEXT    NOT NULL DEFAULT (datetime('now'))
     );
+
+    -- A named, curated collection of peaks (e.g. "Colorado 14ers",
+    -- "Colorado 13ers", and any future region/list). A peak can belong to
+    -- more than one list, hence the separate membership table below.
+    CREATE TABLE IF NOT EXISTS peak_lists (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      key         TEXT NOT NULL UNIQUE,
+      name        TEXT NOT NULL,
+      region      TEXT NOT NULL,
+      description TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS peak_list_memberships (
+      peak_list_id INTEGER NOT NULL REFERENCES peak_lists(id) ON DELETE CASCADE,
+      mountain_id  INTEGER NOT NULL REFERENCES mountains(id)  ON DELETE CASCADE,
+      rank_in_list INTEGER,
+      PRIMARY KEY (peak_list_id, mountain_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_plm_mountain ON peak_list_memberships(mountain_id);
   `);
 
   // Migrate: add columns to legacy climbs table if missing
@@ -237,11 +259,25 @@ function initDb() {
     db.exec('ALTER TABLE notifications ADD COLUMN level INTEGER');
   }
 
+  // Migrate: add lat/lng/source to mountains (no-op on new installs — these
+  // are in the CREATE TABLE above going forward; this only backfills
+  // databases created before this column set existed)
+  const mountainCols = db.pragma('table_info(mountains)').map(c => c.name);
+  if (!mountainCols.includes('lat')) {
+    db.exec('ALTER TABLE mountains ADD COLUMN lat REAL');
+  }
+  if (!mountainCols.includes('lng')) {
+    db.exec('ALTER TABLE mountains ADD COLUMN lng REAL');
+  }
+  if (!mountainCols.includes('source')) {
+    db.exec('ALTER TABLE mountains ADD COLUMN source TEXT');
+  }
+
   const insertMountain = db.prepare(
-    'INSERT OR IGNORE INTO mountains (id, name, elevation, range) VALUES (?, ?, ?, ?)'
+    'INSERT OR IGNORE INTO mountains (id, name, elevation, range, source) VALUES (?, ?, ?, ?, ?)'
   );
   const seedMountains = db.transaction((list) => {
-    for (const m of list) insertMountain.run(...m);
+    for (const m of list) insertMountain.run(...m, 'seed');
   });
   seedMountains(MOUNTAINS);
 
@@ -272,8 +308,26 @@ function initDb() {
       }
       return;
     }
-    db.prepare('INSERT INTO mountains (id, name, elevation, range) VALUES (?, ?, ?, ?)').run(id, name, elevation, range);
+    db.prepare('INSERT INTO mountains (id, name, elevation, range, source) VALUES (?, ?, ?, ?, ?)').run(id, name, elevation, range, 'seed');
   });
+
+  // Backfill: grandfather the original 58 seed mountains into the new
+  // peak_lists system as "Colorado 14ers" so existing behavior (all climbs,
+  // badges, progress) is unaffected. Any future list (Colorado 13ers,
+  // another region entirely) is just a new peak_lists row + membership rows
+  // — no schema change needed per list.
+  db.prepare(
+    'INSERT OR IGNORE INTO peak_lists (key, name, region, description) VALUES (?, ?, ?, ?)'
+  ).run('co-14ers', 'Colorado 14ers', 'Colorado', 'The 58 traditionally recognized Colorado peaks above 14,000 ft.');
+  const co14ersListId = db.prepare('SELECT id FROM peak_lists WHERE key = ?').get('co-14ers').id;
+  const insertMembership = db.prepare(
+    'INSERT OR IGNORE INTO peak_list_memberships (peak_list_id, mountain_id, rank_in_list) VALUES (?, ?, ?)'
+  );
+  const backfillMemberships = db.transaction((list) => {
+    const byElevationDesc = [...list].sort((a, b) => b[2] - a[2]);
+    byElevationDesc.forEach(([id], i) => insertMembership.run(co14ersListId, id, i + 1));
+  });
+  backfillMemberships(MOUNTAINS);
 
   db.prepare('INSERT OR IGNORE INTO profile (id, name) VALUES (1, ?)').run('Climber');
 

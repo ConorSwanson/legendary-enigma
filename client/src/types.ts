@@ -3,6 +3,8 @@ export interface Mountain {
   name: string;
   elevation: number;
   range: string;
+  lat: number | null;
+  lng: number | null;
 }
 
 export type Visibility = 'public' | 'followers' | 'private';
