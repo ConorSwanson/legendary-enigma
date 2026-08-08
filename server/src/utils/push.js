@@ -54,9 +54,15 @@ async function pushToUser(userId, { title, body, climbId }) {
       const result = await provider.send(note, token);
       if (result.failed && result.failed.length > 0) {
         const reason = result.failed[0].response?.reason;
+        // Log every rejection reason -- previously only the two handled
+        // below were ever surfaced, so a mismatched topic/key/environment
+        // failed with zero visibility anywhere.
+        console.warn(`[Push] APNs rejected token ...${token.slice(-8)}: ${reason}`);
         if (reason === 'BadDeviceToken' || reason === 'Unregistered') {
           db.prepare('DELETE FROM device_tokens WHERE token = ?').run(token);
         }
+      } else {
+        console.log(`[Push] Sent "${title}" to token ...${token.slice(-8)}`);
       }
     } catch (e) {
       console.warn('[Push] Send error:', e.message);
