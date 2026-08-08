@@ -74,6 +74,73 @@ const MOUNTAINS = [
   [58, 'Conundrum Peak',           14060, 'Elk Mountains'],
 ];
 
+// GPS coordinates for the 58 seed mountains, keyed by id. These never made
+// it into the mountains table itself -- they used to live only in hardcoded
+// client/iOS coordinate files, which were deleted on the assumption the
+// server's lat/lng columns were the new source of truth. They weren't
+// backfilled at the time, so every original 14er silently had NULL lat/lng
+// (invisible on the map) until this backfill below.
+const MOUNTAIN_COORDS = {
+  1:  { lat: 39.1178, lng: -106.4454 }, // Mount Elbert
+  2:  { lat: 39.1875, lng: -106.4756 }, // Mount Massive
+  3:  { lat: 38.9244, lng: -106.3208 }, // Mount Harvard
+  4:  { lat: 39.3511, lng: -106.1114 }, // Mount Lincoln
+  5:  { lat: 39.6339, lng: -105.8172 }, // Grays Peak
+  6:  { lat: 38.6745, lng: -106.2468 }, // Mount Antero
+  7:  { lat: 39.6428, lng: -105.8212 }, // Torreys Peak
+  8:  { lat: 39.0097, lng: -106.8614 }, // Castle Peak
+  9:  { lat: 39.3972, lng: -106.1064 }, // Quandary Peak
+  10: { lat: 39.5883, lng: -105.6438 }, // Mount Evans
+  11: { lat: 40.2549, lng: -105.6152 }, // Longs Peak
+  12: { lat: 37.8392, lng: -107.9917 }, // Mount Wilson
+  13: { lat: 38.6194, lng: -106.2397 }, // Mount Shavano
+  14: { lat: 38.9608, lng: -106.3603 }, // Mount Belford
+  15: { lat: 37.9667, lng: -105.5853 }, // Crestone Peak
+  16: { lat: 37.9647, lng: -105.5767 }, // Crestone Needle
+  17: { lat: 38.7492, lng: -106.2425 }, // Mount Princeton
+  18: { lat: 38.8436, lng: -106.3142 }, // Mount Yale
+  19: { lat: 39.0706, lng: -106.9890 }, // Maroon Peak
+  20: { lat: 38.6253, lng: -106.2508 }, // Tabeguache Peak
+  21: { lat: 38.9647, lng: -106.3383 }, // Mount Oxford
+  22: { lat: 38.0033, lng: -107.7922 }, // Mount Sneffels
+  23: { lat: 39.3394, lng: -106.1392 }, // Mount Democrat
+  24: { lat: 39.1503, lng: -107.0833 }, // Capitol Peak
+  25: { lat: 38.8405, lng: -105.0442 }, // Pikes Peak
+  26: { lat: 39.1189, lng: -107.0669 }, // Snowmass Mountain
+  27: { lat: 37.6214, lng: -107.5928 }, // Windom Peak
+  28: { lat: 37.6272, lng: -107.5956 }, // Sunlight Peak
+  29: { lat: 37.9128, lng: -107.5042 }, // Handies Peak
+  30: { lat: 38.0606, lng: -107.5100 }, // Wetterhorn Peak
+  31: { lat: 39.0783, lng: -106.9872 }, // North Maroon Peak
+  32: { lat: 38.0597, lng: -106.9317 }, // San Luis Peak
+  33: { lat: 39.4669, lng: -106.4818 }, // Mount of the Holy Cross
+  34: { lat: 38.9453, lng: -106.4386 }, // Huron Peak
+  35: { lat: 38.0717, lng: -107.4622 }, // Uncompahgre Peak
+  36: { lat: 37.9178, lng: -107.4250 }, // Sunshine Peak
+  37: { lat: 39.2250, lng: -106.1697 }, // Mount Sherman
+  38: { lat: 37.9408, lng: -107.4219 }, // Redcloud Peak
+  39: { lat: 39.0714, lng: -106.9503 }, // Pyramid Peak
+  40: { lat: 37.8600, lng: -107.9844 }, // Wilson Peak
+  41: { lat: 37.5778, lng: -105.4853 }, // Blanca Peak
+  42: { lat: 39.0294, lng: -106.4729 }, // La Plata Peak
+  43: { lat: 39.3469, lng: -106.1181 }, // Mount Cameron
+  44: { lat: 39.3347, lng: -106.1083 }, // Mount Bross
+  45: { lat: 37.9797, lng: -105.6022 }, // Kit Carson Peak
+  46: { lat: 37.8378, lng: -108.0061 }, // El Diente Peak
+  47: { lat: 37.6217, lng: -107.6222 }, // Mount Eolus
+  48: { lat: 37.9808, lng: -105.6067 }, // Challenger Point
+  49: { lat: 38.9036, lng: -106.2997 }, // Mount Columbia
+  50: { lat: 38.9478, lng: -106.3786 }, // Missouri Mountain
+  51: { lat: 37.9761, lng: -105.5553 }, // Humboldt Peak
+  52: { lat: 39.5828, lng: -105.7086 }, // Mount Bierstadt
+  53: { lat: 37.1219, lng: -105.1864 }, // Culebra Peak
+  54: { lat: 37.5828, lng: -105.4928 }, // Ellingwood Point
+  55: { lat: 37.5839, lng: -105.4450 }, // Mount Lindsey
+  56: { lat: 37.5667, lng: -105.4978 }, // Little Bear Peak
+  57: { lat: 37.6228, lng: -107.6261 }, // North Eolus
+  58: { lat: 39.0103, lng: -106.8561 }, // Conundrum Peak
+};
+
 function initDb() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -310,6 +377,14 @@ function initDb() {
     }
     db.prepare('INSERT INTO mountains (id, name, elevation, range, source) VALUES (?, ?, ?, ?, ?)').run(id, name, elevation, range, 'seed');
   });
+
+  // Backfill coordinates for the 58 seed mountains, now that the rows above
+  // are guaranteed to exist -- guarded by "lat IS NULL" so this never
+  // overwrites real data and is a no-op after the first run.
+  const backfillCoord = db.prepare('UPDATE mountains SET lat = ?, lng = ? WHERE id = ? AND lat IS NULL');
+  for (const [id, { lat, lng }] of Object.entries(MOUNTAIN_COORDS)) {
+    backfillCoord.run(lat, lng, Number(id));
+  }
 
   // Backfill: grandfather the original 58 seed mountains into the new
   // peak_lists system as "Colorado 14ers" so existing behavior (all climbs,
