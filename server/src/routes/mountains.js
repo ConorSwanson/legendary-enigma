@@ -30,8 +30,28 @@ function listKeysByMountainId(db) {
   return map;
 }
 
+// Every mountain's curated default photo(s), keyed by mountain id and
+// ordered by rank (0 = primary). CC-BY/CC-BY-SA entries carry author/license/
+// source_url so the client can render the required credit line.
+function defaultPhotosByMountainId(db, base) {
+  const rows = db.prepare(
+    'SELECT mountain_id, filename, license, author, source_url FROM mountain_photos ORDER BY mountain_id, rank ASC'
+  ).all();
+  const map = {};
+  for (const r of rows) {
+    (map[r.mountain_id] ??= []).push({
+      url: `${base}/assets/peak-photos/${r.filename}`,
+      license: r.license,
+      author: r.author,
+      source_url: r.source_url,
+    });
+  }
+  return map;
+}
+
 router.get('/', (req, res) => {
   const db = getDb();
+  const base = `${req.protocol}://${req.get('host')}`;
   const { list } = req.query;
   const mountains = list
     ? db.prepare(`
@@ -55,7 +75,12 @@ router.get('/', (req, res) => {
       `).all();
 
   const listKeys = listKeysByMountainId(db);
-  res.json(mountains.map(m => ({ ...m, list_keys: listKeys[m.id] || [] })));
+  const defaultPhotos = defaultPhotosByMountainId(db, base);
+  res.json(mountains.map(m => ({
+    ...m,
+    list_keys: listKeys[m.id] || [],
+    default_photos: defaultPhotos[m.id] || [],
+  })));
 });
 
 // GET /api/mountains/:id — mountain info + aggregated stats across public climbs
@@ -107,7 +132,11 @@ router.get('/:id', requireAuth, (req, res) => {
     photo_url: `${base}/uploads/${r.photo_path}`,
   }));
 
-  const hero_photo_url = recent_photos.length ? recent_photos[0].photo_url : null;
+  // Fall back to the mountain's curated default photo when nobody's public
+  // climb has a photo yet -- same "prefer a real user photo, else the
+  // default" rule used everywhere else this shows up (feed, share cards).
+  const default_photos = (defaultPhotosByMountainId(db, base)[id] || []);
+  const hero_photo_url = recent_photos.length ? recent_photos[0].photo_url : (default_photos[0]?.url ?? null);
 
   // Requesting user's own ascents (includes their private ones — it's their data).
   const { user_ascents } = db.prepare(
@@ -120,6 +149,7 @@ router.get('/:id', requireAuth, (req, res) => {
     elevation: mountain.elevation,
     range: mountain.range,
     hero_photo_url,
+    default_photos,
     total_climbs: totals.total_climbs,
     unique_climbers: totals.unique_climbers,
     user_ascents,

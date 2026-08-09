@@ -20,6 +20,10 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(UPLOADS_DIR, { fallthrough: false }));
 app.use('/public', express.static(path.join(__dirname, '../public')));
+// Curated default mountain photos -- versioned with the repo (not the
+// uploads volume), so a long cache is safe: a filename never changes shape
+// under a given mountain id/rank once committed.
+app.use('/assets/peak-photos', express.static(path.join(__dirname, 'assets/peak-photos'), { maxAge: '30d' }));
 
 app.use('/api/auth',      require('./routes/auth'));
 app.use('/api/mountains', require('./routes/mountains'));

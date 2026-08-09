@@ -141,6 +141,142 @@ const MOUNTAIN_COORDS = {
   58: { lat: 39.0103, lng: -106.8561 }, // Conundrum Peak
 };
 
+// Default hero photos for each mountain -- CC0/Public Domain/CC-BY/CC-BY-SA
+// photos sourced from Wikimedia Commons (NPS, BLM, USGS/NARA, Library of
+// Congress, and individually-licensed contributor photos), self-hosted at
+// server/src/assets/peak-photos/<filename>. rank 0 is the primary pick; a
+// mountain can have up to a few for rotation. CC-BY/CC-BY-SA entries need
+// their author/source_url surfaced as a visible credit line in the UI.
+const MOUNTAIN_PHOTOS = [
+  { mountainId: 1, rank: 0, filename: '1-0.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Elbert_from_Twin_Lakes.jpg' },
+  { mountainId: 1, rank: 1, filename: '1-1.jpg', license: 'CC BY-SA 4.0', author: 'Szothner01', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mt._Elbert_Colorado.jpg' },
+  { mountainId: 2, rank: 0, filename: '2-0.jpg', license: 'Public Domain', author: 'Rick Kimpel Jr.', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Massive.jpg' },
+  { mountainId: 2, rank: 1, filename: '2-1.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Massive_from_road_by_Twin_Lakes.jpg' },
+  { mountainId: 2, rank: 2, filename: '2-2.jpg', license: 'CC BY-SA 3.0', author: 'Fredlyfish4', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mt_Massive_from_Elbert.JPG' },
+  { mountainId: 3, rank: 0, filename: '3-0.jpg', license: 'CC BY-SA 4.0', author: 'Pimlico27', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Harvard_from_Route_24.jpg' },
+  { mountainId: 3, rank: 1, filename: '3-1.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Harvard_and_sign_from_U.S._Highway_24.jpg' },
+  { mountainId: 4, rank: 0, filename: '4-0.jpg', license: 'CC0 1.0', author: 'Thomson200', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Lincoln_Colorado_July_2016.jpg' },
+  { mountainId: 4, rank: 1, filename: '4-1.jpg', license: 'CC BY 2.0', author: 'Brian Brown', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Lincoln_from_Bross.jpg' },
+  { mountainId: 4, rank: 2, filename: '4-2.jpg', license: 'CC BY 3.0', author: 'Thomson M', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Lincoln_-_panoramio.jpg' },
+  { mountainId: 5, rank: 0, filename: '5-0.jpg', license: 'CC BY 2.0', author: 'Heath Cajandig', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Gray%27s_Peak_Sunrise_(44561125341).jpg' },
+  { mountainId: 5, rank: 1, filename: '5-1.jpg', license: 'CC BY 2.0', author: 'Heath Cajandig', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Grays_Peak_(44613054512).jpg' },
+  { mountainId: 5, rank: 2, filename: '5-2.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Grays_Peak_and_Torreys_Peak_from_Dillon_Reservoir.jpg' },
+  { mountainId: 6, rank: 0, filename: '6-0.jpg', license: 'Public Domain', author: 'BLM Colorado', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_White_and_Mount_Antero.jpg' },
+  { mountainId: 6, rank: 1, filename: '6-1.jpg', license: 'CC BY-SA 4.0', author: 'Chris Light', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mt_Anteror_%26_Chalk_Cliffs_1501.jpg' },
+  { mountainId: 6, rank: 2, filename: '6-2.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Antero,_taken_from_along_U.S._285,_near_the_town_of_Nathrop.jpg' },
+  { mountainId: 7, rank: 0, filename: '7-0.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Torreys_Peak,_Colorado.jpg' },
+  { mountainId: 7, rank: 1, filename: '7-1.jpg', license: 'CC BY-SA 3.0', author: 'Hogs555', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Torreys.JPG' },
+  { mountainId: 8, rank: 0, filename: '8-0.jpg', license: 'Public Domain', author: 'Dbunde', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Castle_Peak_CO_Full.JPG' },
+  { mountainId: 8, rank: 1, filename: '8-1.jpg', license: 'CC BY-SA 2.0', author: 'Jeremiah LaRocco', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Castle_Peak_panorama.jpg' },
+  { mountainId: 9, rank: 0, filename: '9-0.jpg', license: 'Public Domain', author: 'Stargazer7121', sourceUrl: 'https://commons.wikimedia.org/wiki/File:QuandaryPeak.JPG' },
+  { mountainId: 9, rank: 1, filename: '9-1.jpg', license: 'CC BY-SA 2.0', author: 'M M', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Quandary_Peak,_Colorado,_USA_(14382068790).jpg' },
+  { mountainId: 9, rank: 2, filename: '9-2.jpg', license: 'CC BY 2.0', author: 'brian gautreau', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Looking_out_from_the_Summit_of_Mt_Quandry.jpg' },
+  { mountainId: 10, rank: 0, filename: '10-0.jpg', license: 'CC BY-SA 2.0', author: 'David Zhang', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Boulders_Over_the_Tree_Lines,_Mount_Evans.jpg' },
+  { mountainId: 10, rank: 1, filename: '10-1.jpg', license: 'CC BY-SA 4.0', author: 'DPH1110', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Evans.jpg' },
+  { mountainId: 11, rank: 0, filename: '11-0.jpg', license: 'CC BY-SA 2.0', author: 'KimonBerlin', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Longs_Peak_(15035303494).jpg' },
+  { mountainId: 12, rank: 0, filename: '12-0.jpg', license: 'Public Domain', author: 'Boyd Norton (EPA DOCUMERICA)', sourceUrl: 'https://commons.wikimedia.org/wiki/File:MT._WILSON_AND_WEST_DOLORES_RIVER_-_NARA_-_544936.jpg' },
+  { mountainId: 12, rank: 1, filename: '12-1.jpg', license: 'CC BY 2.0', author: 'Kylie Stewart', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Gladstone_and_Wilson.jpg' },
+  { mountainId: 13, rank: 0, filename: '13-0.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Angel_and_Grinch_of_Mount_Shavano.jpg' },
+  { mountainId: 13, rank: 1, filename: '13-1.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Esprit_Point_and_Mount_Shavano.jpg' },
+  { mountainId: 14, rank: 0, filename: '14-0.jpg', license: 'CC BY 3.0', author: 'Simpsora', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mt._belford_north_approach.jpg' },
+  { mountainId: 14, rank: 1, filename: '14-1.jpg', license: 'CC BY-SA 3.0', author: 'Hogs555', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Colorado_beauty.JPG' },
+  { mountainId: 15, rank: 0, filename: '15-0.jpg', license: 'Public Domain', author: 'NPS / Patrick Myers', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Crestone_Peak_(50593918042).jpg' },
+  { mountainId: 15, rank: 1, filename: '15-1.jpg', license: 'Public Domain', author: 'NPS / Patrick Myers', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Crestone_Peaks_Reflected_in_San_Luis_Lake_(47037790574).jpg' },
+  { mountainId: 15, rank: 2, filename: '15-2.jpg', license: 'Public Domain', author: 'NPS / Patrick Myers', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Crestone_Peaks_(31820804363).jpg' },
+  { mountainId: 16, rank: 0, filename: '16-0.jpg', license: 'Public Domain', author: 'Meniscus', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Crestone_needle_and_lower_south_colony_lake_2008.JPG' },
+  { mountainId: 17, rank: 0, filename: '17-0.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Princeton_from_Cottonwood_Pass_road,_west_of_Buena_Vista.jpg' },
+  { mountainId: 18, rank: 0, filename: '18-0.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Yale_from_along_US-24,_N_NW_of_Buena_Vista.jpg' },
+  { mountainId: 18, rank: 1, filename: '18-1.jpg', license: 'CC BY-SA 3.0', author: 'Hogs555', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Yale.JPG' },
+  { mountainId: 19, rank: 0, filename: '19-0.jpg', license: 'Public Domain', author: 'Carol M. Highsmith (Library of Congress)', sourceUrl: 'https://commons.wikimedia.org/wiki/File:The_Maroon_Bells_twin-peak_formation_reflects_in_Maroon_Lake,_just_outside_Aspen_in_Colorado%27s_Rocky_Mountains_LCCN2015633962.tif' },
+  { mountainId: 19, rank: 1, filename: '19-1.jpg', license: 'Public Domain', author: 'Carol M. Highsmith (Library of Congress)', sourceUrl: 'https://commons.wikimedia.org/wiki/File:The_Maroon_Bells,_the_bare_peaks_to_the_left,_reflecting_into_Maroon_Lake_just_outside_Aspen,_considered_one_of_the,_if_not_the_most-coveted_photographic_spot_in_Colorado_LCCN2015633713.tif' },
+  { mountainId: 19, rank: 2, filename: '19-2.jpg', license: 'CC BY 2.0', author: 'John Fowler', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Alpenglow_Maroon_Bells,_Maroon_Lake,_Colorado.jpg' },
+  { mountainId: 20, rank: 0, filename: '20-0.jpg', license: 'CC BY-SA 4.0', author: 'John Sowell', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Tabeguache_Peak,_Sawatch_Range,_Chaffee_County,_Colorado,_USA_01.jpg' },
+  { mountainId: 21, rank: 0, filename: '21-0.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Oxford_from_Twin_Lakes_turnoff_from_U.S._24.jpg' },
+  { mountainId: 22, rank: 0, filename: '22-0.jpg', license: 'Public Domain', author: 'Boyd Norton (EPA DOCUMERICA)', sourceUrl: 'https://commons.wikimedia.org/wiki/File:MT._SNEFFELS_-_NARA_-_544909.jpg' },
+  { mountainId: 22, rank: 1, filename: '22-1.jpg', license: 'CC BY 2.0', author: 'Alex Kerney', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Sneffels.jpg' },
+  { mountainId: 22, rank: 2, filename: '22-2.jpg', license: 'CC BY-SA 3.0', author: 'Hogs555', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Sneffels.JPG' },
+  { mountainId: 23, rank: 0, filename: '23-0.jpg', license: 'CC BY-SA 3.0', author: 'Mofussy', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mt_Democrat.jpg' },
+  { mountainId: 23, rank: 1, filename: '23-1.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Democrat_from_Climax_Mine.jpg' },
+  { mountainId: 24, rank: 0, filename: '24-0.jpg', license: 'CC BY-SA 3.0', author: 'MostlyDeserts', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Northeast_Ridge_of_Capitol_Peak.jpg' },
+  { mountainId: 25, rank: 0, filename: '25-0.jpg', license: 'CC BY-SA 4.0', author: 'Bilco73', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Gardens_of_the_Gods.jpg' },
+  { mountainId: 25, rank: 1, filename: '25-1.jpg', license: 'CC BY-SA 3.0', author: 'David Shankbone', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Pikes_Peak_by_David_Shankbone.jpg' },
+  { mountainId: 26, rank: 0, filename: '26-0.jpg', license: 'Public Domain', author: 'Nelsestu', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Hagerman_Peak_and_Snowmass_Mountain.jpg' },
+  { mountainId: 27, rank: 0, filename: '27-0.jpg', license: 'CC BY-SA 2.0', author: 'Jeremiah LaRocco', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Windom_Peak_and_Unnamed_above_Chicago_Basin.jpg' },
+  { mountainId: 28, rank: 0, filename: '28-0.jpg', license: 'CC BY-SA 2.0', author: 'Jeremiah LaRocco', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Sunlight_Peak_w.jpg' },
+  { mountainId: 28, rank: 1, filename: '28-1.jpg', license: 'CC BY 2.0', author: 'Kylie Stewart', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Sunlight_Peak_from_Windom_Peak.jpg' },
+  { mountainId: 29, rank: 0, filename: '29-0.jpg', license: 'CC BY-SA 4.0', author: 'Mitchtobin', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Handies_Peak_Colorado.jpg' },
+  { mountainId: 29, rank: 1, filename: '29-1.jpg', license: 'Public Domain', author: 'Bob Wick (BLM)', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Handies_Peak_WSA_(9467518106).jpg' },
+  { mountainId: 30, rank: 0, filename: '30-0.jpg', license: 'Public Domain', author: 'Bob Wick (BLM)', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Uncompahgre_Wilderness_(9500712189).jpg' },
+  { mountainId: 31, rank: 0, filename: '31-0.jpg', license: 'CC BY-SA 3.0', author: 'MostlyDeserts', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Maroon_Bells_from_East.jpg' },
+  { mountainId: 31, rank: 1, filename: '31-1.jpg', license: 'CC BY-SA 4.0', author: 'Rhododendrites', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Maroon_Bells_(11624).jpg' },
+  { mountainId: 31, rank: 2, filename: '31-2.jpg', license: 'Public Domain', author: 'David Hiser (EPA DOCUMERICA)', sourceUrl: 'https://commons.wikimedia.org/wiki/File:MAROON_LAKE_CAMPSITE,_12_MILES_NORTH_OF_ASPEN._SNOW_COVERED_PEAKS_IN_BACKGROUND_ARE_THE_14,000_FOOT_MAROON_BELLS_-_NARA_-_545714.jpg' },
+  { mountainId: 32, rank: 0, filename: '32-0.jpg', license: 'CC BY-SA 4.0', author: 'John Sowell', sourceUrl: 'https://commons.wikimedia.org/wiki/File:San_Luis_Peak,_San_Juan_Mountains,_Saguache_County,_Colorado,_USA_03.jpg' },
+  { mountainId: 32, rank: 1, filename: '32-1.jpg', license: 'CC BY-SA 4.0', author: 'John Sowell', sourceUrl: 'https://commons.wikimedia.org/wiki/File:San_Luis_Peak,_San_Juan_Mountains,_Saguache_County,_Colorado,_USA_01.jpg' },
+  { mountainId: 32, rank: 2, filename: '32-2.jpg', license: 'CC BY-SA 4.0', author: 'John Sowell', sourceUrl: 'https://commons.wikimedia.org/wiki/File:San_Luis_Peak,_San_Juan_Mountains,_Saguache_County,_Colorado,_USA_02.jpg' },
+  { mountainId: 33, rank: 0, filename: '33-0.jpg', license: 'CC BY-SA 2.0', author: 'Jeremiah LaRocco', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_of_the_Holy_Cross,_2009.jpg' },
+  { mountainId: 33, rank: 1, filename: '33-1.jpg', license: 'CC BY 2.0', author: 'Dennis Yang', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Notch_and_Holy_Cross.jpg' },
+  { mountainId: 34, rank: 0, filename: '34-0.jpg', license: 'CC BY 2.0', author: 'Craig Talbert', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Huron_Peak_(48458753091).jpg' },
+  { mountainId: 34, rank: 1, filename: '34-1.jpg', license: 'CC BY-SA 2.0', author: 'Bruno Rijsman', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Huron_Peak.jpg' },
+  { mountainId: 34, rank: 2, filename: '34-2.jpg', license: 'CC BY-SA 2.0', author: 'Jeremiah LaRocco', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Huron_Peak,_Colorado.jpg' },
+  { mountainId: 35, rank: 0, filename: '35-0.jpg', license: 'CC BY 2.0', author: 'due_mele', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Uncompahgre_Peak_(20633459068).jpg' },
+  { mountainId: 35, rank: 1, filename: '35-1.jpg', license: 'CC BY-SA 4.0', author: 'Robert M. Russell', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Aspen_Gold.jpg' },
+  { mountainId: 36, rank: 0, filename: '36-0.jpg', license: 'Public Domain', author: 'Bob Wick (BLM)', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Red_Cloud_Peak_WSA_(9470419585).jpg' },
+  { mountainId: 37, rank: 0, filename: '37-0.jpg', license: 'CC0 1.0', author: '420 Photography', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mt_Sherman.jpg' },
+  { mountainId: 37, rank: 1, filename: '37-1.jpg', license: 'CC BY 2.0', author: 'Adam Baker', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Hilltop_Mine_on_Mount_Sherman.jpg' },
+  { mountainId: 37, rank: 2, filename: '37-2.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Dyer,_Sherman,_and_Sheridan.jpg' },
+  { mountainId: 38, rank: 0, filename: '38-0.jpg', license: 'CC BY-SA 4.0', author: 'Mitchtobin', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Sanjuan14ers-8.jpg' },
+  { mountainId: 38, rank: 1, filename: '38-1.jpg', license: 'CC BY-SA 4.0', author: 'Mitchtobin', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Redcloud_Peak_Summit_Colorado.jpg' },
+  { mountainId: 39, rank: 0, filename: '39-0.jpg', license: 'CC BY-SA 3.0', author: 'EE One', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Pyramid_Peak.jpg' },
+  { mountainId: 40, rank: 0, filename: '40-0.jpg', license: 'CC0 1.0', author: 'Thomas Kelley', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Clouds_over_a_mountain_in_Telluride_(Unsplash).jpg' },
+  { mountainId: 40, rank: 1, filename: '40-1.jpg', license: 'CC BY-SA 3.0', author: 'Hogs555', sourceUrl: 'https://commons.wikimedia.org/wiki/File:WilsonCO.JPG' },
+  { mountainId: 40, rank: 2, filename: '40-2.jpg', license: 'CC BY-SA 2.0', author: 'Scott Ellis', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Wilson_Peak_near_Telluride.jpg' },
+  { mountainId: 41, rank: 0, filename: '41-0.jpg', license: 'Public Domain', author: 'NPS / Patrick Myers', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Blanca_Peak_Alpenglow_(38109998236).jpg' },
+  { mountainId: 41, rank: 1, filename: '41-1.jpg', license: 'Public Domain', author: 'NPS / Patrick Myers', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Blanca_Peak_and_Little_Bear_Peak_(53025664960).jpg' },
+  { mountainId: 41, rank: 2, filename: '41-2.jpg', license: 'Public Domain', author: 'NPS / Patrick Myers', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Blanca_Peak_Summit_Illuminated_(51265729494).jpg' },
+  { mountainId: 42, rank: 0, filename: '42-0.jpg', license: 'CC BY 2.0', author: 'Adam Reiner', sourceUrl: 'https://commons.wikimedia.org/wiki/File:La_Plata_Peak.jpg' },
+  { mountainId: 42, rank: 1, filename: '42-1.jpg', license: 'CC BY 2.0', author: 'Nan Palmero', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Independence_Pass_Continental_Divide_-_July_2011_(5902795605).jpg' },
+  { mountainId: 42, rank: 2, filename: '42-2.jpg', license: 'CC BY-SA 2.0', author: 'Rick Kimpel', sourceUrl: 'https://commons.wikimedia.org/wiki/File:La_Plata_Peak_and_Star_Mountain.jpg' },
+  { mountainId: 43, rank: 0, filename: '43-0.jpg', license: 'CC BY-SA 2.0', author: 'Jeremiah LaRocco', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Cameron_from_west.jpg' },
+  { mountainId: 43, rank: 1, filename: '43-1.jpg', license: 'CC BY-SA 2.0', author: 'Jeremiah LaRocco', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mt._Cameron,_Colorado.jpg' },
+  { mountainId: 43, rank: 2, filename: '43-2.jpg', license: 'CC BY-SA 2.0', author: 'Jeremiah LaRocco', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Cameron_from_Lincoln.jpg' },
+  { mountainId: 44, rank: 0, filename: '44-0.jpg', license: 'CC0 1.0', author: 'Thomson200', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Bross_viewed_from_Colorado_State_Highway_9.jpg' },
+  { mountainId: 44, rank: 1, filename: '44-1.jpg', license: 'CC0 1.0', author: '420 Photography', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mt_Bross_Alma,_Colorado.jpg' },
+  { mountainId: 44, rank: 2, filename: '44-2.jpg', license: 'CC BY 3.0', author: 'Thomson M', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Bross_-_panoramio.jpg' },
+  { mountainId: 45, rank: 0, filename: '45-0.jpg', license: 'CC BY-SA 3.0', author: 'Fredlyfish4', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Kit_Carson_from_Challenger.JPG' },
+  { mountainId: 45, rank: 1, filename: '45-1.jpg', license: 'CC BY-SA 2.5', author: 'Adam Ginsburg', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Kit_carson_from_between.jpg' },
+  { mountainId: 45, rank: 2, filename: '45-2.jpg', license: 'CC BY-SA 3.0', author: 'Fredlyfish4', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Kit_Carson_Peak.JPG' },
+  { mountainId: 46, rank: 0, filename: '46-0.jpg', license: 'CC BY-SA 3.0', author: 'MostlyDeserts', sourceUrl: 'https://commons.wikimedia.org/wiki/File:El_Diente_Peak.jpg' },
+  { mountainId: 46, rank: 1, filename: '46-1.jpg', license: 'CC BY-SA 3.0', author: 'EE One', sourceUrl: 'https://commons.wikimedia.org/wiki/File:El_Diente_Peak.JPG' },
+  { mountainId: 47, rank: 0, filename: '47-0.jpg', license: 'CC BY 2.0', author: 'Kylie Stewart', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Alpenglow_on_the_Eolus_Peaks.jpg' },
+  { mountainId: 47, rank: 1, filename: '47-1.jpg', license: 'CC BY 2.0', author: 'Robert Tadlock', sourceUrl: 'https://commons.wikimedia.org/wiki/File:The_ridge_from_N._Eolus_over_to_Eolus.jpg' },
+  { mountainId: 47, rank: 2, filename: '47-2.jpg', license: 'CC BY-SA 2.0', author: 'Jeremiah LaRocco', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Eolus_summit.jpg' },
+  { mountainId: 48, rank: 0, filename: '48-0.jpg', license: 'CC BY-SA 2.5', author: 'Adam Ginsburg', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Challenger_point.jpg' },
+  { mountainId: 48, rank: 1, filename: '48-1.jpg', license: 'CC BY-SA 3.0', author: 'Fredlyfish4', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Challenger_Point_from_Kit_Carson.JPG' },
+  { mountainId: 48, rank: 2, filename: '48-2.jpg', license: 'CC BY-SA 3.0', author: 'Fredlyfish4', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Challenger_%26_Kit_Carson.JPG' },
+  { mountainId: 49, rank: 0, filename: '49-0.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Columbia_from_along_US-24,_a_few_miles_N_NW_of_Buena_Vista.jpg' },
+  { mountainId: 50, rank: 0, filename: '50-0.jpg', license: 'CC BY-SA 4.0', author: 'Jason Ronza', sourceUrl: 'https://commons.wikimedia.org/wiki/File:01_Missouri_Mountains.jpg' },
+  { mountainId: 51, rank: 0, filename: '51-0.jpg', license: 'CC BY-SA 3.0', author: 'Hogs555', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Humboldtpeak.JPG' },
+  { mountainId: 51, rank: 1, filename: '51-1.jpg', license: 'Public Domain', author: 'Meniscus', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Humboldt_Peak_from_near_south_colony_lakes_trailhead.jpg' },
+  { mountainId: 51, rank: 2, filename: '51-2.jpg', license: 'CC BY-SA 2.5', author: 'Adam Ginsburg', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Humboldt_peak.jpg' },
+  { mountainId: 52, rank: 0, filename: '52-0.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Bierstadt,_Sawtooth,_Mount_Evans_(10579983656).jpg' },
+  { mountainId: 52, rank: 1, filename: '52-1.jpg', license: 'CC0 1.0', author: 'Thomson200', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Bierstadt_seen_from_Guanella_Pass,_July_2016.jpg' },
+  { mountainId: 52, rank: 2, filename: '52-2.jpg', license: 'CC BY 2.5', author: 'Adam Ginsburg', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Bierstadt_and_sawtooth.jpg' },
+  { mountainId: 53, rank: 0, filename: '53-0.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Culebra_Peak_closeup_from_C-159.jpg' },
+  { mountainId: 53, rank: 1, filename: '53-1.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Culebra_Peak.jpg' },
+  { mountainId: 53, rank: 2, filename: '53-2.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Culebra_Peak_closeup.jpg' },
+  { mountainId: 54, rank: 0, filename: '54-0.jpg', license: 'CC BY 2.0', author: 'Kylie Stewart', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Blanca_Peak_and_Ellingwood_Point.jpg' },
+  { mountainId: 54, rank: 1, filename: '54-1.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Ellingwood_Point,_Colorado.jpg' },
+  { mountainId: 54, rank: 2, filename: '54-2.jpg', license: 'CC BY-SA 3.0', author: 'Alethe88', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Ellingwood-Blanca-bluelakesview01.jpg' },
+  { mountainId: 55, rank: 0, filename: '55-0.jpg', license: 'CC BY 2.0', author: 'David Herrera', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mount_Lindsey_and_Iron_Nipple.jpg' },
+  { mountainId: 55, rank: 1, filename: '55-1.jpg', license: 'Public Domain', author: 'Meniscus', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Mtlindsey_from_blanca_2006.JPG' },
+  { mountainId: 55, rank: 2, filename: '55-2.jpg', license: 'CC BY 3.0', author: 'Thomson M', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Little_Bear_Peak,_Hamilton_Peak_and_Mount_Lindsey_-_panoramio.jpg' },
+  { mountainId: 56, rank: 0, filename: '56-0.jpg', license: 'Public Domain', author: 'NPS / Patrick Myers', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Blanca_Peak_and_Little_Bear_Peak_(53025664960).jpg' },
+  { mountainId: 56, rank: 1, filename: '56-1.jpg', license: 'Public Domain', author: 'NPS / Patrick Myers', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Moon_over_Little_Bear_Peak_(51146418242).jpg' },
+  { mountainId: 56, rank: 2, filename: '56-2.jpg', license: 'CC BY-SA 4.0', author: 'Kcujedi', sourceUrl: 'https://commons.wikimedia.org/wiki/File:14,037_ft_Little_Bear_Peak.jpg' },
+  { mountainId: 57, rank: 0, filename: '57-0.jpg', license: 'CC BY 2.0', author: 'Robert Tadlock', sourceUrl: 'https://commons.wikimedia.org/wiki/File:The_ridge_from_N._Eolus_over_to_Eolus.jpg' },
+  { mountainId: 58, rank: 0, filename: '58-0.jpg', license: 'CC BY 2.0', author: 'Kylie Stewart', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Alpenglow_on_Conundrum.jpg' },
+];
+
 function initDb() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -276,6 +412,23 @@ function initDb() {
       PRIMARY KEY (peak_list_id, mountain_id)
     );
     CREATE INDEX IF NOT EXISTS idx_plm_mountain ON peak_list_memberships(mountain_id);
+
+    -- Default hero photos for a mountain, used whenever a climb/feed item has
+    -- no user-uploaded photo of its own. Curated CC0/CC-BY/CC-BY-SA photos
+    -- (server/src/assets/peak-photos/<filename>), rank 0 = primary; a peak
+    -- can have several for rotation. license/author/source_url back the
+    -- credit line CC-BY/CC-BY-SA photos require in the UI.
+    CREATE TABLE IF NOT EXISTS mountain_photos (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      mountain_id INTEGER NOT NULL REFERENCES mountains(id) ON DELETE CASCADE,
+      rank        INTEGER NOT NULL,
+      filename    TEXT    NOT NULL,
+      license     TEXT    NOT NULL,
+      author      TEXT,
+      source_url  TEXT    NOT NULL,
+      UNIQUE(mountain_id, rank)
+    );
+    CREATE INDEX IF NOT EXISTS idx_mountain_photos_mountain ON mountain_photos(mountain_id);
   `);
 
   // Migrate: add columns to legacy climbs table if missing
@@ -403,6 +556,17 @@ function initDb() {
     byElevationDesc.forEach(([id], i) => insertMembership.run(co14ersListId, id, i + 1));
   });
   backfillMemberships(MOUNTAINS);
+
+  // Backfill default hero photos -- idempotent (INSERT OR IGNORE against the
+  // mountain_id+rank UNIQUE constraint), so re-running never duplicates rows
+  // or clobbers a photo an admin later swapped in manually.
+  const insertMountainPhoto = db.prepare(
+    'INSERT OR IGNORE INTO mountain_photos (mountain_id, rank, filename, license, author, source_url) VALUES (?, ?, ?, ?, ?, ?)'
+  );
+  const backfillPhotos = db.transaction((list) => {
+    for (const p of list) insertMountainPhoto.run(p.mountainId, p.rank, p.filename, p.license, p.author, p.sourceUrl);
+  });
+  backfillPhotos(MOUNTAIN_PHOTOS);
 
   db.prepare('INSERT OR IGNORE INTO profile (id, name) VALUES (1, ?)').run('Climber');
 
