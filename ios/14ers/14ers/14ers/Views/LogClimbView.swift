@@ -800,7 +800,7 @@ private struct ClimbSuccessView: View {
     }
 
     private var shareURL: URL? {
-        URL(string: "\(Config.apiBaseURL)/s/\(climbId)")
+        URL(string: "\(Config.shareBaseURL)/s/\(climbId)")
     }
 
     private var titleText: String {
