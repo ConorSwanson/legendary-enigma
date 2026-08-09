@@ -38,14 +38,18 @@ ${badgeSvg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}
 // Photo credit pill, anchored to a caller-given bottom-right corner --
 // a dark pill behind the text, not just the scrim, since a scrim alone
 // can't guarantee legibility against a bright photo.
+//
+// Uses the same 'Oswald'/'Alfa Slab One' families loaded via resvg's
+// fontFiles in ogImage.js -- generic families like Arial/Helvetica/Impact
+// aren't installed on the server and render as missing-glyph boxes there.
 function creditPill(creditAuthor, right, bottom) {
   if (!creditAuthor) return '';
   const label = `Photo: ${creditAuthor}`;
   const width = label.length * 7 + 24;
   return `
   <rect x="${right - width}" y="${bottom - 24}" width="${width}" height="24" rx="12" fill="#000000" fill-opacity="0.55"/>
-  <text x="${right - width / 2}" y="${bottom - 7}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
-    font-size="13" font-weight="400" fill="#ffffff">
+  <text x="${right - width / 2}" y="${bottom - 7}" text-anchor="middle" font-family="Oswald, sans-serif"
+    font-size="13" font-weight="500" fill="#ffffff">
     ${esc(label)}
   </text>`;
 }
@@ -129,44 +133,44 @@ function renderOgCard({ mountain, climbDate, climberName, photo }) {
   <line x1="${divX}" y1="0" x2="${divX}" y2="${H}" stroke="url(#divGrad)" stroke-width="1"/>
 
   <!-- "COLORADO 14ER SUMMIT" eyebrow -->
-  <text x="${textX}" y="155" font-family="Arial, Helvetica, sans-serif"
-    font-size="17" font-weight="400" fill="${accentColor}" letter-spacing="5">
+  <text x="${textX}" y="155" font-family="Oswald, sans-serif"
+    font-size="17" font-weight="500" fill="${accentColor}" letter-spacing="5">
     COLORADO 14ER SUMMIT
   </text>
 
   <!-- Climber name -->
-  <text x="${textX}" y="220" font-family="Arial, Helvetica, sans-serif"
-    font-size="30" font-weight="300" fill="#cccccc">
+  <text x="${textX}" y="220" font-family="Oswald, sans-serif"
+    font-size="30" font-weight="500" fill="#cccccc">
     ${name}
   </text>
 
   <!-- "summited" -->
-  <text x="${textX}" y="262" font-family="Arial, Helvetica, sans-serif"
-    font-size="20" font-weight="300" fill="#777777" letter-spacing="3">
+  <text x="${textX}" y="262" font-family="Oswald, sans-serif"
+    font-size="20" font-weight="500" fill="#777777" letter-spacing="3">
     SUMMITED
   </text>
 
   <!-- Mountain name (big, bold, accent) -->
-  <text x="${textX}" y="${262 + 18 + mtnFontSize}" font-family="Impact, Arial Black, sans-serif"
-    font-size="${mtnFontSize}" font-weight="900" fill="${accentColor}" letter-spacing="2">
+  <text x="${textX}" y="${262 + 18 + mtnFontSize}" font-family="'Alfa Slab One', serif"
+    font-size="${mtnFontSize}" fill="${accentColor}" letter-spacing="2">
     ${mtnDisplay}
   </text>
 
   <!-- Elevation · Range -->
-  <text x="${textX}" y="455" font-family="Arial, Helvetica, sans-serif"
-    font-size="24" font-weight="400" fill="#aaaaaa">
+  <text x="${textX}" y="455" font-family="Oswald, sans-serif"
+    font-size="24" font-weight="500" fill="#aaaaaa">
     ${mountain.elevation.toLocaleString()} ft  ·  ${rangeLabel}
   </text>
 
   <!-- Date -->
-  <text x="${textX}" y="503" font-family="Arial, Helvetica, sans-serif"
-    font-size="18" font-weight="300" fill="#666666">
+  <text x="${textX}" y="503" font-family="Oswald, sans-serif"
+    font-size="18" font-weight="500" fill="#666666">
     ${fmtDate(climbDate)}
   </text>
 
   <!-- Branding -->
-  <text x="${textX}" y="585" font-family="Arial, Helvetica, sans-serif"
-    font-size="14" font-weight="400" fill="${subColor}" letter-spacing="3">
+  <text x="${textX}" y="585" font-family="Oswald, sans-serif"
+    font-size="14" font-weight="600" fill="${subColor}" letter-spacing="3">
     14ERS TRACKER · ALL 58 COLORADO 14ERS
   </text>
 
@@ -237,44 +241,44 @@ function renderStoryCard({ mountain, climbDate, climberName, photo }) {
   ${badgeEmbed(badgeSvg, badgeX, badgeY, badgeW)}
 
   <!-- "COLORADO 14ER SUMMIT" eyebrow -->
-  <text x="${textCenterX}" y="${eyebrowY}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
-    font-size="22" font-weight="400" fill="${accentColor}" letter-spacing="6">
+  <text x="${textCenterX}" y="${eyebrowY}" text-anchor="middle" font-family="Oswald, sans-serif"
+    font-size="22" font-weight="500" fill="${accentColor}" letter-spacing="6">
     COLORADO 14ER SUMMIT
   </text>
 
   <!-- Climber name -->
-  <text x="${textCenterX}" y="${eyebrowY + 60}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
-    font-size="34" font-weight="300" fill="#dddddd">
+  <text x="${textCenterX}" y="${eyebrowY + 60}" text-anchor="middle" font-family="Oswald, sans-serif"
+    font-size="34" font-weight="500" fill="#dddddd">
     ${name}
   </text>
 
   <!-- "summited" -->
-  <text x="${textCenterX}" y="${eyebrowY + 112}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
-    font-size="24" font-weight="300" fill="#888888" letter-spacing="3">
+  <text x="${textCenterX}" y="${eyebrowY + 112}" text-anchor="middle" font-family="Oswald, sans-serif"
+    font-size="24" font-weight="500" fill="#888888" letter-spacing="3">
     SUMMITED
   </text>
 
   <!-- Mountain name (big, bold, accent) -->
-  <text x="${textCenterX}" y="${eyebrowY + 112 + 20 + mtnFontSize}" text-anchor="middle" font-family="Impact, Arial Black, sans-serif"
-    font-size="${mtnFontSize}" font-weight="900" fill="${accentColor}" letter-spacing="2">
+  <text x="${textCenterX}" y="${eyebrowY + 112 + 20 + mtnFontSize}" text-anchor="middle" font-family="'Alfa Slab One', serif"
+    font-size="${mtnFontSize}" fill="${accentColor}" letter-spacing="2">
     ${mtnDisplay}
   </text>
 
   <!-- Elevation · Range -->
-  <text x="${textCenterX}" y="${eyebrowY + 112 + 20 + mtnFontSize + 56}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
-    font-size="30" font-weight="400" fill="#bbbbbb">
+  <text x="${textCenterX}" y="${eyebrowY + 112 + 20 + mtnFontSize + 56}" text-anchor="middle" font-family="Oswald, sans-serif"
+    font-size="30" font-weight="500" fill="#bbbbbb">
     ${mountain.elevation.toLocaleString()} ft  ·  ${rangeLabel}
   </text>
 
   <!-- Date -->
-  <text x="${textCenterX}" y="${eyebrowY + 112 + 20 + mtnFontSize + 100}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
-    font-size="22" font-weight="300" fill="#777777">
+  <text x="${textCenterX}" y="${eyebrowY + 112 + 20 + mtnFontSize + 100}" text-anchor="middle" font-family="Oswald, sans-serif"
+    font-size="22" font-weight="500" fill="#777777">
     ${fmtDate(climbDate)}
   </text>
 
   <!-- Branding -->
-  <text x="${textCenterX}" y="${H - safeBottom - 40}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
-    font-size="18" font-weight="400" fill="${subColor}" letter-spacing="3">
+  <text x="${textCenterX}" y="${H - safeBottom - 40}" text-anchor="middle" font-family="Oswald, sans-serif"
+    font-size="18" font-weight="600" fill="${subColor}" letter-spacing="3">
     14ERS TRACKER · ALL 58 COLORADO 14ERS
   </text>
 

@@ -3,9 +3,26 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const { Resvg } = require('@resvg/resvg-js');
 const { getDb, UPLOADS_DIR } = require('../db');
 const { renderOgCard, renderStoryCard } = require('../utils/renderOgCard');
 const { PEAK_PHOTOS_DIR, needsAttribution } = require('../utils/mountainPhotos');
+
+// Text in these cards must reference only fonts bundled here (Oswald /
+// Alfa Slab One) -- generic families like Arial/Helvetica aren't installed
+// on the server, and resvg (unlike a browser) won't silently substitute a
+// look-alike, it just renders missing-glyph boxes. Mirrors badges.js.
+const FONT_DIR = path.join(__dirname, '../assets/fonts');
+const RESVG_OPTS = {
+  font: {
+    loadSystemFonts: false,
+    fontFiles: [
+      path.join(FONT_DIR, 'alfa-slab-one.ttf'),
+      path.join(FONT_DIR, 'oswald-500.ttf'),
+      path.join(FONT_DIR, 'oswald-600.ttf'),
+    ],
+  },
+};
 
 // Reads an image file straight off disk (never a network fetch -- everything
 // this needs is already local, whether a user upload or a self-hosted
@@ -94,7 +111,7 @@ async function serveCard(req, res, { cache: cacheMap, render }) {
   });
 
   try {
-    const png = await sharp(Buffer.from(svg)).png().toBuffer();
+    const png = new Resvg(svg, RESVG_OPTS).render().asPng();
     cacheMap.set(id, { buf: png, ts: Date.now() });
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=600');
