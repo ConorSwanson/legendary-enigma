@@ -6,6 +6,14 @@ const { initDb, UPLOADS_DIR } = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Railway's edge terminates TLS and forwards internally over plain HTTP with
+// an X-Forwarded-Proto header -- without this, req.protocol always reads
+// 'http' in production, so every absolute URL this server builds from it
+// (og:image/og:url on share pages, etc.) comes out http:// on an
+// https-only host. That silently broke iMessage/social link previews,
+// which won't follow a scheme mismatch the way a browser tab would.
+app.set('trust proxy', 1);
+
 initDb();
 
 const { APNS_KEY, APNS_KEY_ID, APNS_TEAM_ID, APNS_BUNDLE_ID } = process.env;

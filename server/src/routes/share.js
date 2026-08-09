@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../db');
 
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 // GET /s/:id — public share page with OG tags, redirects to /share/:id in the SPA
 router.get('/:id', (req, res) => {
   const row = getDb().prepare(`
@@ -19,9 +23,14 @@ router.get('/:id', (req, res) => {
   }
 
   const host = req.protocol + '://' + req.get('host');
-  const title = `${row.user_name || 'Someone'} summited ${row.mountain_name} (${row.elevation.toLocaleString()} ft)!`;
-  const description = `Logged on ${new Date(row.climb_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
-  // Generated badge card for rich previews (NPS patch + climber info at 1200×630)
+  const rawTitle = `${row.user_name || 'Someone'} summited ${row.mountain_name} (${row.elevation.toLocaleString()} ft)!`;
+  const rawDescription = `Logged on ${new Date(row.climb_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+  const title = esc(rawTitle);
+  const description = esc(rawDescription);
+  // Generated badge card for rich previews (NPS patch + climber info at
+  // 1200×630, always -- see renderOgCard.js -- so width/height/type are
+  // static). Link-preview crawlers (iMessage's especially) can be strict
+  // about these being present and matching the real image.
   const image = `${host}/api/og/climb/${row.id}`;
   const url = `${host}/share/${row.id}`;
 
@@ -34,6 +43,9 @@ router.get('/:id', (req, res) => {
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${description}">
   <meta property="og:image" content="${image}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
   <meta property="og:url" content="${url}">
   <meta property="og:type" content="article">
   <meta name="twitter:card" content="summary_large_image">
