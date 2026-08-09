@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
+const { allDefaultPhotos, needsAttribution } = require('../utils/mountainPhotos');
 
 // GET /api/mountains/lists — every named peak list (Colorado 14ers, Colorado
 // 13ers, ...), with a member count, so the client can build a list picker.
@@ -34,17 +35,15 @@ function listKeysByMountainId(db) {
 // ordered by rank (0 = primary). CC-BY/CC-BY-SA entries carry author/license/
 // source_url so the client can render the required credit line.
 function defaultPhotosByMountainId(db, base) {
-  const rows = db.prepare(
-    'SELECT mountain_id, filename, license, author, source_url FROM mountain_photos ORDER BY mountain_id, rank ASC'
-  ).all();
+  const byMountain = allDefaultPhotos(db);
   const map = {};
-  for (const r of rows) {
-    (map[r.mountain_id] ??= []).push({
+  for (const [mountainId, rows] of Object.entries(byMountain)) {
+    map[mountainId] = rows.map(r => ({
       url: `${base}/assets/peak-photos/${r.filename}`,
       license: r.license,
-      author: r.author,
+      author: needsAttribution(r.license) ? r.author : null,
       source_url: r.source_url,
-    });
+    }));
   }
   return map;
 }
@@ -136,7 +135,9 @@ router.get('/:id', requireAuth, (req, res) => {
   // climb has a photo yet -- same "prefer a real user photo, else the
   // default" rule used everywhere else this shows up (feed, share cards).
   const default_photos = (defaultPhotosByMountainId(db, base)[id] || []);
+  const usingDefaultHero = recent_photos.length === 0 && default_photos.length > 0;
   const hero_photo_url = recent_photos.length ? recent_photos[0].photo_url : (default_photos[0]?.url ?? null);
+  const hero_photo_credit_author = usingDefaultHero ? default_photos[0].author : null;
 
   // Requesting user's own ascents (includes their private ones — it's their data).
   const { user_ascents } = db.prepare(
@@ -149,6 +150,7 @@ router.get('/:id', requireAuth, (req, res) => {
     elevation: mountain.elevation,
     range: mountain.range,
     hero_photo_url,
+    hero_photo_credit_author,
     default_photos,
     total_climbs: totals.total_climbs,
     unique_climbers: totals.unique_climbers,

@@ -2,10 +2,27 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
+const { allDefaultPhotos, needsAttribution } = require('../utils/mountainPhotos');
 
-function withPhotoUrl(r, req) {
+// Real climb photo takes priority; falls back to the mountain's curated
+// default photo (rank 0) when the climb has none of its own, so a feed card
+// never has to fall all the way back to the generic procedural placeholder
+// just because nobody's uploaded a photo of that peak yet.
+function withPhotoUrl(r, req, defaultPhotos) {
   const base = req ? `${req.protocol}://${req.get('host')}` : '';
-  return { ...r, photo_url: r.photo_path ? `${base}/uploads/${r.photo_path}` : null };
+  if (r.photo_path) {
+    return { ...r, photo_url: `${base}/uploads/${r.photo_path}`, photo_is_default: false, photo_credit_author: null };
+  }
+  const def = (defaultPhotos[r.mountain_id] || [])[0];
+  if (!def) {
+    return { ...r, photo_url: null, photo_is_default: false, photo_credit_author: null };
+  }
+  return {
+    ...r,
+    photo_url: `${base}/assets/peak-photos/${def.filename}`,
+    photo_is_default: true,
+    photo_credit_author: needsAttribution(def.license) ? def.author : null,
+  };
 }
 
 // 'chronological' orders by the date the climb happened (default); 'activity'
@@ -23,8 +40,10 @@ function orderClause(sort) {
 router.get('/', requireAuth, (req, res) => {
   const { page = '1', sort } = req.query;
   const offset = (Number(page) - 1) * 30;
+  const db = getDb();
+  const defaultPhotos = allDefaultPhotos(db);
 
-  const rows = getDb().prepare(`
+  const rows = db.prepare(`
     SELECT c.id, c.climb_date, c.photo_path, c.visibility, c.notes,
            m.name AS mountain_name, m.elevation, m.range, m.id AS mountain_id,
            u.id AS user_id, u.name AS user_name, u.avatar_path AS user_avatar_path,
@@ -41,7 +60,7 @@ router.get('/', requireAuth, (req, res) => {
     ORDER BY ${orderClause(sort)}
     LIMIT 30 OFFSET ?
   `).all(req.user.id, req.user.id, offset).map(r => ({
-    ...withPhotoUrl(r, req),
+    ...withPhotoUrl(r, req, defaultPhotos),
     user_avatar_url: r.user_avatar_path ? `${req.protocol}://${req.get('host')}/uploads/${r.user_avatar_path}` : null,
     is_liked: !!r.is_liked,
     like_count: r.like_count ?? 0,
@@ -55,8 +74,10 @@ router.get('/', requireAuth, (req, res) => {
 router.get('/discover', requireAuth, (req, res) => {
   const { page = '1', sort } = req.query;
   const offset = (Number(page) - 1) * 30;
+  const db = getDb();
+  const defaultPhotos = allDefaultPhotos(db);
 
-  const rows = getDb().prepare(`
+  const rows = db.prepare(`
     SELECT c.id, c.climb_date, c.photo_path, c.visibility, c.notes,
            m.name AS mountain_name, m.elevation, m.range, m.id AS mountain_id,
            u.id AS user_id, u.name AS user_name, u.avatar_path AS user_avatar_path,
@@ -70,7 +91,7 @@ router.get('/discover', requireAuth, (req, res) => {
     ORDER BY ${orderClause(sort)}
     LIMIT 30 OFFSET ?
   `).all(req.user.id, offset).map(r => ({
-    ...withPhotoUrl(r, req),
+    ...withPhotoUrl(r, req, defaultPhotos),
     user_avatar_url: r.user_avatar_path ? `${req.protocol}://${req.get('host')}/uploads/${r.user_avatar_path}` : null,
     is_liked: !!r.is_liked,
     like_count: r.like_count ?? 0,
