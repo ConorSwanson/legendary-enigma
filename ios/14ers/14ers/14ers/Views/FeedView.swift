@@ -237,7 +237,7 @@ struct FeedCard: View {
     }
 
     private var shareText: String {
-        "Summited \(item.mountainName) (\(item.elevation.formatted()) ft) on \(item.climbDate.shortClimbDate())! 🏔️ #Colorado14ers #14ers\n\(Config.shareBaseURL)/s/\(item.id)"
+        "Summited \(item.mountainName) (\(item.elevation.formatted()) ft) on \(item.climbDate.shortClimbDate())! 🏔️ \(item.elevation.summitHashtags)\n\(Config.shareBaseURL)/s/\(item.id)"
     }
 
     private var shareURL: URL? { URL(string: "\(Config.shareBaseURL)/s/\(item.id)") }

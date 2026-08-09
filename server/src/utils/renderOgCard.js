@@ -24,6 +24,12 @@ function resolveBadge(mountainName) {
   return { peak, pal, badgeSvg };
 }
 
+// "14ER"/"13ER" eyebrow label -- this app added 13er support after
+// launching 14ers-only, so this can't just hardcode "14ER" anymore.
+function summitEyebrow(elevation) {
+  return elevation >= 14000 ? 'COLORADO 14ER SUMMIT' : 'COLORADO 13ER SUMMIT';
+}
+
 // Embeds the shield badge (viewBox 600×660) as a nested SVG at the given
 // display width, preserving its aspect ratio. Returns '' when there's no
 // known peak (mountain outside the curated 14ers/13ers set).
@@ -132,10 +138,10 @@ function renderOgCard({ mountain, climbDate, climberName, photo }) {
   <!-- Vertical divider -->
   <line x1="${divX}" y1="0" x2="${divX}" y2="${H}" stroke="url(#divGrad)" stroke-width="1"/>
 
-  <!-- "COLORADO 14ER SUMMIT" eyebrow -->
+  <!-- "COLORADO 14ER/13ER SUMMIT" eyebrow -->
   <text x="${textX}" y="155" font-family="Oswald, sans-serif"
     font-size="17" font-weight="500" fill="${accentColor}" letter-spacing="5">
-    COLORADO 14ER SUMMIT
+    ${summitEyebrow(mountain.elevation)}
   </text>
 
   <!-- Climber name -->
@@ -171,7 +177,7 @@ function renderOgCard({ mountain, climbDate, climberName, photo }) {
   <!-- Branding -->
   <text x="${textX}" y="585" font-family="Oswald, sans-serif"
     font-size="14" font-weight="600" fill="${subColor}" letter-spacing="3">
-    14ERS TRACKER · ALL 58 COLORADO 14ERS
+    14ERS TRACKER · COLORADO 14ERS + 13ERS
   </text>
 
   <!-- Photo credit (CC-BY/CC-BY-SA only; Public Domain/CC0 need none) -->
@@ -240,10 +246,10 @@ function renderStoryCard({ mountain, climbDate, climberName, photo }) {
   <!-- Badge (shield patch, climbed=true), centered -->
   ${badgeEmbed(badgeSvg, badgeX, badgeY, badgeW)}
 
-  <!-- "COLORADO 14ER SUMMIT" eyebrow -->
+  <!-- "COLORADO 14ER/13ER SUMMIT" eyebrow -->
   <text x="${textCenterX}" y="${eyebrowY}" text-anchor="middle" font-family="Oswald, sans-serif"
     font-size="22" font-weight="500" fill="${accentColor}" letter-spacing="6">
-    COLORADO 14ER SUMMIT
+    ${summitEyebrow(mountain.elevation)}
   </text>
 
   <!-- Climber name -->
@@ -279,7 +285,7 @@ function renderStoryCard({ mountain, climbDate, climberName, photo }) {
   <!-- Branding -->
   <text x="${textCenterX}" y="${H - safeBottom - 40}" text-anchor="middle" font-family="Oswald, sans-serif"
     font-size="18" font-weight="600" fill="${subColor}" letter-spacing="3">
-    14ERS TRACKER · ALL 58 COLORADO 14ERS
+    14ERS TRACKER · COLORADO 14ERS + 13ERS
   </text>
 
   <!-- Photo credit -->

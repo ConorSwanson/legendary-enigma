@@ -33,7 +33,7 @@ struct ClimbDetailView: View {
 
     private var shareText: String {
         guard let climb else { return "" }
-        let base = "Summited \(climb.mountainName) (\(climb.elevation.formatted()) ft) on \(climb.climbDate.formattedClimbDate())! 🏔️ #Colorado14ers #14ers"
+        let base = "Summited \(climb.mountainName) (\(climb.elevation.formatted()) ft) on \(climb.climbDate.formattedClimbDate())! 🏔️ \(climb.elevation.summitHashtags)"
         return "\(base)\n\(Config.shareBaseURL)/s/\(climbId)"
     }
 

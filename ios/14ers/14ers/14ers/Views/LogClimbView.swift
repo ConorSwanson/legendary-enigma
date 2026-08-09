@@ -839,7 +839,7 @@ private struct ClimbSuccessView: View {
         } else {
             verb = "Just summited \(mountain.name)"
         }
-        let base = "\(verb) (\(mountain.elevation.formatted()) ft) on \(dateFmt.string(from: climbDate))! #Colorado14ers #14ers"
+        let base = "\(verb) (\(mountain.elevation.formatted()) ft) on \(dateFmt.string(from: climbDate))! \(mountain.elevation.summitHashtags)"
         if let url = shareURL {
             return "\(base)\n\(url.absoluteString)"
         }

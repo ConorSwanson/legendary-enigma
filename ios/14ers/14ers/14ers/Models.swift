@@ -575,6 +575,15 @@ extension Notification.Name {
 
 // MARK: - Helpers
 
+extension Int {
+    /// Share-caption hashtags for a climb's elevation -- Colorado's 13ers
+    /// get their own tags rather than inheriting the 14ers-only ones this
+    /// app started with before it added 13er support.
+    var summitHashtags: String {
+        self >= 14_000 ? "#Colorado14ers #14ers" : "#Colorado13ers #13ers"
+    }
+}
+
 extension String {
     func formattedClimbDate() -> String {
         let isoFormatter = DateFormatter()
