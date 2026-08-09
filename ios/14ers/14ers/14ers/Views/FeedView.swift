@@ -399,8 +399,10 @@ struct FeedCard: View {
                                     .padding(.leading, 8)
                             } else {
                                 Image(systemName: "camera.fill")
+                                    .symbolRenderingMode(.monochrome)
                                     .font(.system(size: 15))
                                     .foregroundStyle(instagramGradient)
+                                    .frame(width: 15, height: 15)
                                     .padding(.leading, 8)
                             }
                         }

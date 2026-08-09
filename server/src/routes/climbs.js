@@ -7,6 +7,7 @@ const { array: uploadArray } = require('../middleware/upload');
 const requireAuth = require('../middleware/auth');
 const { pushToUser } = require('../utils/push');
 const { levelForCount } = require('../utils/levels');
+const { allDefaultPhotos, needsAttribution } = require('../utils/mountainPhotos');
 
 // Compares unique-peak count before/after an insert; if it crossed a level
 // threshold, records a self-notification and sends a push. Call AFTER the
@@ -65,10 +66,25 @@ function notifyFollowers(db, userId, climbId, vis) {
 const UPLOAD_DIR = UPLOADS_DIR;
 const VALID_VISIBILITY = new Set(['public', 'followers', 'private']);
 
-function withPhotoUrl(row, req) {
-  if (!row.photo_path) return { ...row, photo_url: null };
+// Climb's own photo takes priority; falls back to the mountain's curated
+// default (rank 0) so a climb without an uploaded photo still shows
+// something -- mirrors feed.js's withPhotoUrl so ClimbDetailView and the
+// feed never disagree about what photo a given climb should display.
+function withPhotoUrl(row, req, defaultPhotos) {
   const base = req ? `${req.protocol}://${req.get('host')}` : '';
-  return { ...row, photo_url: `${base}/uploads/${row.photo_path}` };
+  if (row.photo_path) {
+    return { ...row, photo_url: `${base}/uploads/${row.photo_path}`, photo_is_default: false, photo_credit_author: null };
+  }
+  const def = (defaultPhotos?.[row.mountain_id] || [])[0];
+  if (!def) {
+    return { ...row, photo_url: null, photo_is_default: false, photo_credit_author: null };
+  }
+  return {
+    ...row,
+    photo_url: `${base}/assets/peak-photos/${def.filename}`,
+    photo_is_default: true,
+    photo_credit_author: needsAttribution(def.license) ? def.author : null,
+  };
 }
 
 function deleteFile(filename) {
@@ -106,7 +122,8 @@ router.get('/', requireAuth, (req, res) => {
   const offset = (Number(page) - 1) * Number(limit);
   params.push(Number(limit), offset);
 
-  const rows = getDb().prepare(`
+  const db = getDb();
+  const rows = db.prepare(`
     SELECT c.*, m.name AS mountain_name, m.elevation, m.range
     FROM climbs c
     JOIN mountains m ON c.mountain_id = m.id
@@ -115,7 +132,8 @@ router.get('/', requireAuth, (req, res) => {
     LIMIT ? OFFSET ?
   `).all(...params);
 
-  res.json(rows.map(r => withPhotoUrl(r, req)));
+  const defaultPhotos = allDefaultPhotos(db);
+  res.json(rows.map(r => withPhotoUrl(r, req, defaultPhotos)));
 });
 
 // GET /api/climbs/:id — own or public climb
@@ -148,8 +166,9 @@ router.get('/:id', requireAuth, (req, res) => {
   const base = `${req.protocol}://${req.get('host')}`;
   const user_avatar_url = row.user_avatar_path ? `${base}/uploads/${row.user_avatar_path}` : null;
   const photo_urls = photoUrlsFor(getDb(), row.id, req, row.photo_path);
+  const defaultPhotos = allDefaultPhotos(getDb());
 
-  res.json({ ...withPhotoUrl(row, req), photo_urls, user_avatar_url, is_owner: row.user_id === req.user.id, is_liked: !!row.is_liked, like_count: row.like_count ?? 0, comment_count: row.comment_count ?? 0 });
+  res.json({ ...withPhotoUrl(row, req, defaultPhotos), photo_urls, user_avatar_url, is_owner: row.user_id === req.user.id, is_liked: !!row.is_liked, like_count: row.like_count ?? 0, comment_count: row.comment_count ?? 0 });
 });
 
 // POST /api/climbs — accepts multiple photos under the "photos" field; the
@@ -269,7 +288,8 @@ function handleUpdateClimb(req, res) {
   `).get(req.params.id);
 
   const photo_urls = photoUrlsFor(db, row.id, req, row.photo_path);
-  res.json({ ...withPhotoUrl(row, req), photo_urls, is_owner: true, is_liked: false, like_count: row.like_count ?? 0, comment_count: row.comment_count ?? 0 });
+  const defaultPhotos = allDefaultPhotos(db);
+  res.json({ ...withPhotoUrl(row, req, defaultPhotos), photo_urls, is_owner: true, is_liked: false, like_count: row.like_count ?? 0, comment_count: row.comment_count ?? 0 });
 }
 
 // PUT /api/climbs/:id

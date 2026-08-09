@@ -56,36 +56,41 @@ struct ClimbDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if let climb {
-                    Group {
-                        if let urls = climb.photoUrls, urls.count > 1 {
-                            TabView {
-                                ForEach(urls, id: \.self) { urlStr in
-                                    if let url = URL(string: urlStr) {
-                                        CachedAsyncImage(url: url) { img in
-                                            img.resizable().aspectRatio(contentMode: .fill)
-                                        } placeholder: {
-                                            card
+                    ZStack(alignment: .topTrailing) {
+                        Group {
+                            if let urls = climb.photoUrls, urls.count > 1 {
+                                TabView {
+                                    ForEach(urls, id: \.self) { urlStr in
+                                        if let url = URL(string: urlStr) {
+                                            CachedAsyncImage(url: url) { img in
+                                                img.resizable().aspectRatio(contentMode: .fill)
+                                            } placeholder: {
+                                                card
+                                            }
+                                            .frame(maxWidth: .infinity)
+                                            .clipped()
                                         }
-                                        .frame(maxWidth: .infinity)
-                                        .clipped()
                                     }
                                 }
+                                .tabViewStyle(.page(indexDisplayMode: .always))
+                                .indexViewStyle(.page(backgroundDisplayMode: .always))
+                            } else if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
+                                CachedAsyncImage(url: url) { img in
+                                    img.resizable().aspectRatio(contentMode: .fill)
+                                } placeholder: {
+                                    card
+                                }
+                            } else {
+                                MountainPlaceholder(mountainId: climb.mountainId)
                             }
-                            .tabViewStyle(.page(indexDisplayMode: .always))
-                            .indexViewStyle(.page(backgroundDisplayMode: .always))
-                        } else if let photoUrl = climb.photoUrl, let url = URL(string: photoUrl) {
-                            CachedAsyncImage(url: url) { img in
-                                img.resizable().aspectRatio(contentMode: .fill)
-                            } placeholder: {
-                                card
-                            }
-                        } else {
-                            MountainPlaceholder(mountainId: climb.mountainId)
                         }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 280)
+                        .clipped()
+
+                        PhotoCreditBadge(author: climb.photoIsDefault == true ? climb.photoCreditAuthor : nil)
+                            .padding(10)
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 280)
-                    .clipped()
 
                     VStack(alignment: .leading, spacing: 16) {
                         // Poster row → UserProfileView (hidden for your own climbs)
@@ -296,8 +301,10 @@ struct ClimbDetailView: View {
                     ProgressView().tint(Color(white: 0.6))
                 } else {
                     Image(systemName: "camera.fill")
+                        .symbolRenderingMode(.monochrome)
                         .font(.system(size: 20))
                         .foregroundStyle(instagramGradient)
+                        .frame(width: 20, height: 20)
                 }
             }
             .padding(.vertical, 8)

@@ -60,6 +60,8 @@ struct Climb: Codable, Identifiable, Sendable {
     let notes: String?
     let photoUrl: String?
     let photoUrls: [String]?
+    let photoIsDefault: Bool?
+    let photoCreditAuthor: String?   // non-nil only when photoIsDefault and its license requires a credit
     let visibility: String
     let createdAt: String
     let userId: Int?
@@ -78,6 +80,8 @@ struct Climb: Codable, Identifiable, Sendable {
         case climbDate    = "climb_date"
         case photoUrl     = "photo_url"
         case photoUrls    = "photo_urls"
+        case photoIsDefault    = "photo_is_default"
+        case photoCreditAuthor = "photo_credit_author"
         case createdAt    = "created_at"
         case userId       = "user_id"
         case userName     = "user_name"

@@ -956,7 +956,9 @@ private struct ClimbSuccessView: View {
                     ProgressView().tint(.white)
                 } else {
                     Image(systemName: "camera.fill")
+                        .symbolRenderingMode(.monochrome)
                         .foregroundStyle(instagramGradient)
+                        .frame(width: 20, height: 20)
                 }
                 Text("Share to Instagram Story")
             }
