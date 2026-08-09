@@ -15,9 +15,22 @@
 		E19AB8282FEC1EC600A344BC /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/WebKit.framework; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E19AB82A2FEC1EC600A344BC /* Exceptions for "14ers" folder in "14ers" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E19AB8182FEC1D3200A344BC /* 14ers */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E19AB81B2FEC1D3200A344BC /* 14ers */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E19AB82A2FEC1EC600A344BC /* Exceptions for "14ers" folder in "14ers" target */,
+			);
 			path = 14ers;
 			sourceTree = "<group>";
 		};
