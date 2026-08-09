@@ -1,5 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const { getMailer } = require('../utils/mailer');
+
+// Where support-form submissions land -- deliberately not SMTP_NOTIFY (that's
+// shared with beta-signup/report alerts); support requests go straight to a
+// person, not a shared ops inbox.
+const SUPPORT_NOTIFY_EMAIL = 'cswanson1@gmail.com';
 
 const STYLE = `
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -81,6 +87,45 @@ const STYLE = `
       padding: 24px;
       margin-top: 8px;
     }
+
+    form { display: flex; flex-direction: column; gap: 14px; }
+
+    label { font-size: 13px; font-weight: 600; color: var(--muted); }
+
+    input, textarea {
+      background: #0B1220;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 15px;
+      font-family: inherit;
+      width: 100%;
+    }
+    input:focus, textarea:focus { outline: none; border-color: var(--emerald); }
+    textarea { resize: vertical; min-height: 120px; }
+
+    button {
+      background: var(--emerald);
+      color: #03071A;
+      border: none;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    button:hover { opacity: 0.9; }
+
+    .banner {
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .banner.success { background: rgba(52, 211, 153, 0.12); border: 1px solid var(--emerald); color: var(--emerald); }
+    .banner.error { background: rgba(248, 113, 113, 0.12); border: 1px solid #F87171; color: #F87171; }
 
     footer {
       margin-top: 56px;
@@ -192,13 +237,22 @@ const PRIVACY_BODY = `
   <h2>Contact</h2>
   <div class="card">
     <p style="margin-bottom:0">Questions about this policy or your data?
-    Email <a href="mailto:support@getswitchback.co">support@getswitchback.co</a>.</p>
+    Reach us through the <a href="/support">Support page</a>.</p>
   </div>
 `;
 
-const SUPPORT_BODY = `
+function supportBody(status) {
+  const banner = status === 'sent'
+    ? `<div class="banner success">Thanks — your message is on its way. We usually reply within a couple of days.</div>`
+    : status === 'error'
+      ? `<div class="banner error">Something went wrong sending that. Please try again, or email us directly.</div>`
+      : '';
+
+  return `
   <h1>Support</h1>
   <p class="updated">We usually reply within a couple of days.</p>
+
+  ${banner}
 
   <h2>Report a user, climb, or comment</h2>
   <p>The fastest way is right in the app — tap the <strong>•••</strong> menu
@@ -209,9 +263,21 @@ const SUPPORT_BODY = `
 
   <h2>Something else — bugs, questions, feedback</h2>
   <div class="card">
-    <p style="margin-bottom:0">Email us at
-    <a href="mailto:support@getswitchback.co">support@getswitchback.co</a>
-    and we'll get back to you.</p>
+    <form method="POST" action="/support">
+      <div>
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" maxlength="200" />
+      </div>
+      <div>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" maxlength="200" required />
+      </div>
+      <div>
+        <label for="message">Message</label>
+        <textarea id="message" name="message" maxlength="4000" required></textarea>
+      </div>
+      <button type="submit">Send</button>
+    </form>
   </div>
 
   <h2>Delete your account</h2>
@@ -223,15 +289,46 @@ const SUPPORT_BODY = `
   <p>See our <a href="/privacy">Privacy Policy</a> for what we collect and
   how it's used.</p>
 `;
+}
+
+async function sendSupportEmail({ name, email, message }) {
+  const mailer = getMailer();
+  if (!mailer) return false;
+  await mailer.sendMail({
+    from: `"Switchback Support" <${process.env.SMTP_USER}>`,
+    to: SUPPORT_NOTIFY_EMAIL,
+    replyTo: email,
+    subject: `Switchback support request from ${name || email}`,
+    text: `From: ${name || '(no name)'} <${email}>\n\n${message}`,
+  });
+  return true;
+}
 
 router.get('/privacy', (_req, res) => {
   res.setHeader('Content-Type', 'text/html');
   res.send(page('Privacy Policy', PRIVACY_BODY));
 });
 
-router.get('/support', (_req, res) => {
+router.get('/support', (req, res) => {
+  const status = req.query.sent ? 'sent' : req.query.error ? 'error' : null;
   res.setHeader('Content-Type', 'text/html');
-  res.send(page('Support', SUPPORT_BODY));
+  res.send(page('Support', supportBody(status)));
+});
+
+router.post('/support', express.urlencoded({ extended: false }), async (req, res) => {
+  const name = (req.body.name || '').trim().slice(0, 200);
+  const email = (req.body.email || '').trim().slice(0, 200);
+  const message = (req.body.message || '').trim().slice(0, 4000);
+
+  if (!email || !message) return res.redirect('/support?error=1');
+
+  try {
+    const sent = await sendSupportEmail({ name, email, message });
+    res.redirect(sent ? '/support?sent=1' : '/support?error=1');
+  } catch (err) {
+    console.error('[Support] Email send failed:', err.message);
+    res.redirect('/support?error=1');
+  }
 });
 
 module.exports = router;
