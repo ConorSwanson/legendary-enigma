@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 const { getDb, UPLOADS_DIR } = require('../db');
-const { renderOgCard } = require('../utils/renderOgCard');
+const { renderOgCard, renderStoryCard } = require('../utils/renderOgCard');
 const { PEAK_PHOTOS_DIR, needsAttribution } = require('../utils/mountainPhotos');
 
 // Reads an image file straight off disk (never a network fetch -- everything
@@ -44,20 +44,10 @@ async function resolvePhoto(db, row) {
 
 // Simple in-memory cache so repeated social crawler fetches don't re-render
 const cache = new Map();
+const storyCache = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-// GET /api/og/climb/:id → 1200×630 PNG for social previews
-router.get('/climb/:id', async (req, res) => {
-  const { id } = req.params;
-
-  const cached = cache.get(id);
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-    res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=600');
-    return res.send(cached.buf);
-  }
-
-  const db = getDb();
+async function loadClimbRow(db, id) {
   const row = db.prepare(`
     SELECT c.id, c.climb_date, c.visibility, c.photo_path,
            c.mountain_id,
@@ -68,14 +58,30 @@ router.get('/climb/:id', async (req, res) => {
     LEFT JOIN users u ON c.user_id = u.id
     WHERE c.id = ?
   `).get(id);
+  if (!row || row.visibility === 'private') return null;
+  return row;
+}
 
-  if (!row || row.visibility === 'private') {
-    return res.status(404).send('Not found');
+// Shared by both card shapes: cache lookup → row/photo resolution → SVG →
+// PNG render → cache store → send, so /climb/:id and /climb/:id/story only
+// differ in which renderer + cache they use.
+async function serveCard(req, res, { cache: cacheMap, render }) {
+  const { id } = req.params;
+
+  const cached = cacheMap.get(id);
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    return res.send(cached.buf);
   }
+
+  const db = getDb();
+  const row = await loadClimbRow(db, id);
+  if (!row) return res.status(404).send('Not found');
 
   const photo = await resolvePhoto(db, row);
 
-  const svg = renderOgCard({
+  const svg = render({
     mountain: {
       id: row.mountain_id,
       name: row.mountain_name,
@@ -89,7 +95,7 @@ router.get('/climb/:id', async (req, res) => {
 
   try {
     const png = await sharp(Buffer.from(svg)).png().toBuffer();
-    cache.set(id, { buf: png, ts: Date.now() });
+    cacheMap.set(id, { buf: png, ts: Date.now() });
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=600');
     res.send(png);
@@ -97,6 +103,12 @@ router.get('/climb/:id', async (req, res) => {
     console.error('OG image render error:', err);
     res.status(500).send('Render error');
   }
-});
+}
+
+// GET /api/og/climb/:id → 1200×630 PNG for social previews
+router.get('/climb/:id', (req, res) => serveCard(req, res, { cache, render: renderOgCard }));
+
+// GET /api/og/climb/:id/story → 1080×1920 PNG for Instagram Story sharing
+router.get('/climb/:id/story', (req, res) => serveCard(req, res, { cache: storyCache, render: renderStoryCard }));
 
 module.exports = router;

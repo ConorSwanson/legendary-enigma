@@ -790,6 +790,7 @@ private struct ClimbSuccessView: View {
     let ascentCount: Int
     @Environment(\.dismiss) private var dismiss
     @State private var badgeUIImage: UIImage?
+    @State private var isSharingToInstagram = false
 
     private let emerald   = Color(red: 52/255,  green: 211/255, blue: 153/255)
     private let bgColor   = Color(red: 3/255,   green: 7/255,   blue: 18/255)
@@ -801,6 +802,21 @@ private struct ClimbSuccessView: View {
 
     private var shareURL: URL? {
         URL(string: "\(Config.shareBaseURL)/s/\(climbId)")
+    }
+
+    private var storyImageURL: URL? {
+        URL(string: "\(Config.apiBaseURL)/api/og/climb/\(climbId)/story")
+    }
+
+    private func shareToInstagramStory() {
+        guard let storyImageURL, let shareURL else { return }
+        isSharingToInstagram = true
+        Task {
+            defer { isSharingToInstagram = false }
+            guard let (data, _) = try? await URLSession.shared.data(from: storyImageURL),
+                  let image = UIImage(data: data) else { return }
+            InstagramShareHelper.shareStory(backgroundImage: image, linkURL: shareURL)
+        }
     }
 
     private var titleText: String {
@@ -884,6 +900,9 @@ private struct ClimbSuccessView: View {
 
                     VStack(spacing: 12) {
                         shareButton
+                        if InstagramShareHelper.isInstagramInstalled {
+                            instagramShareButton
+                        }
                         Button("Done") { dismiss() }
                             .font(.headline)
                             .foregroundColor(.white)
@@ -925,6 +944,31 @@ private struct ClimbSuccessView: View {
         } else {
             ShareLink(item: shareText) { label }
         }
+    }
+
+    @ViewBuilder
+    private var instagramShareButton: some View {
+        Button {
+            shareToInstagramStory()
+        } label: {
+            HStack(spacing: 8) {
+                if isSharingToInstagram {
+                    ProgressView().tint(.white)
+                } else {
+                    Image(systemName: "camera.fill")
+                        .foregroundStyle(instagramGradient)
+                }
+                Text("Share to Instagram Story")
+            }
+            .font(.headline)
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(cardColor)
+            .cornerRadius(14)
+        }
+        .buttonStyle(.plain)
+        .disabled(isSharingToInstagram)
     }
 }
 

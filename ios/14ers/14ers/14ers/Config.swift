@@ -8,4 +8,8 @@ enum Config {
     /// Public-facing base URL for user-shareable links (e.g. "/s/:id" share
     /// pages) — the custom domain, so links look like the app, not the host.
     nonisolated(unsafe) static let shareBaseURL = "https://www.getswitchback.co"
+
+    /// developers.facebook.com App ID — required as source_application by
+    /// Instagram's Stories share API. No Facebook login or SDK involved.
+    nonisolated(unsafe) static let facebookAppId = "2624633384662433"
 }

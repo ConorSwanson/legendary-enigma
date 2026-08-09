@@ -17,6 +17,7 @@ struct ClimbDetailView: View {
     @State private var showDeleteConfirm = false
     @State private var showLikes = false
     @State private var badgeUIImage: UIImage?
+    @State private var isSharingToInstagram = false
     @State private var ascentCount: Int = 0
     @State private var otherAscents: [Climb] = []
     @State private var comments: [Comment] = []
@@ -34,6 +35,20 @@ struct ClimbDetailView: View {
         guard let climb else { return "" }
         let base = "Summited \(climb.mountainName) (\(climb.elevation.formatted()) ft) on \(climb.climbDate.formattedClimbDate())! 🏔️ #Colorado14ers #14ers"
         return "\(base)\n\(Config.shareBaseURL)/s/\(climbId)"
+    }
+
+    private var shareURL: URL? { URL(string: "\(Config.shareBaseURL)/s/\(climbId)") }
+    private var storyImageURL: URL? { URL(string: "\(Config.apiBaseURL)/api/og/climb/\(climbId)/story") }
+
+    private func shareToInstagramStory() {
+        guard let storyImageURL, let shareURL else { return }
+        isSharingToInstagram = true
+        Task {
+            defer { isSharingToInstagram = false }
+            guard let (data, _) = try? await URLSession.shared.data(from: storyImageURL),
+                  let image = UIImage(data: data) else { return }
+            InstagramShareHelper.shareStory(backgroundImage: image, linkURL: shareURL)
+        }
     }
 
     var body: some View {
@@ -173,6 +188,10 @@ struct ClimbDetailView: View {
 
                             shareButton
 
+                            if InstagramShareHelper.isInstagramInstalled {
+                                instagramShareButton
+                            }
+
                             Spacer()
 
                             if climb.isOwner == true {
@@ -265,6 +284,29 @@ struct ClimbDetailView: View {
             }
             .buttonStyle(.plain)
         }
+    }
+
+    @ViewBuilder
+    private var instagramShareButton: some View {
+        Button {
+            shareToInstagramStory()
+        } label: {
+            Group {
+                if isSharingToInstagram {
+                    ProgressView().tint(Color(white: 0.6))
+                } else {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(instagramGradient)
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(Color.white.opacity(0.08))
+            .cornerRadius(20)
+        }
+        .buttonStyle(.plain)
+        .disabled(isSharingToInstagram)
     }
 
     private func iconButton(systemImage: String, tint: Color, action: @escaping () -> Void) -> some View {

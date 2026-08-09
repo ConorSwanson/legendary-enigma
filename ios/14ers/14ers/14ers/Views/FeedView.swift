@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private let bg      = Color(red: 3/255,   green: 7/255,   blue: 18/255)
 private let card    = Color(red: 17/255,  green: 24/255,  blue: 39/255)
@@ -226,6 +227,7 @@ struct FeedCard: View {
     @State private var likeCount: Int
     private let commentCount: Int
     @State private var showLikes = false
+    @State private var isSharingToInstagram = false
 
     init(item: FeedItem) {
         self.item = item
@@ -236,6 +238,20 @@ struct FeedCard: View {
 
     private var shareText: String {
         "Summited \(item.mountainName) (\(item.elevation.formatted()) ft) on \(item.climbDate.shortClimbDate())! 🏔️ #Colorado14ers #14ers\n\(Config.shareBaseURL)/s/\(item.id)"
+    }
+
+    private var shareURL: URL? { URL(string: "\(Config.shareBaseURL)/s/\(item.id)") }
+    private var storyImageURL: URL? { URL(string: "\(Config.apiBaseURL)/api/og/climb/\(item.id)/story") }
+
+    private func shareToInstagramStory() {
+        guard let storyImageURL, let shareURL else { return }
+        isSharingToInstagram = true
+        Task {
+            defer { isSharingToInstagram = false }
+            guard let (data, _) = try? await URLSession.shared.data(from: storyImageURL),
+                  let image = UIImage(data: data) else { return }
+            InstagramShareHelper.shareStory(backgroundImage: image, linkURL: shareURL)
+        }
     }
 
     var body: some View {
@@ -374,6 +390,23 @@ struct FeedCard: View {
                             .padding(.leading, 8)
                     }
                     .buttonStyle(.plain)
+
+                    if InstagramShareHelper.isInstagramInstalled {
+                        Button { shareToInstagramStory() } label: {
+                            if isSharingToInstagram {
+                                ProgressView()
+                                    .tint(.gray)
+                                    .padding(.leading, 8)
+                            } else {
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(instagramGradient)
+                                    .padding(.leading, 8)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isSharingToInstagram)
+                    }
                 }
             }
             .padding(12)
