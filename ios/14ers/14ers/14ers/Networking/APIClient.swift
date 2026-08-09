@@ -83,9 +83,9 @@ actor APIClient {
         }
     }
 
-    private func requestVoid(_ path: String, method: String = "POST") async throws {
+    private func requestVoid(_ path: String, method: String = "POST", body: Data? = nil) async throws {
         struct SuccessResponse: Decodable { let success: Bool }
-        let _: SuccessResponse = try await request(path, method: method)
+        let _: SuccessResponse = try await request(path, method: method, body: body)
     }
 
     // MARK: - Auth
@@ -339,6 +339,26 @@ actor APIClient {
 
     func unfollow(_ id: Int) async throws {
         try await requestVoid("/users/\(id)/follow", method: "DELETE")
+    }
+
+    func blockUser(_ id: Int) async throws {
+        try await requestVoid("/users/\(id)/block", method: "POST")
+    }
+
+    func unblockUser(_ id: Int) async throws {
+        try await requestVoid("/users/\(id)/block", method: "DELETE")
+    }
+
+    func blockedUsers() async throws -> [FollowerUser] {
+        try await request("/users/blocked")
+    }
+
+    // MARK: - Reports
+
+    func report(targetType: String, targetId: Int, reason: String, details: String? = nil) async throws {
+        struct Payload: Encodable { let target_type: String; let target_id: Int; let reason: String; let details: String? }
+        let payload = try JSONEncoder().encode(Payload(target_type: targetType, target_id: targetId, reason: reason, details: details))
+        try await requestVoid("/reports", method: "POST", body: payload)
     }
 
     // MARK: - Notifications

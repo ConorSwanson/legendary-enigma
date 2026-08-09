@@ -12,4 +12,11 @@ enum Config {
     /// developers.facebook.com App ID — required as source_application by
     /// Instagram's Stories share API. No Facebook login or SDK involved.
     nonisolated(unsafe) static let facebookAppId = "2624633384662433"
+
+    /// Required in App Store Connect and shown in-app (Profile settings).
+    nonisolated(unsafe) static let privacyPolicyURL = URL(string: "\(shareBaseURL)/privacy")!
+
+    /// Also doubles as the abuse/report contact point required alongside
+    /// in-app reporting for App Store Guideline 1.2 (UGC apps).
+    nonisolated(unsafe) static let supportURL = URL(string: "\(shareBaseURL)/support")!
 }

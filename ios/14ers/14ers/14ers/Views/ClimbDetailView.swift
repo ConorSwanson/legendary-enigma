@@ -18,6 +18,7 @@ struct ClimbDetailView: View {
     @State private var showLikes = false
     @State private var badgeUIImage: UIImage?
     @State private var isSharingToInstagram = false
+    @State private var showReportClimbDialog = false
     @State private var ascentCount: Int = 0
     @State private var otherAscents: [Climb] = []
     @State private var comments: [Comment] = []
@@ -227,6 +228,23 @@ struct ClimbDetailView: View {
         }
         .background(bg.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if climb?.isOwner != true {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button { showReportClimbDialog = true } label: {
+                            Label("Report Climb", systemImage: "flag")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+        }
+        .reportReasonDialog(isPresented: $showReportClimbDialog) { reason in
+            Task { try? await APIClient.shared.report(targetType: "climb", targetId: climbId, reason: reason) }
+        }
         .confirmationDialog(
             "Delete this climb?",
             isPresented: $showDeleteConfirm,
@@ -560,6 +578,8 @@ struct CommentRow: View {
     let comment: Comment
     let onDelete: () -> Void
 
+    @State private var showReportDialog = false
+
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             NavigationLink(destination: UserProfileView(userId: comment.userId)) {
@@ -598,6 +618,13 @@ struct CommentRow: View {
                                 .foregroundColor(.red.opacity(0.7))
                         }
                         .buttonStyle(.plain)
+                    } else {
+                        Button { showReportDialog = true } label: {
+                            Image(systemName: "flag")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 Text(comment.body)
@@ -607,6 +634,9 @@ struct CommentRow: View {
             }
         }
         .padding(.vertical, 4)
+        .reportReasonDialog(isPresented: $showReportDialog) { reason in
+            Task { try? await APIClient.shared.report(targetType: "comment", targetId: comment.id, reason: reason) }
+        }
     }
 
     private var avatarPlaceholder: some View {

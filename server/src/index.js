@@ -50,6 +50,7 @@ app.use('/api/og',            require('./routes/ogImage'));
 app.use('/api/beta',          require('./routes/beta'));
 app.use('/beta',              require('./routes/beta'));
 app.use('/s',             require('./routes/share'));
+app.use('/',              require('./routes/legal'));
 
 // www.getswitchback.co is the marketing domain — serve the landing page at
 // its root instead of the logged-in web app, without touching any other

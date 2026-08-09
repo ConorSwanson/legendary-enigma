@@ -38,6 +38,7 @@ struct HomeView: View {
                         if let s = stats { followersRow(s) }
                         if let s = stats, !s.recentClimbs.isEmpty { recentBadgesSection(s) }
                         if let s = stats, !s.recentClimbs.isEmpty { recentClimbsSection(s) }
+                        settingsLinksSection
                         signOutButton
                     }
                     .padding()
@@ -393,6 +394,45 @@ struct HomeView: View {
                 HomeClimbRow(climb: climb) { deepLinkClimbId = climb.id }
             }
         }
+    }
+
+    // MARK: - Settings links
+
+    @ViewBuilder
+    private var settingsLinksSection: some View {
+        VStack(spacing: 0) {
+            NavigationLink(destination: BlockedUsersView()) {
+                settingsRow(icon: "hand.raised.slash", title: "Blocked Users")
+            }
+            .buttonStyle(.plain)
+            Divider().overlay(Color.white.opacity(0.08))
+            Link(destination: Config.privacyPolicyURL) {
+                settingsRow(icon: "hand.raised", title: "Privacy Policy")
+            }
+            Divider().overlay(Color.white.opacity(0.08))
+            Link(destination: Config.supportURL) {
+                settingsRow(icon: "questionmark.circle", title: "Contact Support")
+            }
+        }
+        .background(card)
+        .cornerRadius(14)
+    }
+
+    private func settingsRow(icon: String, title: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(Color(white: 0.6))
+                .frame(width: 24)
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(.white)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption2.bold())
+                .foregroundColor(.gray.opacity(0.5))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 13)
     }
 
     // MARK: - Sign Out / Delete Account
@@ -945,6 +985,10 @@ struct UserProfileView: View {
     @State private var isFollowing = false
     @State private var followerCount = 0
     @State private var isTogglingFollow = false
+    @State private var isBlocked = false
+    @State private var isTogglingBlock = false
+    @State private var showReportDialog = false
+    @State private var showBlockConfirm = false
     @State private var error: String?
     @State private var selectedClimbId: Int?
 
@@ -955,8 +999,12 @@ struct UserProfileView: View {
                 VStack(spacing: 20) {
                     userNameBio
                     if let p = profile { userStatsRow(p) }
-                    followButton
-                    if !climbs.isEmpty { userClimbsSection }
+                    if isBlocked {
+                        blockedBanner
+                    } else {
+                        followButton
+                        if !climbs.isEmpty { userClimbsSection }
+                    }
                 }
                 .padding()
             }
@@ -964,10 +1012,66 @@ struct UserProfileView: View {
         .background(bg.ignoresSafeArea())
         .navigationTitle(profile?.name ?? "Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Button { showReportDialog = true } label: {
+                        Label("Report User", systemImage: "flag")
+                    }
+                    Button(role: isBlocked ? .none : .destructive) { showBlockConfirm = true } label: {
+                        Label(isBlocked ? "Unblock User" : "Block User", systemImage: isBlocked ? "hand.raised.slash" : "hand.raised")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundColor(.white)
+                }
+            }
+        }
+        .confirmationDialog(
+            isBlocked ? "Unblock this user?" : "Block this user?",
+            isPresented: $showBlockConfirm,
+            titleVisibility: .visible
+        ) {
+            Button(isBlocked ? "Unblock" : "Block", role: isBlocked ? .none : .destructive) {
+                Task { await toggleBlock() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(isBlocked
+                ? "They'll be able to see your climbs and follow you again."
+                : "They won't be able to see your climbs or follow you, and you won't see theirs. Any existing follow between you will be removed.")
+        }
+        .reportReasonDialog(isPresented: $showReportDialog) { reason in
+            Task { try? await APIClient.shared.report(targetType: "user", targetId: userId, reason: reason) }
+        }
         .navigationDestination(item: $selectedClimbId) { id in
             ClimbDetailView(climbId: id)
         }
         .task { await load() }
+    }
+
+    @ViewBuilder
+    private var blockedBanner: some View {
+        VStack(spacing: 10) {
+            Text("You've blocked this user")
+                .font(.subheadline.bold())
+                .foregroundColor(.white)
+            Button {
+                showBlockConfirm = true
+            } label: {
+                Text("Unblock")
+                    .font(.subheadline.bold())
+                    .foregroundColor(Color(red: 3/255, green: 7/255, blue: 18/255))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(emerald)
+                    .cornerRadius(20)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(card)
+        .cornerRadius(14)
     }
 
     @ViewBuilder
@@ -1170,6 +1274,7 @@ struct UserProfileView: View {
             profile = fetchedProfile
             isFollowing = fetchedProfile.isFollowing ?? false
             followerCount = fetchedProfile.followers ?? 0
+            isBlocked = fetchedProfile.isBlocked ?? false
         } catch {
             self.error = error.localizedDescription
         }
@@ -1191,6 +1296,23 @@ struct UserProfileView: View {
         } catch {
             isFollowing = prev
             followerCount += prev ? 1 : -1
+        }
+    }
+
+    private func toggleBlock() async {
+        isTogglingBlock = true
+        defer { isTogglingBlock = false }
+        let prev = isBlocked
+        isBlocked = !prev
+        do {
+            if prev {
+                try await APIClient.shared.unblockUser(userId)
+            } else {
+                try await APIClient.shared.blockUser(userId)
+                isFollowing = false
+            }
+        } catch {
+            isBlocked = prev
         }
     }
 }
@@ -1302,5 +1424,66 @@ private struct FollowerRow: View {
                     .font(.caption.bold())
                     .foregroundColor(sky)
             )
+    }
+}
+
+// MARK: - Blocked Users
+
+struct BlockedUsersView: View {
+    @State private var users: [FollowerUser] = []
+    @State private var isLoading = true
+
+    var body: some View {
+        Group {
+            if isLoading {
+                ProgressView().tint(.white).frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if users.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "hand.raised.slash")
+                        .font(.system(size: 36))
+                        .foregroundColor(.gray.opacity(0.4))
+                    Text("No blocked users")
+                        .foregroundColor(.gray)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(users) { user in
+                    HStack {
+                        FollowerRow(user: user)
+                        Spacer()
+                        Button {
+                            Task { await unblock(user) }
+                        } label: {
+                            Text("Unblock")
+                                .font(.caption.bold())
+                                .foregroundColor(sky)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .listRowBackground(card)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+            }
+        }
+        .background(bg.ignoresSafeArea())
+        .navigationTitle("Blocked Users")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+    }
+
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+        users = (try? await APIClient.shared.blockedUsers()) ?? []
+    }
+
+    private func unblock(_ user: FollowerUser) async {
+        users.removeAll { $0.id == user.id }
+        do {
+            try await APIClient.shared.unblockUser(user.id)
+        } catch {
+            users.append(user)
+        }
     }
 }

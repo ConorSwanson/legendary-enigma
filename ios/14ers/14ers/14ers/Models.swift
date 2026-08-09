@@ -492,6 +492,7 @@ struct UserProfile: Codable, Identifiable, Sendable {
     let followers: Int?
     let following: Int?
     let isFollowing: Bool?
+    let isBlocked: Bool?
     let rank: ClimberRank?
 
     enum CodingKeys: String, CodingKey {
@@ -502,6 +503,7 @@ struct UserProfile: Codable, Identifiable, Sendable {
         case uniquePeaks   = "unique_peaks"
         case followers, following
         case isFollowing   = "is_following"
+        case isBlocked     = "is_blocked"
     }
 }
 
