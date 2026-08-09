@@ -288,12 +288,14 @@ struct FeedCard: View {
                             Text(item.mountainName)
                                 .font(.headline)
                                 .foregroundColor(.white)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .buttonStyle(.plain)
                         NavigationLink(destination: ClimbDetailView(climbId: item.id)) {
                             Text("\(item.elevation.formatted()) ft · \(item.range)")
                                 .font(.caption)
                                 .foregroundColor(emerald)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .buttonStyle(.plain)
                     }
@@ -414,6 +416,7 @@ struct FeedCard: View {
             }
             .padding(12)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(card)
         .cornerRadius(14)
         .sheet(isPresented: $showLikes) {
