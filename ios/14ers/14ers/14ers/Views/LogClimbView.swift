@@ -956,6 +956,8 @@ private struct ClimbSuccessView: View {
                     ProgressView().tint(.white)
                 } else {
                     Image(systemName: "camera.fill")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
                         .symbolRenderingMode(.monochrome)
                         .foregroundStyle(instagramGradient)
                         .frame(width: 20, height: 20)

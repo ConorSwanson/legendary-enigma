@@ -301,8 +301,9 @@ struct ClimbDetailView: View {
                     ProgressView().tint(Color(white: 0.6))
                 } else {
                     Image(systemName: "camera.fill")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
                         .symbolRenderingMode(.monochrome)
-                        .font(.system(size: 20))
                         .foregroundStyle(instagramGradient)
                         .frame(width: 20, height: 20)
                 }
