@@ -23,6 +23,7 @@ struct ClimbDetailView: View {
     @State private var comments: [Comment] = []
     @State private var newCommentText: String = ""
     @State private var isPostingComment = false
+    @FocusState private var commentFieldFocused: Bool
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var userState: UserState
 
@@ -191,6 +192,8 @@ struct ClimbDetailView: View {
 
                             likeControls
 
+                            commentButton
+
                             shareButton
 
                             if InstagramShareHelper.isInstagramInstalled {
@@ -267,6 +270,24 @@ struct ClimbDetailView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    @ViewBuilder
+    private var commentButton: some View {
+        Button { commentFieldFocused = true } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "bubble.right")
+                    .font(.system(size: 20))
+                    .foregroundColor(Color(white: 0.6))
+                    .padding(6)
+                if !comments.isEmpty {
+                    Text("\(comments.count)")
+                        .font(.subheadline)
+                        .foregroundColor(Color(white: 0.6))
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -368,6 +389,7 @@ struct ClimbDetailView: View {
                         .background(card)
                         .cornerRadius(20)
                         .lineLimit(1...4)
+                        .focused($commentFieldFocused)
 
                     Button {
                         Task { await submitComment() }
