@@ -14,7 +14,7 @@ struct UserSearchView: View {
     @State private var hasSearched = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass").foregroundColor(.gray)
