@@ -595,6 +595,17 @@ extension String {
     }
 
     func shortNotifDate() -> String {
-        String(prefix(10)).shortClimbDate()
+        // Unlike climb dates (date-only, no time-of-day), created_at is a
+        // full UTC timestamp -- truncating to its first 10 characters grabs
+        // the UTC calendar day, which rolls to "tomorrow" for anything
+        // posted in the evening in US time zones. Parse the full instant
+        // and let the display formatter convert to the device's local day.
+        let isoFormatter = DateFormatter()
+        isoFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        isoFormatter.timeZone = TimeZone(identifier: "UTC")
+        guard let date = isoFormatter.date(from: self) else { return self }
+        let display = DateFormatter()
+        display.dateFormat = "MMM d, yyyy"
+        return display.string(from: date)
     }
 }
