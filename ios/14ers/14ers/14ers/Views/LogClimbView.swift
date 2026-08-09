@@ -226,6 +226,10 @@ struct LogClimbView: View {
 
     // MARK: - Photos
 
+    private var usingDefaultPhotoPreview: Bool {
+        photoItems.isEmpty && selectedMountain?.defaultPhotos.first != nil
+    }
+
     @ViewBuilder
     private var photosSection: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -261,6 +265,8 @@ struct LogClimbView: View {
                             .font(.caption2)
                             .foregroundColor(.gray)
                     }
+                } else if let defaultPhoto = selectedMountain?.defaultPhotos.first, let url = URL(string: defaultPhoto.url) {
+                    defaultPhotoPreview(defaultPhoto, url: url)
                 }
 
                 VStack(spacing: 7) {
@@ -270,7 +276,11 @@ struct LogClimbView: View {
                     .buttonStyle(.plain)
 
                     PhotosPicker(selection: $pickerItems, maxSelectionCount: 10, matching: .images) {
-                        actionButtonLabel(icon: "photo.on.rectangle", text: "Choose from Library", primary: false)
+                        actionButtonLabel(
+                            icon: "photo.on.rectangle",
+                            text: usingDefaultPhotoPreview ? "Choose from Library Instead" : "Choose from Library",
+                            primary: false
+                        )
                     }
                 }
             }
@@ -332,6 +342,36 @@ struct LogClimbView: View {
             }
             .buttonStyle(.plain)
             .offset(x: 5, y: -5)
+        }
+    }
+
+    // No photo of your own yet -- shows the mountain's curated default photo
+    // (the same one the feed/share cards fall back to) so the log form isn't
+    // just a blank photo area, and makes it clear what "Choose from Library
+    // Instead" is standing in for.
+    private func defaultPhotoPreview(_ photo: MountainPhoto, url: URL) -> some View {
+        ZStack(alignment: .bottomTrailing) {
+            CachedAsyncImage(url: url) { img in
+                img.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+                card2
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 140)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(alignment: .topLeading) {
+                Text("Default photo shown until you add your own")
+                    .font(.caption2.bold())
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.55))
+                    .cornerRadius(8)
+                    .padding(8)
+            }
+
+            PhotoCreditBadge(author: photo.author)
+                .padding(8)
         }
     }
 
