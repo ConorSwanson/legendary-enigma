@@ -11,11 +11,28 @@ struct Mountain: Codable, Identifiable, Sendable, Hashable {
     let lng: Double?
     let lastActivity: String?   // most recent public climb date, if any
     let listKeys: [String]      // which peak_lists this mountain belongs to, e.g. ["co-14ers"]
+    let defaultPhotos: [MountainPhoto]  // curated fallback photos, best pick first; [] if none exist
 
     enum CodingKeys: String, CodingKey {
         case id, name, elevation, range, lat, lng
         case lastActivity = "last_activity"
         case listKeys      = "list_keys"
+        case defaultPhotos = "default_photos"
+    }
+}
+
+// A curated Public Domain/CC0/CC-BY/CC-BY-SA photo standing in for a real
+// climb photo. `author` is nil whenever the license doesn't require a
+// credit line (Public Domain/CC0) -- non-nil is the client's cue to show one.
+struct MountainPhoto: Codable, Sendable, Hashable {
+    let url: String
+    let license: String
+    let author: String?
+    let sourceUrl: String
+
+    enum CodingKeys: String, CodingKey {
+        case url, license, author
+        case sourceUrl = "source_url"
     }
 }
 
@@ -78,6 +95,8 @@ struct FeedItem: Codable, Identifiable, Sendable {
     let id: Int
     let climbDate: String
     let photoUrl: String?
+    let photoIsDefault: Bool
+    let photoCreditAuthor: String?   // non-nil only when photoIsDefault and its license requires a credit
     let visibility: String
     let notes: String?
     let mountainName: String
@@ -93,8 +112,10 @@ struct FeedItem: Codable, Identifiable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id, visibility, notes, elevation, range
-        case climbDate    = "climb_date"
-        case photoUrl     = "photo_url"
+        case climbDate        = "climb_date"
+        case photoUrl         = "photo_url"
+        case photoIsDefault   = "photo_is_default"
+        case photoCreditAuthor = "photo_credit_author"
         case mountainName = "mountain_name"
         case mountainId   = "mountain_id"
         case userId       = "user_id"
@@ -114,6 +135,7 @@ struct MountainDetail: Codable, Identifiable, Sendable {
     let elevation: Int
     let range: String
     let heroPhotoUrl: String?
+    let heroPhotoCreditAuthor: String?   // non-nil only when heroPhotoUrl is a default photo whose license requires a credit
     let totalClimbs: Int
     let uniqueClimbers: Int
     let userAscents: Int
@@ -126,6 +148,7 @@ struct MountainDetail: Codable, Identifiable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id, name, elevation, range
         case heroPhotoUrl   = "hero_photo_url"
+        case heroPhotoCreditAuthor = "hero_photo_credit_author"
         case totalClimbs    = "total_climbs"
         case uniqueClimbers = "unique_climbers"
         case userAscents    = "user_ascents"

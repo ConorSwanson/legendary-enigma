@@ -73,6 +73,10 @@ struct MountainDetailView: View {
                 .frame(height: 260)
                 .allowsHitTesting(false)
 
+            PhotoCreditBadge(author: detail?.heroPhotoCreditAuthor)
+                .padding(10)
+                .frame(maxWidth: .infinity, maxHeight: 260, alignment: .topTrailing)
+
             VStack(alignment: .leading, spacing: 4) {
                 if let d = detail {
                     HStack(spacing: 8) {

@@ -240,9 +240,19 @@ private struct MountainRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            MountainPlaceholder(mountainId: mountain.id)
-                .frame(width: 58, height: 58)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+            Group {
+                if let urlStr = mountain.defaultPhotos.first?.url, let url = URL(string: urlStr) {
+                    CachedAsyncImage(url: url) { img in
+                        img.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        MountainPlaceholder(mountainId: mountain.id)
+                    }
+                } else {
+                    MountainPlaceholder(mountainId: mountain.id)
+                }
+            }
+            .frame(width: 58, height: 58)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(mountain.name)

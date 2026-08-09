@@ -241,20 +241,25 @@ struct FeedCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             NavigationLink(destination: ClimbDetailView(climbId: item.id)) {
-                Group {
-                    if let photoUrl = item.photoUrl, let url = URL(string: photoUrl) {
-                        CachedAsyncImage(url: url) { img in
-                            img.resizable().aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            card
+                ZStack(alignment: .topTrailing) {
+                    Group {
+                        if let photoUrl = item.photoUrl, let url = URL(string: photoUrl) {
+                            CachedAsyncImage(url: url) { img in
+                                img.resizable().aspectRatio(contentMode: .fill)
+                            } placeholder: {
+                                card
+                            }
+                        } else {
+                            MountainPlaceholder(mountainId: item.mountainId)
                         }
-                    } else {
-                        MountainPlaceholder(mountainId: item.mountainId)
                     }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 200)
+                    .clipped()
+
+                    PhotoCreditBadge(author: item.photoIsDefault ? item.photoCreditAuthor : nil)
+                        .padding(10)
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 200)
-                .clipped()
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
