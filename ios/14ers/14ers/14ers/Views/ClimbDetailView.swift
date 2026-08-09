@@ -249,24 +249,20 @@ struct ClimbDetailView: View {
 
     @ViewBuilder
     private var likeControls: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             Button { toggleLike() } label: {
                 Image(systemName: liked ? "heart.fill" : "heart")
                     .font(.system(size: 20))
                     .foregroundColor(liked ? .red : Color(white: 0.6))
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 12)
-                    .background(Color.white.opacity(0.08))
-                    .cornerRadius(20)
+                    .padding(6)
             }
             .buttonStyle(.plain)
 
             if likeCount > 0 {
                 Button { showLikes = true } label: {
-                    Text("\(likeCount) like\(likeCount == 1 ? "" : "s")")
-                        .font(.caption.bold())
-                        .foregroundColor(liked ? .red : Color(white: 0.5))
-                        .underline()
+                    Text("\(likeCount)")
+                        .font(.subheadline)
+                        .foregroundColor(liked ? .red : Color(white: 0.6))
                 }
                 .buttonStyle(.plain)
             }
@@ -308,10 +304,7 @@ struct ClimbDetailView: View {
                         .frame(width: 20, height: 20)
                 }
             }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 12)
-            .background(Color.white.opacity(0.08))
-            .cornerRadius(20)
+            .padding(6)
         }
         .buttonStyle(.plain)
         .disabled(isSharingToInstagram)
@@ -338,10 +331,7 @@ struct ClimbDetailView: View {
         Image(systemName: systemImage)
             .font(.system(size: 20))
             .foregroundColor(tint)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 12)
-            .background(Color.white.opacity(0.08))
-            .cornerRadius(20)
+            .padding(6)
     }
 
     @ViewBuilder
