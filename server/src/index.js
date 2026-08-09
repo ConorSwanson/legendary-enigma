@@ -43,6 +43,7 @@ app.use('/api/users',     require('./routes/users'));
 app.use('/api/leaderboard', require('./routes/leaderboard'));
 app.use('/api/feed',      require('./routes/feed'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/reports',   require('./routes/reports'));
 app.use('/api/public/climbs', require('./routes/publicClimbs'));
 app.use('/api/badges',        require('./routes/badges'));
 app.use('/api/og',            require('./routes/ogImage'));

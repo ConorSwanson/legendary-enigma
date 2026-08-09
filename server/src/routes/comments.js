@@ -3,6 +3,7 @@ const router = express.Router();
 const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
 const { pushToUser } = require('../utils/push');
+const { isBlockedEitherDirection } = require('../utils/blocks');
 
 function avatarUrl(req, path) {
   if (!path) return null;
@@ -31,8 +32,13 @@ router.get('/:id/comments', requireAuth, (req, res) => {
     FROM climb_comments cc
     JOIN users u ON cc.user_id = u.id
     WHERE cc.climb_id = ?
+      AND cc.user_id NOT IN (
+        SELECT blocked_id FROM user_blocks WHERE blocker_id = ?
+        UNION
+        SELECT blocker_id FROM user_blocks WHERE blocked_id = ?
+      )
     ORDER BY cc.created_at ASC
-  `).all(req.params.id);
+  `).all(req.params.id, req.user.id, req.user.id);
 
   res.json(comments.map(c => ({
     ...c,
@@ -50,6 +56,9 @@ router.post('/:id/comments', requireAuth, (req, res) => {
   const climb = db.prepare('SELECT * FROM climbs WHERE id = ?').get(req.params.id);
   if (!climb) return res.status(404).json({ error: 'Climb not found' });
   if (!canViewClimb(db, climb, req.user.id)) return res.status(403).json({ error: 'Forbidden' });
+  if (climb.user_id && isBlockedEitherDirection(db, req.user.id, climb.user_id)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   const result = db.prepare(
     'INSERT INTO climb_comments (climb_id, user_id, body) VALUES (?, ?, ?)'

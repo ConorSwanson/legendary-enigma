@@ -4,6 +4,7 @@ const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
 const { pushToUser } = require('../utils/push');
 const { levelForCount } = require('../utils/levels');
+const { hasBlocked } = require('../utils/blocks');
 
 function withAvatarUrl(user) {
   return { ...user, avatar_url: user.avatar_path ? `/uploads/${user.avatar_path}` : null };
@@ -15,16 +16,38 @@ router.get('/search', requireAuth, (req, res) => {
   const users = getDb().prepare(`
     SELECT id, name, bio, avatar_path FROM users
     WHERE name LIKE ? AND id != ?
+      AND id NOT IN (
+        SELECT blocked_id FROM user_blocks WHERE blocker_id = ?
+        UNION
+        SELECT blocker_id FROM user_blocks WHERE blocked_id = ?
+      )
     LIMIT 20
-  `).all(q, req.user.id);
+  `).all(q, req.user.id, req.user.id, req.user.id);
   res.json(users.map(withAvatarUrl));
+});
+
+// GET /api/users/blocked — users you've blocked, for a management screen
+router.get('/blocked', requireAuth, (req, res) => {
+  const base = `${req.protocol}://${req.get('host')}`;
+  const users = getDb().prepare(`
+    SELECT u.id, u.name, u.bio, u.avatar_path
+    FROM user_blocks b JOIN users u ON u.id = b.blocked_id
+    WHERE b.blocker_id = ?
+    ORDER BY b.created_at DESC
+  `).all(req.user.id);
+  res.json(users.map(u => ({
+    id: u.id, name: u.name, bio: u.bio,
+    avatar_url: u.avatar_path ? `${base}/uploads/${u.avatar_path}` : null,
+  })));
 });
 
 // GET /api/users/all?secret=X — export every registered account (protected
 // by the same env secret as /api/beta/list). No password hashes included.
+// Secret goes in a header, not a query string, so it never ends up in
+// server access logs or gets forwarded via a Referer header.
 router.get('/all', (req, res) => {
   const secret = process.env.BETA_LIST_SECRET;
-  if (!secret || req.query.secret !== secret) {
+  if (!secret || req.get('x-admin-secret') !== secret) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   const rows = getDb().prepare(
@@ -33,10 +56,43 @@ router.get('/all', (req, res) => {
   res.json({ count: rows.length, users: rows });
 });
 
+// POST /api/users/:id/block — hides each other's content and drops any
+// existing follow relationship in either direction.
+router.post('/:id/block', requireAuth, (req, res) => {
+  const targetId = Number(req.params.id);
+  if (targetId === req.user.id) return res.status(400).json({ error: 'Cannot block yourself' });
+
+  const db = getDb();
+  const target = db.prepare('SELECT id FROM users WHERE id = ?').get(targetId);
+  if (!target) return res.status(404).json({ error: 'User not found' });
+
+  db.prepare('INSERT OR IGNORE INTO user_blocks (blocker_id, blocked_id) VALUES (?, ?)')
+    .run(req.user.id, targetId);
+  db.prepare(
+    'DELETE FROM follows WHERE (follower_id = ? AND following_id = ?) OR (follower_id = ? AND following_id = ?)'
+  ).run(req.user.id, targetId, targetId, req.user.id);
+
+  res.json({ success: true });
+});
+
+// DELETE /api/users/:id/block
+router.delete('/:id/block', requireAuth, (req, res) => {
+  getDb().prepare('DELETE FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?')
+    .run(req.user.id, Number(req.params.id));
+  res.json({ success: true });
+});
+
 // GET /api/users/:id
 router.get('/:id', requireAuth, (req, res) => {
   const db = getDb();
-  const user = db.prepare('SELECT id, name, bio, avatar_path FROM users WHERE id = ?').get(req.params.id);
+  const targetId = Number(req.params.id);
+
+  // A user who's blocked you doesn't exist as far as you're concerned.
+  if (hasBlocked(db, targetId, req.user.id)) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const user = db.prepare('SELECT id, name, bio, avatar_path FROM users WHERE id = ?').get(targetId);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
   const { total_climbs } = db.prepare(
@@ -54,10 +110,11 @@ router.get('/:id', requireAuth, (req, res) => {
   const is_following = !!db.prepare(
     'SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?'
   ).get(req.user.id, user.id);
+  const is_blocked = hasBlocked(db, req.user.id, user.id);
 
   const rank = levelForCount(unique_peaks);
 
-  res.json({ ...withAvatarUrl(user), total_climbs, unique_peaks, followers, following, is_following, rank });
+  res.json({ ...withAvatarUrl(user), total_climbs, unique_peaks, followers, following, is_following, is_blocked, rank });
 });
 
 // POST /api/users/:id/follow
@@ -130,6 +187,13 @@ router.get('/:id/climbs', requireAuth, (req, res) => {
   const db = getDb();
   const targetId = Number(req.params.id);
   const isOwn = targetId === req.user.id;
+
+  if (!isOwn && hasBlocked(db, targetId, req.user.id)) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  if (!isOwn && hasBlocked(db, req.user.id, targetId)) {
+    return res.json([]);
+  }
 
   const isFollowing = !isOwn && !!db.prepare(
     'SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?'

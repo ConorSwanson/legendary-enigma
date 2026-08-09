@@ -3,6 +3,7 @@ const router = express.Router();
 const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
 const { allDefaultPhotos, needsAttribution } = require('../utils/mountainPhotos');
+const { BLOCKED_EITHER_DIRECTION_SQL } = require('../utils/blocks');
 
 // Real climb photo takes priority; falls back to the mountain's curated
 // default photo (rank 0) when the climb has none of its own, so a feed card
@@ -57,9 +58,10 @@ router.get('/', requireAuth, (req, res) => {
         SELECT following_id FROM follows WHERE follower_id = ?
       )
       AND c.visibility IN ('public','followers')
+      AND c.user_id NOT IN ${BLOCKED_EITHER_DIRECTION_SQL}
     ORDER BY ${orderClause(sort)}
     LIMIT 30 OFFSET ?
-  `).all(req.user.id, req.user.id, offset).map(r => ({
+  `).all(req.user.id, req.user.id, req.user.id, req.user.id, offset).map(r => ({
     ...withPhotoUrl(r, req, defaultPhotos),
     user_avatar_url: r.user_avatar_path ? `${req.protocol}://${req.get('host')}/uploads/${r.user_avatar_path}` : null,
     is_liked: !!r.is_liked,
@@ -88,9 +90,10 @@ router.get('/discover', requireAuth, (req, res) => {
     JOIN mountains m ON c.mountain_id = m.id
     JOIN users u ON c.user_id = u.id
     WHERE c.visibility = 'public'
+      AND c.user_id NOT IN ${BLOCKED_EITHER_DIRECTION_SQL}
     ORDER BY ${orderClause(sort)}
     LIMIT 30 OFFSET ?
-  `).all(req.user.id, offset).map(r => ({
+  `).all(req.user.id, req.user.id, req.user.id, offset).map(r => ({
     ...withPhotoUrl(r, req, defaultPhotos),
     user_avatar_url: r.user_avatar_path ? `${req.protocol}://${req.get('host')}/uploads/${r.user_avatar_path}` : null,
     is_liked: !!r.is_liked,

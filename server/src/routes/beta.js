@@ -1,18 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../db');
-const nodemailer = require('nodemailer');
-
-function getMailer() {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT) || 587,
-    secure: Number(SMTP_PORT) === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-  });
-}
+const { getMailer } = require('../utils/mailer');
 
 async function sendSignupAlert(email) {
   const mailer = getMailer();

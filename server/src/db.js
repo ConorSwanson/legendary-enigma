@@ -429,6 +429,34 @@ function initDb() {
       UNIQUE(mountain_id, rank)
     );
     CREATE INDEX IF NOT EXISTS idx_mountain_photos_mountain ON mountain_photos(mountain_id);
+
+    -- A blocks B: hides each other's content from feeds/search and drops
+    -- any existing follow relationship in either direction. Required for
+    -- App Store Guideline 1.2 (UGC apps must let users block each other).
+    CREATE TABLE IF NOT EXISTS user_blocks (
+      blocker_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (blocker_id, blocked_id),
+      CHECK (blocker_id != blocked_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON user_blocks(blocker_id);
+    CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_id);
+
+    -- User-submitted reports against a user, climb, or comment (Guideline
+    -- 1.2's other half: a way to flag objectionable content). target_id is
+    -- polymorphic (points into users/climbs/climb_comments depending on
+    -- target_type), so it's intentionally not a foreign key.
+    CREATE TABLE IF NOT EXISTS content_reports (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      target_type TEXT    NOT NULL CHECK (target_type IN ('user', 'climb', 'comment')),
+      target_id   INTEGER NOT NULL,
+      reason      TEXT    NOT NULL,
+      details     TEXT,
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_content_reports_target ON content_reports(target_type, target_id);
   `);
 
   // Migrate: add columns to legacy climbs table if missing
