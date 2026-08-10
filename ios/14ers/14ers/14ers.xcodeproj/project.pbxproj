@@ -282,7 +282,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = 14ers/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Switchback;
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "14ers scans your photo library for images taken near Colorado 14ers to suggest climb photos.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Switchback scans your photo library for images taken near Colorado 14ers to suggest climb photos.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -330,7 +330,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = 14ers/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Switchback;
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "14ers scans your photo library for images taken near Colorado 14ers to suggest climb photos.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Switchback scans your photo library for images taken near Colorado 14ers to suggest climb photos.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

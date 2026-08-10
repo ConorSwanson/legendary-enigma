@@ -73,16 +73,20 @@ struct App14ers: App {
 struct RootView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var userState: UserState
+    @State private var showSplash = true
 
     var body: some View {
         Group {
-            if authManager.isSignedIn {
+            if showSplash {
+                SplashView()
+            } else if authManager.isSignedIn {
                 MainTabView()
             } else {
                 SignInView()
             }
         }
         .animation(.easeInOut(duration: 0.25), value: authManager.isSignedIn)
+        .animation(.easeInOut(duration: 0.3), value: showSplash)
         .onReceive(NotificationCenter.default.publisher(for: .navigateToClimb)) { note in
             guard authManager.isSignedIn,
                   let climbId = note.userInfo?["climbId"] as? Int else { return }
@@ -97,11 +101,38 @@ struct RootView: View {
                 await requestPushPermission()
             }
         }
+        .task {
+            try? await Task.sleep(nanoseconds: 900_000_000)
+            showSplash = false
+        }
     }
 
     private func requestPushPermission() async {
         let center = UNUserNotificationCenter.current()
         guard (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) == true else { return }
         await MainActor.run { UIApplication.shared.registerForRemoteNotifications() }
+    }
+}
+
+// MARK: - Splash
+
+private let splashBgColor = Color(red: 3/255, green: 7/255, blue: 18/255)
+private let splashAccent = Color(red: 56/255, green: 189/255, blue: 248/255)
+
+struct SplashView: View {
+    var body: some View {
+        ZStack {
+            splashBgColor.ignoresSafeArea()
+            VStack(spacing: 10) {
+                Image(systemName: "mountain.2.fill")
+                    .font(.system(size: 56))
+                    .foregroundColor(splashAccent)
+                    .shadow(color: splashAccent.opacity(0.5), radius: 16, x: 0, y: 4)
+                Text("Switchback")
+                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+            }
+        }
+        .transition(.opacity)
     }
 }
