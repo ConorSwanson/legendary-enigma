@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { ClerkProvider, SignIn, SignUp, useAuth, useUser } from '@clerk/react';
 import type { ReactNode } from 'react';
 import Layout from './components/Layout';
+import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import LogClimb from './pages/LogClimb';
 import History from './pages/History';
@@ -131,9 +132,11 @@ function AuthSync() {
   return null;
 }
 
-// Wraps protected routes — shows loading skeleton while Clerk initialises, redirects to sign-in if not authed
+// Wraps protected routes — shows loading skeleton while Clerk initialises, redirects to sign-in if not authed.
+// The root path is the exception: signed-out visitors see the public marketing Landing page instead.
 function ProtectedLayout() {
   const { isLoaded, isSignedIn } = useUser();
+  const location = useLocation();
 
   if (!isLoaded) {
     return (
@@ -144,6 +147,7 @@ function ProtectedLayout() {
   }
 
   if (!isSignedIn) {
+    if (location.pathname === '/') return <Landing />;
     return <Navigate to="/sign-in" replace />;
   }
 
