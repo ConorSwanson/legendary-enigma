@@ -70,9 +70,8 @@ export default function Landing() {
       </div>
 
       <p className="relative text-center text-gray-600 text-xs pb-6">
-        Already have an account?{' '}
-        <a href="/sign-in" className="text-sky-400 hover:text-sky-300 transition-colors">
-          Sign in
+        <a href="/privacy" className="hover:text-gray-400 transition-colors">
+          Privacy Policy
         </a>
       </p>
     </div>
