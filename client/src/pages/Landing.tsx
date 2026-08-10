@@ -1,13 +1,5 @@
 const TESTFLIGHT_URL = 'https://testflight.apple.com/join/DpQ4UtKE';
 
-function MountainMark({ size = 40 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
-      <path d="M12 3.5 2.5 20h19L12 3.5Zm0 3.9 5.6 9.7h-3l-2.6-4.5-2.6 4.5h-3L12 7.4Z" />
-    </svg>
-  );
-}
-
 function BackgroundRanges() {
   return (
     <svg
@@ -38,10 +30,7 @@ export default function Landing() {
 
       <div className="relative flex-1 flex flex-col items-center justify-center px-6 py-16 text-center">
         {/* Logo */}
-        <div className="flex items-center gap-3 mb-8 text-sky-400">
-          <MountainMark size={40} />
-          <span className="text-3xl font-bold text-white tracking-tight">Switchback</span>
-        </div>
+        <img src="/switchback-logo.png" alt="Switchback" className="h-8 sm:h-10 w-auto mb-8" />
 
         <h1 className="text-4xl sm:text-5xl font-black text-white leading-[1.1] tracking-tight max-w-2xl">
           Track every Colorado summit.

@@ -117,21 +117,15 @@ struct RootView: View {
 // MARK: - Splash
 
 private let splashBgColor = Color(red: 3/255, green: 7/255, blue: 18/255)
-private let splashAccent = Color(red: 56/255, green: 189/255, blue: 248/255)
 
 struct SplashView: View {
     var body: some View {
         ZStack {
             splashBgColor.ignoresSafeArea()
-            VStack(spacing: 10) {
-                Image(systemName: "mountain.2.fill")
-                    .font(.system(size: 56))
-                    .foregroundColor(splashAccent)
-                    .shadow(color: splashAccent.opacity(0.5), radius: 16, x: 0, y: 4)
-                Text("Switchback")
-                    .font(.system(size: 42, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-            }
+            Image("SwitchbackLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 240)
         }
         .transition(.opacity)
     }

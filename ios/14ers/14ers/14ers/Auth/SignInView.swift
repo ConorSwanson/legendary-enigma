@@ -36,14 +36,12 @@ struct SignInView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         // Logo floats over mountain scene
-                        VStack(spacing: 10) {
-                            Image(systemName: "mountain.2.fill")
-                                .font(.system(size: 56))
-                                .foregroundColor(skyColor)
-                                .shadow(color: skyColor.opacity(0.5), radius: 16, x: 0, y: 4)
-                            Text("Switchback")
-                                .font(.system(size: 42, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
+                        VStack(spacing: 14) {
+                            Image("SwitchbackLogo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 220)
+                                .shadow(color: skyColor.opacity(0.35), radius: 16, x: 0, y: 4)
                             Text("Track every summit")
                                 .foregroundColor(Color(white: 0.55))
                                 .font(.subheadline)
