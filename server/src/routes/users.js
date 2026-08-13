@@ -6,12 +6,13 @@ const { pushToUser } = require('../utils/push');
 const { levelForCount } = require('../utils/levels');
 const { hasBlocked } = require('../utils/blocks');
 
-function withAvatarUrl(user) {
-  return { ...user, avatar_url: user.avatar_path ? `/uploads/${user.avatar_path}` : null };
+function withAvatarUrl(user, base) {
+  return { ...user, avatar_url: user.avatar_path ? `${base}/uploads/${user.avatar_path}` : null };
 }
 
 // GET /api/users/search?q=
 router.get('/search', requireAuth, (req, res) => {
+  const base = `${req.protocol}://${req.get('host')}`;
   const q = `%${req.query.q || ''}%`;
   const users = getDb().prepare(`
     SELECT id, name, bio, avatar_path FROM users
@@ -23,7 +24,7 @@ router.get('/search', requireAuth, (req, res) => {
       )
     LIMIT 20
   `).all(q, req.user.id, req.user.id, req.user.id);
-  res.json(users.map(withAvatarUrl));
+  res.json(users.map(u => withAvatarUrl(u, base)));
 });
 
 // GET /api/users/blocked — users you've blocked, for a management screen
@@ -85,6 +86,7 @@ router.delete('/:id/block', requireAuth, (req, res) => {
 // GET /api/users/:id
 router.get('/:id', requireAuth, (req, res) => {
   const db = getDb();
+  const base = `${req.protocol}://${req.get('host')}`;
   const targetId = Number(req.params.id);
 
   // A user who's blocked you doesn't exist as far as you're concerned.
@@ -92,7 +94,7 @@ router.get('/:id', requireAuth, (req, res) => {
     return res.status(404).json({ error: 'User not found' });
   }
 
-  const user = db.prepare('SELECT id, name, bio, avatar_path FROM users WHERE id = ?').get(targetId);
+  const user = db.prepare('SELECT id, name, bio, avatar_path, background_path FROM users WHERE id = ?').get(targetId);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
   const { total_climbs } = db.prepare(
@@ -114,7 +116,11 @@ router.get('/:id', requireAuth, (req, res) => {
 
   const rank = levelForCount(unique_peaks);
 
-  res.json({ ...withAvatarUrl(user), total_climbs, unique_peaks, followers, following, is_following, is_blocked, rank });
+  res.json({
+    ...withAvatarUrl(user, base),
+    background_url: user.background_path ? `${base}/uploads/${user.background_path}` : null,
+    total_climbs, unique_peaks, followers, following, is_following, is_blocked, rank,
+  });
 });
 
 // POST /api/users/:id/follow
