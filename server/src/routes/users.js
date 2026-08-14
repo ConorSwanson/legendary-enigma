@@ -5,9 +5,31 @@ const requireAuth = require('../middleware/auth');
 const { pushToUser } = require('../utils/push');
 const { levelForCount } = require('../utils/levels');
 const { hasBlocked } = require('../utils/blocks');
+const { allDefaultPhotos, needsAttribution } = require('../utils/mountainPhotos');
 
 function withAvatarUrl(user, base) {
   return { ...user, avatar_url: user.avatar_path ? `${base}/uploads/${user.avatar_path}` : null };
+}
+
+// Climb's own photo takes priority; falls back to the mountain's curated
+// default (rank 0) so a climb without an uploaded photo still shows
+// something -- mirrors climbs.js/feed.js's withPhotoUrl so a user's profile
+// page never disagrees with the feed about what photo a climb should show.
+function withPhotoUrl(row, req, defaultPhotos) {
+  const base = `${req.protocol}://${req.get('host')}`;
+  if (row.photo_path) {
+    return { ...row, photo_url: `${base}/uploads/${row.photo_path}`, photo_is_default: false, photo_credit_author: null };
+  }
+  const def = (defaultPhotos?.[row.mountain_id] || [])[0];
+  if (!def) {
+    return { ...row, photo_url: null, photo_is_default: false, photo_credit_author: null };
+  }
+  return {
+    ...row,
+    photo_url: `${base}/assets/peak-photos/${def.filename}`,
+    photo_is_default: true,
+    photo_credit_author: needsAttribution(def.license) ? def.author : null,
+  };
 }
 
 // GET /api/users/search?q=
@@ -211,6 +233,7 @@ router.get('/:id/climbs', requireAuth, (req, res) => {
       ? "visibility IN ('public','followers')"
       : "visibility = 'public'";
 
+  const defaultPhotos = allDefaultPhotos(db);
   const climbs = db.prepare(`
     SELECT c.id, c.mountain_id, c.climb_date, c.notes, c.photo_path, c.visibility, c.created_at,
            m.name AS mountain_name, m.elevation, m.range
@@ -218,7 +241,7 @@ router.get('/:id/climbs', requireAuth, (req, res) => {
     WHERE c.user_id = ? AND ${visFilter}
     ORDER BY c.climb_date DESC, c.created_at DESC
     LIMIT 50
-  `).all(targetId).map(r => ({ ...r, photo_url: r.photo_path ? `${req.protocol}://${req.get('host')}/uploads/${r.photo_path}` : null }));
+  `).all(targetId).map(r => withPhotoUrl(r, req, defaultPhotos));
 
   res.json(climbs);
 });
