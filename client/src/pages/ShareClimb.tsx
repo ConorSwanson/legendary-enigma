@@ -65,12 +65,12 @@ export default function ShareClimb() {
           <div className="text-5xl">🔒</div>
           <p className="text-white font-bold text-xl">This climb is private</p>
           <a
-            href="https://testflight.apple.com/join/DpQ4UtKE"
+            href="https://apps.apple.com/us/app/switchback-summit-tracker/id6784754996"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block text-sky-400 text-sm"
           >
-            Get 14ers Tracker
+            Get Switchback
           </a>
         </div>
       </div>
@@ -137,7 +137,7 @@ export default function ShareClimb() {
 
         {/* CTA */}
         <a
-          href="https://testflight.apple.com/join/DpQ4UtKE"
+          href="https://apps.apple.com/us/app/switchback-summit-tracker/id6784754996"
           target="_blank"
           rel="noopener noreferrer"
           className="block w-full text-center font-semibold py-3 rounded-xl text-sm transition-colors"
@@ -145,11 +145,11 @@ export default function ShareClimb() {
           onMouseEnter={e => (e.currentTarget.style.background = '#7DD3FC')}
           onMouseLeave={e => (e.currentTarget.style.background = '#38BDF8')}
         >
-          Track your own 14ers →
+          Download Switchback →
         </a>
 
         <p className="text-center text-gray-700 text-xs mt-3">
-          14ers Tracker · All 58 Colorado 14ers
+          Switchback · All 58 Colorado 14ers
         </p>
       </div>
     </div>

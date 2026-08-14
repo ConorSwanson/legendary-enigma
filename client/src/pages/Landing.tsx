@@ -1,4 +1,4 @@
-const TESTFLIGHT_URL = 'https://testflight.apple.com/join/DpQ4UtKE';
+const APP_STORE_URL = 'https://apps.apple.com/us/app/switchback-summit-tracker/id6784754996';
 
 function BackgroundRanges() {
   return (
@@ -42,7 +42,7 @@ export default function Landing() {
         </p>
 
         <a
-          href={TESTFLIGHT_URL}
+          href={APP_STORE_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-block font-semibold text-base px-8 py-3.5 rounded-xl mt-9 transition-colors"
@@ -50,7 +50,7 @@ export default function Landing() {
           onMouseEnter={e => (e.currentTarget.style.background = '#7DD3FC')}
           onMouseLeave={e => (e.currentTarget.style.background = '#38BDF8')}
         >
-          Join the TestFlight beta →
+          Download on the App Store →
         </a>
 
         <p className="text-gray-600 text-xs uppercase tracking-widest mt-10">

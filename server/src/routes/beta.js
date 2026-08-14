@@ -22,7 +22,7 @@ const PAGE = `<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Switchback — Track Every Summit</title>
-  <meta name="description" content="Track every summit you climb. Earn badges, log ascents, and connect with other climbers — starting with all 58 Colorado 14ers. Now available on TestFlight." />
+  <meta name="description" content="Track every summit you climb. Earn badges, log ascents, and connect with other climbers — starting with all 58 Colorado 14ers. Now available on the App Store." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -190,17 +190,17 @@ const PAGE = `<!DOCTYPE html>
   <div class="hero">
     <img src="/public/switchback-logo.png" alt="Switchback" class="logo" />
 
-    <p class="eyebrow">Now in TestFlight Beta</p>
+    <p class="eyebrow">Now Available</p>
     <h1>Track every<br/><span>summit you climb.</span></h1>
     <p class="subtitle">
       Log every ascent, earn peak badges, and follow other climbers —
       starting with all 58 Colorado 14ers, and beyond.
     </p>
 
-    <a href="https://testflight.apple.com/join/DpQ4UtKE" class="cta-btn" target="_blank" rel="noopener noreferrer">
-      Join the TestFlight beta →
+    <a href="https://apps.apple.com/us/app/switchback-summit-tracker/id6784754996" class="cta-btn" target="_blank" rel="noopener noreferrer">
+      Download on the App Store →
     </a>
-    <p class="form-note">Free to join. Requires an iPhone running iOS 17 or later.</p>
+    <p class="form-note">Free. Requires an iPhone running iOS 17 or later.</p>
   </div>
 
   <div class="features">
