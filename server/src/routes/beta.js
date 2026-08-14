@@ -58,8 +58,17 @@ const PAGE = `<!DOCTYPE html>
     .logo {
       height: 40px;
       width: auto;
-      margin: 0 auto 40px;
+      margin: 0 auto 32px;
       display: block;
+    }
+
+    .app-icon {
+      width: 88px;
+      height: 88px;
+      border-radius: 20px;
+      margin: 0 auto 32px;
+      display: block;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
     }
 
     .eyebrow {
@@ -93,7 +102,7 @@ const PAGE = `<!DOCTYPE html>
     .cta-btn {
       display: inline-block;
       padding: 15px 28px;
-      background: var(--emerald);
+      background: var(--sky);
       color: #03071A;
       font-size: 15px;
       font-weight: 700;
@@ -115,34 +124,30 @@ const PAGE = `<!DOCTYPE html>
     /* ── Features ── */
     .features {
       width: 100%;
-      max-width: 640px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 14px;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 36px;
       margin-top: 72px;
-    }
-
-    .feature {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 20px;
+      text-align: center;
     }
 
     .feature-icon {
-      font-size: 24px;
+      font-size: 28px;
       margin-bottom: 10px;
+      display: block;
     }
 
     .feature h3 {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 700;
       color: var(--text);
       margin-bottom: 6px;
     }
 
     .feature p {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--muted);
       line-height: 1.5;
     }
@@ -189,12 +194,13 @@ const PAGE = `<!DOCTYPE html>
 
   <div class="hero">
     <img src="/public/switchback-logo.png" alt="Switchback" class="logo" />
+    <img src="/public/app-icon.png" alt="" class="app-icon" />
 
     <p class="eyebrow">Now Available</p>
     <h1>Track every<br/><span>summit you climb.</span></h1>
     <p class="subtitle">
       Log every ascent, earn peak badges, and follow other climbers —
-      starting with all 58 Colorado 14ers, and beyond.
+      starting with all 58 Colorado 14ers and expanding to the 13ers.
     </p>
 
     <a href="https://apps.apple.com/us/app/switchback-summit-tracker/id6784754996" class="cta-btn" target="_blank" rel="noopener noreferrer">
@@ -205,22 +211,22 @@ const PAGE = `<!DOCTYPE html>
 
   <div class="features">
     <div class="feature">
-      <div class="feature-icon">🏔️</div>
+      <span class="feature-icon">🏔️</span>
       <h3>Every Summit</h3>
-      <p>Starts with all 58 Colorado 14ers, but tracks any peak you climb — log each summit with date, notes, and photos.</p>
+      <p>Starts with all 58 Colorado 14ers and expanding to the 13ers — log each summit with date, notes, and photos.</p>
     </div>
     <div class="feature">
-      <div class="feature-icon">🏅</div>
+      <span class="feature-icon">🏅</span>
       <h3>Peak Badges</h3>
       <p>Earn a unique badge for every summit. Track your collection as you go.</p>
     </div>
     <div class="feature">
-      <div class="feature-icon">📊</div>
+      <span class="feature-icon">📊</span>
       <h3>Stats & History</h3>
       <p>Total elevation gained, unique peaks, ascent streaks, and your full climb history.</p>
     </div>
     <div class="feature">
-      <div class="feature-icon">👥</div>
+      <span class="feature-icon">👥</span>
       <h3>Social Feed</h3>
       <p>Follow other climbers, see recent summits, and like each other's ascents.</p>
     </div>
