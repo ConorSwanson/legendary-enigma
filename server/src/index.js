@@ -48,6 +48,7 @@ app.use('/api/public/climbs', require('./routes/publicClimbs'));
 app.use('/api/badges',        require('./routes/badges'));
 app.use('/api/og',            require('./routes/ogImage'));
 app.use('/api/beta',          require('./routes/beta'));
+app.use('/api/admin',         require('./routes/admin'));
 app.use('/beta',              require('./routes/beta'));
 app.use('/s',             require('./routes/share'));
 app.use('/',              require('./routes/legal'));
