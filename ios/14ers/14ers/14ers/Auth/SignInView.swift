@@ -13,6 +13,7 @@ struct SignInView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showSignUp = false
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack {
@@ -74,6 +75,19 @@ struct SignInView: View {
 
                             AuthSecureField(placeholder: "Password", text: $password)
                                 .textContentType(.password)
+
+                            HStack {
+                                Spacer()
+                                Button {
+                                    if let url = URL(string: "https://www.getswitchback.co/forgot-password") {
+                                        openURL(url)
+                                    }
+                                } label: {
+                                    Text("Forgot password?")
+                                        .font(.footnote)
+                                        .foregroundColor(Color(white: 0.5))
+                                }
+                            }
 
                             if let msg = errorMessage {
                                 Text(msg)

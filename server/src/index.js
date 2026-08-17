@@ -51,6 +51,7 @@ app.use('/api/beta',          require('./routes/beta'));
 app.use('/api/admin',         require('./routes/admin'));
 app.use('/beta',              require('./routes/beta'));
 app.use('/s',             require('./routes/share'));
+app.use('/',              require('./routes/passwordReset'));
 app.use('/',              require('./routes/legal'));
 
 // www.getswitchback.co is the marketing domain — serve the landing page at

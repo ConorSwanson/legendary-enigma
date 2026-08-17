@@ -332,3 +332,5 @@ router.post('/support', express.urlencoded({ extended: false }), async (req, res
 });
 
 module.exports = router;
+module.exports.page = page;
+module.exports.STYLE = STYLE;
