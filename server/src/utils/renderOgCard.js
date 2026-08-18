@@ -1,5 +1,15 @@
+const fs = require('fs');
+const path = require('path');
 const { findPeak, PALETTES } = require('./peaks-data');
 const { buildBadgeSvg } = require('./patch-render-svg');
+
+// Read once at module load -- both are small, static, versioned-with-the-repo
+// assets (not user uploads), so there's no reason to hit disk per request.
+const APP_ICON_DATA_URI = `data:image/png;base64,${fs.readFileSync(path.join(__dirname, '../../public/app-icon.png')).toString('base64')}`;
+const APP_STORE_BADGE_DATA_URI = `data:image/png;base64,${fs.readFileSync(path.join(__dirname, '../../public/appstore-badge.png')).toString('base64')}`;
+// Apple's badge PNG is 957x320 -- used to keep the embedded badge's aspect
+// ratio correct at whatever display height the story footer uses.
+const APP_STORE_BADGE_ASPECT = 957 / 320;
 
 function fmtDate(d) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', {
@@ -58,6 +68,32 @@ function creditPill(creditAuthor, right, bottom) {
     font-size="13" font-weight="500" fill="#ffffff">
     ${esc(label)}
   </text>`;
+}
+
+// Story footer branding: small app icon + "Switchback: Summit Tracker",
+// with Apple's official "Download on the App Store" badge underneath --
+// replaces the old plain "14ERS TRACKER · ..." branding line.
+function storyFooter(centerX, rowY) {
+  const iconSize = 40;
+  const wordmarkText = 'SWITCHBACK: SUMMIT TRACKER';
+  const wordmarkFontSize = 22;
+  const textW = wordmarkText.length * (wordmarkFontSize * 0.56);
+  const rowW = iconSize + 14 + textW;
+  const iconX = centerX - rowW / 2;
+  const iconY = rowY - iconSize / 2;
+  const textX = iconX + iconSize + 14;
+
+  const badgeH = 74;
+  const badgeW = Math.round(badgeH * APP_STORE_BADGE_ASPECT);
+  const badgeX = centerX - badgeW / 2;
+  const badgeY = rowY + 40;
+
+  return `
+  <clipPath id="storyAppIconClip"><rect x="${iconX}" y="${iconY}" width="${iconSize}" height="${iconSize}" rx="9"/></clipPath>
+  <image href="${APP_ICON_DATA_URI}" x="${iconX}" y="${iconY}" width="${iconSize}" height="${iconSize}" clip-path="url(#storyAppIconClip)"/>
+  <rect x="${iconX}" y="${iconY}" width="${iconSize}" height="${iconSize}" rx="9" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1"/>
+  <text x="${textX}" y="${rowY + 7}" font-family="Oswald, sans-serif" font-size="${wordmarkFontSize}" font-weight="600" fill="#ffffff" letter-spacing="1">${esc(wordmarkText)}</text>
+  <image href="${APP_STORE_BADGE_DATA_URI}" x="${badgeX}" y="${badgeY}" width="${badgeW}" height="${badgeH}"/>`;
 }
 
 /**
@@ -200,7 +236,6 @@ function renderStoryCard({ mountain, climbDate, climberName, photo }) {
 
   const { peak, pal, badgeSvg } = resolveBadge(mountain.name);
   const accentColor = pal.nm;
-  const subColor = pal.sub;
   const leftBg = pal.bd;
 
   const name = truncate(climberName || 'A climber', 24);
@@ -214,10 +249,15 @@ function renderStoryCard({ mountain, climbDate, climberName, photo }) {
   const badgeW = 320;
   const badgeH = Math.round(badgeW * 660 / 600);
   const badgeX = Math.round((W - badgeW) / 2);
-  const badgeY = H - safeBottom - badgeH - 470;
+  // Shifted up from the original (470 -> 684) to open room at the bottom
+  // for the two-row footer (app icon + wordmark, App Store badge) without
+  // crowding the Instagram safe zone.
+  const badgeY = H - safeBottom - badgeH - 684;
 
   const textCenterX = W / 2;
   const eyebrowY = badgeY + badgeH + 90;
+  const dateY = eyebrowY + 112 + 20 + mtnFontSize + 100;
+  const footerRowY = dateY + 90;
 
   const photoLayer = photo ? `
     <image href="${photo.dataUri}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>
@@ -277,19 +317,16 @@ function renderStoryCard({ mountain, climbDate, climberName, photo }) {
   </text>
 
   <!-- Date -->
-  <text x="${textCenterX}" y="${eyebrowY + 112 + 20 + mtnFontSize + 100}" text-anchor="middle" font-family="Oswald, sans-serif"
+  <text x="${textCenterX}" y="${dateY}" text-anchor="middle" font-family="Oswald, sans-serif"
     font-size="22" font-weight="500" fill="#777777">
     ${fmtDate(climbDate)}
   </text>
 
-  <!-- Branding -->
-  <text x="${textCenterX}" y="${H - safeBottom - 40}" text-anchor="middle" font-family="Oswald, sans-serif"
-    font-size="18" font-weight="600" fill="${subColor}" letter-spacing="3">
-    14ERS TRACKER · COLORADO 14ERS + 13ERS
-  </text>
+  <!-- Branding: app icon + wordmark, App Store badge -->
+  ${storyFooter(textCenterX, footerRowY)}
 
   <!-- Photo credit -->
-  ${creditPill(photo?.creditAuthor, W - 24, H - safeBottom - 90)}
+  ${creditPill(photo?.creditAuthor, W - 24, H - safeBottom - 30)}
 </svg>`;
 }
 
