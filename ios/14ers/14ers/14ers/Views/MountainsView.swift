@@ -38,8 +38,28 @@ struct MountainsView: View {
     @State private var isLoading = false
     @EnvironmentObject var userState: UserState
 
-    private var ranges: [String] {
-        Array(Set(mountains.map(\.range))).sorted()
+    private struct RangeOption: Identifiable, Hashable {
+        let range: String
+        let label: String
+        var id: String { range }
+    }
+
+    // One entry per distinct `range` value, labeled via rangeDisplayLabel
+    // (e.g. "Elk Mountains - Colorado" for a real sub-range, plain "New
+    // York" when range is just the state-fallback) and sorted by that
+    // label so the menu reads alphabetically the way it's actually shown.
+    private var rangeOptions: [RangeOption] {
+        var labelByRange: [String: String] = [:]
+        for m in mountains where labelByRange[m.range] == nil {
+            labelByRange[m.range] = m.rangeDisplayLabel
+        }
+        return labelByRange.map { RangeOption(range: $0.key, label: $0.value) }
+            .sorted { $0.label < $1.label }
+    }
+
+    private var rangeFilterLabel: String {
+        guard let rangeFilter else { return "All Ranges" }
+        return rangeOptions.first { $0.range == rangeFilter }?.label ?? rangeFilter
     }
 
     private var filtered: [Mountain] {
@@ -162,13 +182,13 @@ struct MountainsView: View {
                             Button { rangeFilter = nil } label: {
                                 Label("All Ranges", systemImage: rangeFilter == nil ? "checkmark" : "")
                             }
-                            ForEach(ranges, id: \.self) { r in
-                                Button { rangeFilter = r } label: {
-                                    Label(r, systemImage: rangeFilter == r ? "checkmark" : "")
+                            ForEach(rangeOptions) { opt in
+                                Button { rangeFilter = opt.range } label: {
+                                    Label(opt.label, systemImage: rangeFilter == opt.range ? "checkmark" : "")
                                 }
                             }
                         } label: {
-                            filterChip(icon: "line.3.horizontal.decrease.circle", text: rangeFilter ?? "All Ranges")
+                            filterChip(icon: "line.3.horizontal.decrease.circle", text: rangeFilterLabel)
                         }
 
                         Menu {

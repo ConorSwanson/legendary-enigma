@@ -7,6 +7,7 @@ struct Mountain: Codable, Identifiable, Sendable, Hashable {
     let name: String
     let elevation: Int
     let range: String
+    let state: String?          // nil for the original Colorado-only peaks (predate this column) -- treat as "Colorado"
     let lat: Double?
     let lng: Double?
     let lastActivity: String?   // most recent public climb date, if any
@@ -14,10 +15,21 @@ struct Mountain: Codable, Identifiable, Sendable, Hashable {
     let defaultPhotos: [MountainPhoto]  // curated fallback photos, best pick first; [] if none exist
 
     enum CodingKeys: String, CodingKey {
-        case id, name, elevation, range, lat, lng
+        case id, name, elevation, range, state, lat, lng
         case lastActivity = "last_activity"
         case listKeys      = "list_keys"
         case defaultPhotos = "default_photos"
+    }
+
+    // "Elk Mountains" (Colorado) and "Sierra Nevada" (California) are real
+    // named sub-ranges; most peaks outside Colorado's curated set have no
+    // sub-range on file and range just falls back to the state name itself
+    // (e.g. "New York"). Filter/section labels want to distinguish the two:
+    // a real sub-range gets its state appended for context ("Elk Mountains -
+    // Colorado"), a bare state-fallback range doesn't repeat itself.
+    var rangeDisplayLabel: String {
+        let effectiveState = state ?? "Colorado"
+        return range == effectiveState ? range : "\(range) - \(effectiveState)"
     }
 }
 
