@@ -287,6 +287,8 @@ private struct MountainsMapView: View {
     let climbedIds: Set<Int>
     @Binding var selection: Mountain?
 
+    @State private var position: MapCameraPosition = .automatic
+
     private var coords: [Int: CLLocationCoordinate2D] {
         Dictionary(uniqueKeysWithValues: mountains.compactMap { m -> (Int, CLLocationCoordinate2D)? in
             guard let lat = m.lat, let lng = m.lng else { return nil }
@@ -294,14 +296,36 @@ private struct MountainsMapView: View {
         })
     }
 
+    // Fallback when there's nothing to fit a region to (e.g. an empty
+    // filter result) -- the app's original default view.
     private static let coloradoRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 38.9, longitude: -106.3),
         span: MKCoordinateSpan(latitudeDelta: 4.2, longitudeDelta: 5.0)
     )
 
+    // Fits the camera to whatever's actually on screen -- the map used to
+    // hardcode a tight Colorado-only initial region, so peaks anywhere else
+    // (New York, New England, ...) had real pins that sat far outside the
+    // visible viewport until someone manually zoomed out to find them.
+    private func fitRegion(for points: [CLLocationCoordinate2D]) -> MKCoordinateRegion {
+        guard !points.isEmpty else { return Self.coloradoRegion }
+        let lats = points.map(\.latitude), lngs = points.map(\.longitude)
+        let minLat = lats.min()!, maxLat = lats.max()!
+        let minLng = lngs.min()!, maxLng = lngs.max()!
+        let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLng + maxLng) / 2)
+        // 40% padding so edge pins aren't flush against the screen border;
+        // a floor so a single peak (or a tight cluster) doesn't zoom in
+        // absurdly close.
+        let span = MKCoordinateSpan(
+            latitudeDelta: max((maxLat - minLat) * 1.4, 0.6),
+            longitudeDelta: max((maxLng - minLng) * 1.4, 0.6)
+        )
+        return MKCoordinateRegion(center: center, span: span)
+    }
+
     var body: some View {
         let coords = coords
-        Map(initialPosition: .region(Self.coloradoRegion)) {
+        Map(position: $position) {
             ForEach(mountains) { m in
                 if let coord = coords[m.id] {
                     Annotation(m.name, coordinate: coord) {
@@ -314,6 +338,10 @@ private struct MountainsMapView: View {
             }
         }
         .mapStyle(.standard(elevation: .realistic))
+        .onAppear { position = .region(fitRegion(for: Array(coords.values))) }
+        .onChange(of: mountains.map(\.id)) { _ in
+            withAnimation { position = .region(fitRegion(for: Array(self.coords.values))) }
+        }
     }
 
     private func pin(climbed: Bool) -> some View {

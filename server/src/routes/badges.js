@@ -31,7 +31,7 @@ function badgeSvgFor(req) {
   const climbed = req.query.climbed === '1' || req.query.climbed === 'true';
   const pal = PALETTES[peak.palette];
   const rangeLabel = RANGE_LABEL[peak.range] || peak.range;
-  return { svg: buildBadgeSvg(peak, pal, { climbed, rangeLabel }), cacheKey: `${numericId}:${climbed ? 1 : 0}` };
+  return { svg: buildBadgeSvg(peak, pal, { climbed, rangeLabel, stateAbbr: peak.stateAbbr }), cacheKey: `${numericId}:${climbed ? 1 : 0}` };
 }
 
 function rankSvgFor(req) {
@@ -123,7 +123,7 @@ function warmBadgeCache() {
         if (!peak) continue;
         const pal = PALETTES[peak.palette];
         const rangeLabel = RANGE_LABEL[peak.range] || peak.range;
-        const svg = buildBadgeSvg(peak, pal, { climbed, rangeLabel });
+        const svg = buildBadgeSvg(peak, pal, { climbed, rangeLabel, stateAbbr: peak.stateAbbr });
         const png = new Resvg(svg, RESVG_OPTS).render().asPng();
         pngCache.set(cacheKey, png);
         count++;

@@ -25,12 +25,28 @@ function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// The big mountain-name headline used a fixed 3-tier bucket by character
+// count, which was tuned against the curated Colorado peaks (never more
+// than ~18 chars). Real-world names go well past that -- "SOUTHERN SLOPE OF
+// MOUNT FRISSELL AT MASSACHUSETTS BORDER" is Connecticut's actual official
+// state-highpoint name -- so this shrinks continuously to fit maxWidth
+// instead of flooring out and overflowing. Alfa Slab One is a bold
+// all-caps display face; 0.62x font-size per character is a close enough
+// width estimate for a fit computation (doesn't need to be exact, just
+// not an undershoot).
+function fitMountainFontSize(text, maxWidth, { base, min, letterSpacing = 2 }) {
+  const estWidth = (fs) => text.length * fs * 0.78 + Math.max(0, text.length - 1) * letterSpacing;
+  const w = estWidth(base);
+  if (w <= maxWidth) return base;
+  return Math.max(min, base * maxWidth / w);
+}
+
 // Resolves the peak/palette + badge SVG shared by every card shape, so
 // landscape and portrait renderers stay in sync on what badge gets drawn.
 function resolveBadge(mountainName) {
   const peak = findPeak(mountainName);
   const pal = peak ? PALETTES[peak.palette] : PALETTES.SAWATCH;
-  const badgeSvg = peak ? buildBadgeSvg(peak, pal, { climbed: true }) : '';
+  const badgeSvg = peak ? buildBadgeSvg(peak, pal, { climbed: true, stateAbbr: peak.stateAbbr }) : '';
   return { peak, pal, badgeSvg };
 }
 
@@ -124,8 +140,12 @@ function renderOgCard({ mountain, climbDate, climberName, photo }) {
   const subColor = pal.sub;
 
   const name = truncate(climberName || 'A climber', 28);
-  const mtnDisplay = (peak ? peak.name : mountain.name.toUpperCase());
-  const mtnFontSize = mtnDisplay.length > 14 ? 58 : mtnDisplay.length > 10 ? 68 : 80;
+  // A few real official names run well past anything the curated Colorado
+  // set ever had (Connecticut's actual state-highpoint name is "Southern
+  // Slope of Mount Frissell at Massachusetts Border", 56 characters) --
+  // shrinking alone can't fit that at a legible size, so cap it outright.
+  const mtnDisplay = truncate(peak ? peak.name : mountain.name.toUpperCase(), 28);
+  const mtnFontSize = fitMountainFontSize(mtnDisplay, 740, { base: 80, min: 40 });
 
   // Divider between badge panel and text panel
   const divX = badgeX + badgeW + 50; // ~365
@@ -239,8 +259,11 @@ function renderStoryCard({ mountain, climbDate, climberName, photo }) {
   const leftBg = pal.bd;
 
   const name = truncate(climberName || 'A climber', 24);
-  const mtnDisplay = (peak ? peak.name : mountain.name.toUpperCase());
-  const mtnFontSize = mtnDisplay.length > 14 ? 64 : mtnDisplay.length > 10 ? 76 : 92;
+  // See renderOgCard's identical comment -- a few real official names
+  // (e.g. Connecticut's 56-character state-highpoint name) run well past
+  // anything shrinking alone can keep legible, so cap it outright.
+  const mtnDisplay = truncate(peak ? peak.name : mountain.name.toUpperCase(), 34);
+  const mtnFontSize = fitMountainFontSize(mtnDisplay, 980, { base: 92, min: 40 });
 
   const rangeLabel = mountain.range
     .replace(' Mountains', ' Mtns')

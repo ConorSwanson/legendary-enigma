@@ -10,11 +10,28 @@ const PALETTES = {
   FRONT:    {sky:'#6FA8C4',sun:'#F3E2A8',back:'#8E96A4',pL:'#C2A98C',pM:'#9C8268',pS:'#77604B',pD:'#5A4838',hi:'#F0EBDF',hiSh:'#CFC4B0',mid:'#4E6A3E',pn1:'#284A30',pn2:'#365C3C',pn3:'#497544',bd:'#213A2C',ky:'#3E5E47',bn:'#213A2C',nm:'#E8C36A',ac:'#D8A24E',sub:'#EAF1F2'},
   TENMILE:  {sky:'#8C92C4',sun:'#E9E6D2',back:'#9AA0C2',pL:'#AEB6CE',pM:'#828BAC',pS:'#646E92',pD:'#4C5578',hi:'#F2F1EC',hiSh:'#CDD3E0',mid:'#3E5240',pn1:'#25402F',pn2:'#33523A',pn3:'#456A45',bd:'#25303A',ky:'#46566A',bn:'#25303A',nm:'#E4D9A6',ac:'#C9C06E',sub:'#EEEEF4'},
   GORE:     {sky:'#6FA0B8',sun:'#EDE3C0',back:'#7E8CA0',pL:'#9AA6B8',pM:'#707C90',pS:'#556074',pD:'#3E4759',hi:'#EDEEF0',hiSh:'#C6CDD6',mid:'#3C5A44',pn1:'#264732',pn2:'#345C40',pn3:'#457449',bd:'#222E38',ky:'#3F5560',bn:'#222E38',nm:'#D6DCE6',ac:'#8AAAC0',sub:'#EBF0F2'},
+
+  // ── Non-Colorado region palettes (ADK 46, Catskill 3500, NH 48, NE 67,
+  // CA 14ers/13ers, and the remaining state-highpoint outliers grouped into
+  // 4 rough US regions) — same field roles as the Colorado palettes above,
+  // picked for each region's real character rather than literal geology.
+  ADIRONDACK: {sky:'#7FA8B8',sun:'#E8DCC0',back:'#8B96A0',pL:'#9AA6AE',pM:'#707E88',pS:'#565F68',pD:'#3E454C',hi:'#E9EDEE',hiSh:'#C4CDD2',mid:'#3E5A46',pn1:'#254335',pn2:'#325843',pn3:'#437052',bd:'#22302A',ky:'#3E5850',bn:'#22302A',nm:'#7FA8B8',ac:'#5E8FA0',sub:'#E5EEEE'},
+  CATSKILL: {sky:'#8FB8C4',sun:'#EFE0A8',back:'#93A48E',pL:'#A3B39A',pM:'#7C8F72',pS:'#5F7057',pD:'#465340',hi:'#EDEEE0',hiSh:'#CBD0BC',mid:'#4E6B3E',pn1:'#2C4E30',pn2:'#3C623E',pn3:'#4E7A46',bd:'#26361F',ky:'#44583C',bn:'#26361F',nm:'#D8C878',ac:'#C7B25A',sub:'#EDEEE2'},
+  WHITE_MTNS: {sky:'#5C90B0',sun:'#E4E8EC',back:'#7E8998',pL:'#9AA4B2',pM:'#707C8C',pS:'#54606F',pD:'#3A4350',hi:'#F0F1F2',hiSh:'#CDD3D9',mid:'#465847',pn1:'#26402C',pn2:'#34523A',pn3:'#456B47',bd:'#242C34',ky:'#425A66',bn:'#242C34',nm:'#B8C6D4',ac:'#7FA6C2',sub:'#EAF0F4'},
+  NEW_ENGLAND: {sky:'#6BA0A8',sun:'#EAD9A0',back:'#829A82',pL:'#96AE94',pM:'#6E8A6C',pS:'#546B52',pD:'#3D4F3C',hi:'#EDF0E4',hiSh:'#C6D0BE',mid:'#3E5A3C',pn1:'#25422A',pn2:'#345638',pn3:'#456E46',bd:'#233024',ky:'#3E5C4C',bn:'#233024',nm:'#A8CBAE',ac:'#6FA87E',sub:'#E9F0E6'},
+  SIERRA: {sky:'#4A87C4',sun:'#F5E6B0',back:'#A69C88',pL:'#C4B896',pM:'#A08E68',pS:'#7C6C4C',pD:'#5A4E38',hi:'#F4EEDC',hiSh:'#D6C9A4',mid:'#5E6A3E',pn1:'#38481F',pn2:'#4A5C2C',pn3:'#5E723A',bd:'#2E2818',ky:'#4A6078',bn:'#2E2818',nm:'#F0C868',ac:'#E0A83E',sub:'#F2EDE0'},
+  MOUNTAIN_WEST: {sky:'#5A98C0',sun:'#EDEDE8',back:'#8894A0',pL:'#A0ACB6',pM:'#788692',pS:'#5C6A78',pD:'#414C5A',hi:'#F5F6F6',hiSh:'#D2D8DC',mid:'#40564A',pn1:'#254234',pn2:'#345646',pn3:'#476E58',bd:'#232E36',ky:'#465C6A',bn:'#232E36',nm:'#C6D2DC',ac:'#8AB0CC',sub:'#EEF2F4'},
+  HEARTLAND: {sky:'#8CB4C8',sun:'#EEE6BC',back:'#94A084',pL:'#A6AE8E',pM:'#828C66',pS:'#666E4E',pD:'#4C5238',hi:'#EEEEDE',hiSh:'#CED0AE',mid:'#566B3E',pn1:'#334A24',pn2:'#456032',pn3:'#587840',bd:'#28321E',ky:'#4C5E42',bn:'#28321E',nm:'#C8D488',ac:'#9EB668',sub:'#EEF0E2'},
+  APPALACHIAN_SOUTH: {sky:'#7098B0',sun:'#EAE0B8',back:'#7E96A0',pL:'#8FA8AE',pM:'#688288',pS:'#4E666C',pD:'#384C50',hi:'#E6ECE8',hiSh:'#B8CACA',mid:'#3E5C42',pn1:'#20402A',pn2:'#2E5236',pn3:'#3E6844',bd:'#1E2E2C',ky:'#3A5652',bn:'#1E2E2C',nm:'#9AC4C0',ac:'#5E9C96',sub:'#E6EEEC'},
+  NORTHEAST_HILLS: {sky:'#9AB8C8',sun:'#EEDCA0',back:'#A08E7E',pL:'#B49E82',pM:'#8E7860',pS:'#6E5C48',pD:'#4E4232',hi:'#EDE6D6',hiSh:'#D0C0A0',mid:'#5E6438',pn1:'#3A4222',pn2:'#4E5830',pn3:'#647040',bd:'#2C2A1E',ky:'#5A5638',bn:'#2C2A1E',nm:'#D8B888',ac:'#C29858',sub:'#EFEADC'},
 };
 
 const RANGE_LABEL = {
   SAWATCH:'SAWATCH', SANGRE:'SANGRE', SANJUAN:'SAN JUAN', ELK:'ELK',
   MOSQUITO:'MOSQUITO', FRONT:'FRONT', TENMILE:'TENMILE', GORE:'GORE',
+  ADIRONDACK:'ADIRONDACK', CATSKILL:'CATSKILL', WHITE_MTNS:'WHITE MTNS',
+  NEW_ENGLAND:'NEW ENGLAND', SIERRA:'SIERRA NEVADA', MOUNTAIN_WEST:'MOUNTAIN WEST',
+  HEARTLAND:'HEARTLAND', APPALACHIAN_SOUTH:'APPALACHIAN', NORTHEAST_HILLS:'NORTHEAST',
 };
 
 // ── Deterministic RNG (mirrors client) ───────────────────────────────────────
@@ -108,6 +125,17 @@ const RANGE_STYLE = {
   // All 14 explicit Sawatch peaks are hand-authored above, so no stub ever
   // needed this range's style before -- now used by the generated 13ers.
   SAWATCH: { kinds: ['broad', 'pyramid', 'horn'],   sy: [114, 128], jag: 0.5 },
+
+  // Non-Colorado buckets (see PALETTES above for the matching colors).
+  ADIRONDACK:        { kinds: ['horn', 'serrate', 'pyramid'], sy: [112, 126], jag: 0.8 },
+  CATSKILL:          { kinds: ['broad', 'pyramid'],           sy: [126, 138], jag: 0.35 },
+  WHITE_MTNS:        { kinds: ['serrate', 'horn', 'twin'],    sy: [108, 120], jag: 1.0 },
+  NEW_ENGLAND:       { kinds: ['horn', 'pyramid', 'broad'],   sy: [116, 130], jag: 0.6 },
+  SIERRA:            { kinds: ['horn', 'pyramid', 'serrate'], sy: [106, 120], jag: 0.9 },
+  MOUNTAIN_WEST:     { kinds: ['broad', 'pyramid', 'twin'],   sy: [110, 126], jag: 0.55 },
+  HEARTLAND:         { kinds: ['broad'],                      sy: [136, 150], jag: 0.15 },
+  APPALACHIAN_SOUTH: { kinds: ['broad', 'pyramid'],           sy: [122, 136], jag: 0.4 },
+  NORTHEAST_HILLS:   { kinds: ['broad'],                      sy: [132, 146], jag: 0.2 },
 };
 
 const KIND_OVERRIDE = {
@@ -222,18 +250,21 @@ const STUBS = [
 // everything else is data.
 const GENERATED_BATCHES = [
   require('./generated-co-13ers-badges'),
+  require('./generated-multilist-2026-badges'),
 ];
 const GENERATED_STUBS = GENERATED_BATCHES.flatMap(b => b.STUBS);
 const GENERATED_ID_MAP = Object.assign({}, ...GENERATED_BATCHES.map(b => b.DB_ID_TO_PEAK_ID));
 
-for (const [id, name, full, elev, range] of [...STUBS, ...GENERATED_STUBS]) {
+// stateAbbr is an optional 6th tuple element -- every pre-existing stub
+// (all Colorado) omits it and defaults to 'CO', so old batches need no edits.
+for (const [id, name, full, elev, range, stateAbbr] of [...STUBS, ...GENERATED_STUBS]) {
   const r = _rng(_hash(id));
   const st = RANGE_STYLE[range];
   const kind = KIND_OVERRIDE[id] || st.kinds[Math.floor(r() * st.kinds.length)];
   const summitY = Math.round(st.sy[0] + r() * (st.sy[1] - st.sy[0]));
   const ridge = genRidge(r, kind, summitY, st.jag);
   const scene = genScene(r, range);
-  PEAKS.push({ id, name, full, elev, range, palette: range, ridge, scene });
+  PEAKS.push({ id, name, full, elev, range, palette: range, stateAbbr: stateAbbr || 'CO', ridge, scene });
 }
 
 // ── DB numeric ID → peak string ID mapping ───────────────────────────────────

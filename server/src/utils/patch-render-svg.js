@@ -187,13 +187,14 @@ function buildBadgeSvg(peak, pal, opts = {}) {
 
   // ── text ───────────────────────────────────────────────────────────────────
   const rlabel = (opts.rangeLabel || peak.range);
+  const stateAbbr = opts.stateAbbr || peak.stateAbbr || 'CO';
   const T = [];
   const nf = fitFont(peak.name, 56, 240, 0.74, 1, 22);
   T.push(tag('text', { x: 300, y: 448, textAnchor: 'middle', fontFamily: "'Alfa Slab One',serif", fontSize: nf, letterSpacing: 1, fill: pal.nm }, peak.name));
-  const subText = peak.elev + ' FT * ' + rlabel + ' * CO';
+  const subText = peak.elev + ' FT * ' + rlabel + ' * ' + stateAbbr;
   const sf = fitFont(subText, 15, 205, 0.45, 2.5, 10);
   T.push(tag('text', { x: 300, y: 478, textAnchor: 'middle', fontFamily: 'Oswald,sans-serif', fontWeight: 500, fontSize: sf, letterSpacing: 2.5, fill: pal.sub },
-    peak.elev + ' FT <tspan fill="' + pal.ac + '">★</tspan> ' + rlabel + ' <tspan fill="' + pal.ac + '">★</tspan> CO'));
+    peak.elev + ' FT <tspan fill="' + pal.ac + '">★</tspan> ' + rlabel + ' <tspan fill="' + pal.ac + '">★</tspan> ' + stateAbbr));
   const pf = fitFont(peak.full, 13, 116, 0.52, 1.5, 8);
   const ptw = estW(peak.full, pf, 0.52, 1.5);
   const plateW = Math.min(176, ptw + 64);

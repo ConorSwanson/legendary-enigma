@@ -1,6 +1,9 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const { seedMultilist } = require('./utils/multilistSeed');
+
+let lastMultilistResults = [];
 
 const DATA_DIR = path.join(__dirname, '../../data');
 const DB_PATH = path.join(DATA_DIR, 'climbs.db');
@@ -293,7 +296,8 @@ function initDb() {
       range     TEXT    NOT NULL,
       lat       REAL,
       lng       REAL,
-      source    TEXT
+      source    TEXT,
+      state     TEXT
     );
 
     CREATE TABLE IF NOT EXISTS users (
@@ -532,6 +536,14 @@ function initDb() {
   if (!mountainCols.includes('source')) {
     db.exec('ALTER TABLE mountains ADD COLUMN source TEXT');
   }
+  // Migrate: add state to mountains (no-op on new installs). Needed once
+  // peaks started spanning multiple states with reused names ("Mount Tom"
+  // in both California and New Hampshire) -- name collisions disambiguate
+  // by state, and it fills the range/state UI text when a peak has no
+  // named sub-range (most peaks outside Colorado's curated 58 don't).
+  if (!mountainCols.includes('state')) {
+    db.exec('ALTER TABLE mountains ADD COLUMN state TEXT');
+  }
 
   const insertMountain = db.prepare(
     'INSERT OR IGNORE INTO mountains (id, name, elevation, range, source) VALUES (?, ?, ?, ?, ?)'
@@ -608,6 +620,17 @@ function initDb() {
   });
   backfillPhotos(MOUNTAIN_PHOTOS);
 
+  // Reconcile the ADK 46 / CA 14ers+13ers / Catskill 3500 / NE 67 / NH 48 /
+  // US State Highpoints dataset (341 peaks, 7 lists) -- see
+  // utils/multilistSeed.js. This is the only way this data reaches
+  // production: the live SQLite file is only reachable over HTTP, so this
+  // has to run as part of boot-time seeding, same as everything above it.
+  // Stashed on the module so scripts/import-multilist.js (which needs the
+  // per-row results to regenerate badge STUBS) doesn't have to call this a
+  // second time -- a second call is idempotent but reports everything as
+  // already-present, since the first call here already did the work.
+  lastMultilistResults = seedMultilist(db);
+
   db.prepare('INSERT OR IGNORE INTO profile (id, name) VALUES (1, ?)').run('Climber');
 
   // Seed App Store review account (idempotent — no-op if already exists)
@@ -622,4 +645,4 @@ function initDb() {
   console.log('Database ready at', DB_PATH);
 }
 
-module.exports = { getDb, initDb, UPLOADS_DIR };
+module.exports = { getDb, initDb, UPLOADS_DIR, getLastMultilistResults: () => lastMultilistResults };
