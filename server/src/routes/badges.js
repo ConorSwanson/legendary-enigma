@@ -5,7 +5,26 @@ const { Resvg } = require('@resvg/resvg-js');
 const { buildBadgeSvg } = require('../utils/patch-render-svg');
 const { buildRankMedallionSvg } = require('../utils/rank-badge-render-svg');
 const { PALETTES, RANGE_LABEL, peakByDbId } = require('../data/peaks-data');
+const { findPeak } = require('../utils/peaks-data');
 const { LEVELS } = require('../utils/levels');
+const { getDb } = require('../db');
+
+// DB_ID_TO_PEAK_ID is a static snapshot: numeric mountain_id -> peak slug,
+// generated once and committed. That's fine for the original 58 + the
+// Colorado 13ers, whose ids were stable by the time each batch shipped.
+// It's NOT reliable for a batch generated against a dev DB whose
+// pre-existing row count doesn't match production's -- SQLite assigns ids
+// sequentially, so every id in the file ends up shifted by however many
+// rows production already had that the dev DB didn't, silently pointing
+// each mountain at some other peak's badge entirely. Falling back to a
+// live name lookup sidesteps id drift altogether: peak.full is always
+// exactly what's in mountains.name for anything findPeak can match.
+function resolvePeak(numericId) {
+  const staticPeak = peakByDbId(numericId);
+  if (staticPeak) return staticPeak;
+  const row = getDb().prepare('SELECT name FROM mountains WHERE id = ?').get(numericId);
+  return row ? findPeak(row.name) : null;
+}
 
 const FONT_DIR = path.join(__dirname, '../assets/fonts');
 const RESVG_OPTS = {
@@ -26,7 +45,7 @@ const pngCache = new Map();
 function badgeSvgFor(req) {
   const numericId = parseInt(req.params.id, 10);
   if (isNaN(numericId)) return null;
-  const peak = peakByDbId(numericId);
+  const peak = resolvePeak(numericId);
   if (!peak) return null;
   const climbed = req.query.climbed === '1' || req.query.climbed === 'true';
   const pal = PALETTES[peak.palette];
@@ -110,16 +129,19 @@ router.get('/:id', (req, res) => {
   res.send(result.svg);
 });
 
-// Pre-render every peak × 2 states (climbed/unclimbed) at startup
+// Pre-render every peak × 2 states (climbed/unclimbed) at startup. Driven
+// off the actual mountains table, not just DB_ID_TO_PEAK_ID's static keys
+// -- that map doesn't cover (or can be wrong for, see resolvePeak above)
+// anything imported since it was last generated.
 function warmBadgeCache() {
-  const { DB_ID_TO_PEAK_ID } = require('../data/peaks-data');
+  const ids = getDb().prepare('SELECT id FROM mountains').all().map(r => r.id);
   let count = 0;
-  for (const numericId of Object.keys(DB_ID_TO_PEAK_ID)) {
+  for (const numericId of ids) {
     for (const climbed of [true, false]) {
       const cacheKey = `${numericId}:${climbed ? 1 : 0}`;
       if (pngCache.has(cacheKey)) continue;
       try {
-        const peak = peakByDbId(parseInt(numericId, 10));
+        const peak = resolvePeak(numericId);
         if (!peak) continue;
         const pal = PALETTES[peak.palette];
         const rangeLabel = RANGE_LABEL[peak.range] || peak.range;
