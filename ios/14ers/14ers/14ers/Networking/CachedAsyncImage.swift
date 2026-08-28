@@ -31,21 +31,60 @@ final class ImageCache: @unchecked Sendable {
     }
 
     /// Full lookup: memory → disk → network. Populates the faster tiers on the way.
+    /// A disk hit still kicks off a background revalidation against the server's
+    /// ETag (see `revalidate`) -- without it, a badge fixed server-side (new
+    /// art, a corrected name, a rebalanced palette) would never reach a device
+    /// that already cached the old bytes, since this cache has no expiry and
+    /// is keyed only by URL. The revalidation is a cheap 304 the rest of the
+    /// time, and updates memory+disk in place on the rare occasion it isn't.
     func image(for url: URL) async -> UIImage? {
         if let img = memory.object(forKey: url as NSURL) { return img }
 
         let file = diskDir.appendingPathComponent(key(for: url))
         if let data = try? Data(contentsOf: file), let img = UIImage(data: data) {
             memory.setObject(img, forKey: url as NSURL)
+            Task.detached(priority: .background) { [weak self] in
+                await self?.revalidate(url: url, file: file)
+            }
             return img
         }
 
         guard let (data, response) = try? await session.data(from: url) else { return nil }
-        if let http = response as? HTTPURLResponse, http.statusCode >= 400 { return nil }
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
         guard let img = UIImage(data: data) else { return nil }
         memory.setObject(img, forKey: url as NSURL)
         try? data.write(to: file, options: .atomic)
+        if let etag = http.value(forHTTPHeaderField: "ETag") {
+            try? etag.write(to: etagFile(for: url), atomically: true, encoding: .utf8)
+        }
         return img
+    }
+
+    /// Asks the server "did this change?" via If-None-Match. 304 means the
+    /// on-disk copy is still current, so it's left alone; 200 means the
+    /// content actually changed, so memory+disk get overwritten with the
+    /// fresh bytes for next time. Bypasses URLSession's own HTTP cache
+    /// (which would otherwise just hand back the same stale response we're
+    /// trying to get past) since this cache's own ETag file is the source
+    /// of truth here, not URLCache's.
+    private func revalidate(url: URL, file: URL) async {
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
+        if let etag = try? String(contentsOf: etagFile(for: url), encoding: .utf8) {
+            request.setValue(etag, forHTTPHeaderField: "If-None-Match")
+        }
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse else { return }
+        if http.statusCode == 304 { return }
+        guard http.statusCode == 200, let img = UIImage(data: data) else { return }
+        memory.setObject(img, forKey: url as NSURL)
+        try? data.write(to: file, options: .atomic)
+        if let etag = http.value(forHTTPHeaderField: "ETag") {
+            try? etag.write(to: etagFile(for: url), atomically: true, encoding: .utf8)
+        }
+    }
+
+    private func etagFile(for url: URL) -> URL {
+        diskDir.appendingPathComponent(key(for: url) + ".etag")
     }
 
     /// Warm the cache for a set of URLs (e.g. after loading a feed) so they're

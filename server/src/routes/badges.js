@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
+const crypto = require('crypto');
 const { Resvg } = require('@resvg/resvg-js');
 const { buildBadgeSvg } = require('../utils/patch-render-svg');
 const { buildRankMedallionSvg } = require('../utils/rank-badge-render-svg');
@@ -42,6 +43,27 @@ const RESVG_OPTS = {
 // In-memory PNG cache — badges are deterministic, no need to re-render
 const pngCache = new Map();
 
+function etagFor(buf) {
+  return '"' + crypto.createHash('sha256').update(buf).digest('hex').slice(0, 16) + '"';
+}
+
+// Content-addressed ETag support: the iOS client's on-device image cache
+// keeps a badge PNG forever once fetched (no expiry, keyed only by URL), so
+// a server-side content fix alone -- new badge art, a corrected name, a
+// rebalanced palette, whatever -- would never reach an install that already
+// cached the old bytes. The client revalidates with If-None-Match on every
+// view instead of trusting Cache-Control's max-age blindly; since the ETag
+// is a hash of the actual PNG bytes, it only changes when the image
+// actually does, so this stays a cheap 304 the rest of the time.
+function sendPngWithEtag(req, res, png) {
+  const etag = etagFor(png);
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.setHeader('ETag', etag);
+  if (req.headers['if-none-match'] === etag) return res.status(304).end();
+  res.send(png);
+}
+
 function badgeSvgFor(req) {
   const numericId = parseInt(req.params.id, 10);
   if (isNaN(numericId)) return null;
@@ -68,18 +90,14 @@ router.get('/rank/:level/png', (req, res) => {
   const { svg, cacheKey } = result;
 
   if (pngCache.has(cacheKey)) {
-    res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    return res.send(pngCache.get(cacheKey));
+    return sendPngWithEtag(req, res, pngCache.get(cacheKey));
   }
 
   try {
     const resvg = new Resvg(svg, RESVG_OPTS);
     const png = resvg.render().asPng();
     pngCache.set(cacheKey, png);
-    res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.send(png);
+    sendPngWithEtag(req, res, png);
   } catch (err) {
     console.error('Rank SVG→PNG error:', err);
     res.status(500).json({ error: 'render_failed' });
@@ -102,18 +120,14 @@ router.get('/:id/png', (req, res) => {
   const { svg, cacheKey } = result;
 
   if (pngCache.has(cacheKey)) {
-    res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    return res.send(pngCache.get(cacheKey));
+    return sendPngWithEtag(req, res, pngCache.get(cacheKey));
   }
 
   try {
     const resvg = new Resvg(svg, RESVG_OPTS);
     const png = resvg.render().asPng();
     pngCache.set(cacheKey, png);
-    res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.send(png);
+    sendPngWithEtag(req, res, png);
   } catch (err) {
     console.error('SVG→PNG error:', err);
     res.status(500).json({ error: 'render_failed' });
