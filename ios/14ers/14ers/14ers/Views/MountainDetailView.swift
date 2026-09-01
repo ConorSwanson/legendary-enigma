@@ -13,6 +13,7 @@ struct MountainDetailView: View {
     @State private var detail: MountainDetail?
     @State private var error: String?
     @State private var selectedClimbId: Int?
+    @State private var showLogClimb = false
 
     private static let monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -25,6 +26,7 @@ struct MountainDetailView: View {
                 hero
                 if let d = detail {
                     VStack(alignment: .leading, spacing: 22) {
+                        logClimbSection(d)
                         statRow(d)
                         if !d.byYear.isEmpty { byYearSection(d) }
                         if !d.byMonth.isEmpty { byMonthSection(d) }
@@ -46,7 +48,70 @@ struct MountainDetailView: View {
         .navigationDestination(item: $selectedClimbId) { id in
             ClimbDetailView(climbId: id)
         }
+        .sheet(isPresented: $showLogClimb) {
+            LogClimbView(preselectedMountainId: mountainId)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .climbLogged)) { _ in
+            Task { await load() }
+        }
         .task { await load() }
+    }
+
+    // MARK: - Log a climb / already-summited banner
+
+    // Distinct from the "Recent Summits" list further down (which is
+    // everyone's public climbs) -- this is specifically about *your* status
+    // on this peak, and doubles as the entry point for logging one, since
+    // until now the only way to log a climb for a specific peak you found
+    // by browsing Summits was to leave this page, open Log a Climb, and
+    // search for it again.
+    @ViewBuilder
+    private func logClimbSection(_ d: MountainDetail) -> some View {
+        if d.isClimbed {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.title3)
+                        .foregroundColor(emerald)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("You've summited this peak")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.white)
+                        Text(d.userAscents > 1 ? "\(d.userAscents) ascents logged" : "1 ascent logged")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    Spacer()
+                }
+                Button { showLogClimb = true } label: {
+                    Text("Log Another Ascent")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(card)
+                        .foregroundColor(emerald)
+                        .cornerRadius(12)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(14)
+            .background(emerald.opacity(0.12))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(emerald.opacity(0.3), lineWidth: 1))
+            .cornerRadius(14)
+        } else {
+            Button { showLogClimb = true } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "plus.circle.fill")
+                    Text("Log This Climb").bold()
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(emerald)
+                .foregroundColor(bg)
+                .cornerRadius(14)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     // MARK: - Hero

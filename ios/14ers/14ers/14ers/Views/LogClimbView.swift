@@ -26,6 +26,10 @@ struct LogClimbView: View {
     /// Non-nil when editing a previously-logged climb rather than logging a new one.
     var existingClimb: Climb? = nil
     var onEditSaved: ((Climb) -> Void)? = nil
+    /// Non-nil when arriving from a specific mountain's page (e.g. "Log This
+    /// Climb" on Mountain Detail) so the peak comes pre-selected instead of
+    /// making the user pick it again. Ignored when editing.
+    var preselectedMountainId: Int? = nil
 
     @State private var mountains: [Mountain] = []
     @State private var climbedIds: Set<Int> = []
@@ -68,9 +72,10 @@ struct LogClimbView: View {
         mountains.first(where: { $0.id == selectedMountainId })
     }
 
-    init(existingClimb: Climb? = nil, onEditSaved: ((Climb) -> Void)? = nil) {
+    init(existingClimb: Climb? = nil, onEditSaved: ((Climb) -> Void)? = nil, preselectedMountainId: Int? = nil) {
         self.existingClimb = existingClimb
         self.onEditSaved = onEditSaved
+        self.preselectedMountainId = preselectedMountainId
         if let climb = existingClimb {
             _selectedMountainId = State(initialValue: climb.mountainId)
             let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd"
@@ -79,6 +84,8 @@ struct LogClimbView: View {
             _visibility = State(initialValue: climb.visibility)
             let urls = climb.photoUrls ?? climb.photoUrl.map { [$0] } ?? []
             _photoItems = State(initialValue: urls.map { PhotoItem(kind: .existing(url: $0)) })
+        } else if let preselectedMountainId {
+            _selectedMountainId = State(initialValue: preselectedMountainId)
         }
     }
 
@@ -103,7 +110,7 @@ struct LogClimbView: View {
             .navigationTitle(isEditing ? "Edit Climb" : "Log a Climb")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if isEditing {
+                if isEditing || preselectedMountainId != nil {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button("Cancel") { dismiss() }.foregroundColor(sky)
                     }
@@ -672,7 +679,7 @@ struct LogClimbView: View {
     }
 
     private func resetForm() {
-        selectedMountainId = nil
+        selectedMountainId = preselectedMountainId
         date = Date()
         notes = ""
         visibility = "public"
@@ -681,7 +688,14 @@ struct LogClimbView: View {
         detectedMountainId = nil
         detectedMountainName = nil
         mountainSetByPhoto = false
-        userState.selectedTab = 1
+        if preselectedMountainId != nil {
+            // Arrived as a sheet from a specific mountain's page -- close
+            // back to it instead of jumping to the Feed tab, which would
+            // yank the user away from the page they were just looking at.
+            dismiss()
+        } else {
+            userState.selectedTab = 1
+        }
     }
 }
 
@@ -950,6 +964,7 @@ private struct ClimbSuccessView: View {
                             .padding(.vertical, 14)
                             .background(cardColor)
                             .cornerRadius(14)
+                            .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 24)
                     .padding(.bottom, 48)
