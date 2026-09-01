@@ -398,9 +398,18 @@ struct HomeView: View {
 
     // MARK: - Settings links
 
+    private var inviteText: String {
+        "I've been tracking my summits on Switchback — you should try it: \(Config.appStoreURL.absoluteString)"
+    }
+
     @ViewBuilder
     private var settingsLinksSection: some View {
         VStack(spacing: 0) {
+            ShareLink(item: inviteText) {
+                settingsRow(icon: "person.badge.plus", title: "Invite Friends")
+            }
+            .buttonStyle(.plain)
+            Divider().overlay(Color.white.opacity(0.08))
             NavigationLink(destination: BlockedUsersView()) {
                 settingsRow(icon: "hand.raised.slash", title: "Blocked Users")
             }

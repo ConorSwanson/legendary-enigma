@@ -19,4 +19,7 @@ enum Config {
     /// Also doubles as the abuse/report contact point required alongside
     /// in-app reporting for App Store Guideline 1.2 (UGC apps).
     nonisolated(unsafe) static let supportURL = URL(string: "\(shareBaseURL)/support")!
+
+    /// App Store listing, for the Profile "Invite Friends" share sheet.
+    nonisolated(unsafe) static let appStoreURL = URL(string: "https://apps.apple.com/us/app/switchback-summit-tracker/id6784754996")!
 }
