@@ -6,12 +6,12 @@ private let sky     = Color(red: 56/255, green: 189/255, blue: 248/255)
 private let emerald = Color(red: 52/255, green: 211/255, blue: 153/255)
 private let dimCard = Color(red: 31/255, green: 41/255, blue: 55/255)
 
-// MARK: - Badges (Peaks + Climber Progress + Leaderboard)
+// MARK: - Badges (Peaks + Climber Level + Leaderboard)
 
 struct BadgesView: View {
     enum Filter: String, CaseIterable, Identifiable {
         case peaks = "Peaks"
-        case rank  = "Climber Progress"
+        case rank  = "Climber Level"
         case leaderboard = "Leaderboard"
         var id: String { rawValue }
     }
@@ -107,7 +107,7 @@ struct BadgesView: View {
     private var navigationTitle: String {
         switch filter {
         case .peaks: return "Badge Collection"
-        case .rank: return "Climber Progress"
+        case .rank: return "Climber Level"
         case .leaderboard: return "Leaderboard"
         }
     }

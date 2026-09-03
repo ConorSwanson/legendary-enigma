@@ -327,7 +327,7 @@ struct LeaderboardEntry: Codable, Identifiable, Sendable {
 }
 
 // Mirrors server/src/utils/levels.js — used to render the full ladder
-// (locked/unlocked tiers) in the Badges tab's Climber Progress grid. One
+// (locked/unlocked tiers) in the Badges tab's Climber Level grid. One
 // named level every 5 unique peaks climbed, no fixed ceiling — keep in sync
 // with the server; a mismatch here just skews the locked/unlocked tile grid,
 // since a user's live rank always comes from the server, not this array.
