@@ -375,7 +375,6 @@ function initDb() {
       created_at        TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_comments_climb ON climb_comments(climb_id);
-    CREATE INDEX IF NOT EXISTS idx_comments_parent ON climb_comments(parent_comment_id);
 
     CREATE TABLE IF NOT EXISTS comment_likes (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -539,11 +538,15 @@ function initDb() {
   }
 
   // Migrate: add parent_comment_id to climb_comments for threaded replies
-  // (no-op on new installs)
+  // (no-op on new installs). The index is created here, not alongside the
+  // CREATE TABLE above, because CREATE TABLE IF NOT EXISTS is a no-op on an
+  // existing table -- indexing the column there would run before this
+  // migration adds it and crash initDb() on any pre-existing database.
   const commentColsNow = db.pragma('table_info(climb_comments)').map(c => c.name);
   if (!commentColsNow.includes('parent_comment_id')) {
     db.exec('ALTER TABLE climb_comments ADD COLUMN parent_comment_id INTEGER REFERENCES climb_comments(id) ON DELETE CASCADE');
   }
+  db.exec('CREATE INDEX IF NOT EXISTS idx_comments_parent ON climb_comments(parent_comment_id)');
 
   // Migrate: add lat/lng/source to mountains (no-op on new installs — these
   // are in the CREATE TABLE above going forward; this only backfills
