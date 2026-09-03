@@ -283,13 +283,18 @@ actor APIClient {
         try await request("/climbs/\(climbId)/comments")
     }
 
-    func postComment(climbId: Int, body: String) async throws -> Comment {
-        let payload = try JSONEncoder().encode(["body": body])
-        return try await request("/climbs/\(climbId)/comments", method: "POST", body: payload)
+    func postComment(climbId: Int, body: String, parentCommentId: Int? = nil) async throws -> Comment {
+        struct Payload: Encodable { let body: String; let parent_comment_id: Int? }
+        let data = try JSONEncoder().encode(Payload(body: body, parent_comment_id: parentCommentId))
+        return try await request("/climbs/\(climbId)/comments", method: "POST", body: data)
     }
 
     func deleteComment(climbId: Int, commentId: Int) async throws {
         try await requestVoid("/climbs/\(climbId)/comments/\(commentId)", method: "DELETE")
+    }
+
+    func likeComment(climbId: Int, commentId: Int) async throws -> LikeResponse {
+        try await request("/climbs/\(climbId)/comments/\(commentId)/like", method: "POST")
     }
 
     // MARK: - Feed

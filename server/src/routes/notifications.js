@@ -15,7 +15,7 @@ router.get('/unread-count', requireAuth, (req, res) => {
 // GET /api/notifications
 router.get('/', requireAuth, (req, res) => {
   const rows = getDb().prepare(`
-    SELECT n.id, n.type, n.from_user_id, n.climb_id, n.level, n.is_read, n.created_at,
+    SELECT n.id, n.type, n.from_user_id, n.climb_id, n.comment_id, n.level, n.is_read, n.created_at,
            u.name AS from_user_name, u.avatar_path AS from_user_avatar_path,
            m.name AS mountain_name
     FROM notifications n
@@ -35,6 +35,7 @@ router.get('/', requireAuth, (req, res) => {
     from_user_name: n.from_user_name,
     from_user_avatar_url: n.from_user_avatar_path ? `${base}/uploads/${n.from_user_avatar_path}` : null,
     climb_id: n.climb_id,
+    comment_id: n.comment_id,
     mountain_name: n.mountain_name,
     level: n.level,
     level_name: n.level != null ? nameForLevel(n.level) : null,

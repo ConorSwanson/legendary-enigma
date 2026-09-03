@@ -854,6 +854,8 @@ private struct NotificationRow: View {
         case "like":     return "\(item.fromUserName) liked your climb on \(item.mountainName ?? "a peak")"
         case "follow":   return "\(item.fromUserName) started following you"
         case "comment":  return "\(item.fromUserName) commented on your climb of \(item.mountainName ?? "a peak")"
+        case "comment_reply": return "\(item.fromUserName) replied to your comment"
+        case "comment_like":  return "\(item.fromUserName) liked your comment"
         case "level_up": return "🏔 You've reached \(item.levelName ?? "a new rank")!"
         case "new_climb": return "\(item.fromUserName) just summited \(item.mountainName ?? "a peak")"
         default:         return "\(item.fromUserName) interacted with your content"

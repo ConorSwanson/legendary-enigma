@@ -528,15 +528,21 @@ struct Comment: Codable, Identifiable, Sendable {
     let userName: String
     let userAvatarUrl: String?
     let createdAt: String
+    let parentCommentId: Int?
     var isOwner: Bool?
+    var likeCount: Int = 0
+    var isLiked: Bool = false
 
     enum CodingKeys: String, CodingKey {
         case id, body
-        case userId        = "user_id"
-        case userName      = "user_name"
-        case userAvatarUrl = "user_avatar_url"
-        case createdAt     = "created_at"
-        case isOwner       = "is_owner"
+        case userId          = "user_id"
+        case userName        = "user_name"
+        case userAvatarUrl   = "user_avatar_url"
+        case createdAt       = "created_at"
+        case parentCommentId = "parent_comment_id"
+        case isOwner         = "is_owner"
+        case likeCount       = "like_count"
+        case isLiked         = "is_liked"
     }
 }
 
@@ -556,6 +562,7 @@ struct NotificationItem: Codable, Identifiable, Sendable {
     let fromUserName: String
     let fromUserAvatarUrl: String?
     let climbId: Int?
+    let commentId: Int?
     let mountainName: String?
     let level: Int?
     let levelName: String?
@@ -568,6 +575,7 @@ struct NotificationItem: Codable, Identifiable, Sendable {
         case fromUserName      = "from_user_name"
         case fromUserAvatarUrl = "from_user_avatar_url"
         case climbId           = "climb_id"
+        case commentId         = "comment_id"
         case mountainName      = "mountain_name"
         case levelName         = "level_name"
         case isRead            = "is_read"

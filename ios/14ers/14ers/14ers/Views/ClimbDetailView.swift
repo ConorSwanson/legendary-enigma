@@ -24,6 +24,7 @@ struct ClimbDetailView: View {
     @State private var comments: [Comment] = []
     @State private var newCommentText: String = ""
     @State private var isPostingComment = false
+    @State private var replyingTo: Comment?
     @FocusState private var commentFieldFocused: Bool
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var userState: UserState
@@ -373,6 +374,14 @@ struct ClimbDetailView: View {
             .padding(6)
     }
 
+    private var topLevelComments: [Comment] {
+        comments.filter { $0.parentCommentId == nil }
+    }
+
+    private func replies(to commentId: Int) -> [Comment] {
+        comments.filter { $0.parentCommentId == commentId }
+    }
+
     @ViewBuilder
     private var commentsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -389,16 +398,52 @@ struct ClimbDetailView: View {
                         .foregroundColor(.gray)
                         .padding(.vertical, 4)
                 } else {
-                    ForEach(comments) { comment in
-                        CommentRow(comment: comment) {
-                            Task { await deleteComment(comment) }
+                    ForEach(topLevelComments) { comment in
+                        VStack(alignment: .leading, spacing: 6) {
+                            CommentRow(comment: comment) {
+                                Task { await deleteComment(comment) }
+                            } onLike: {
+                                Task { await toggleCommentLike(comment) }
+                            } onReply: {
+                                replyingTo = comment
+                                commentFieldFocused = true
+                            }
+
+                            ForEach(replies(to: comment.id)) { reply in
+                                CommentRow(comment: reply) {
+                                    Task { await deleteComment(reply) }
+                                } onLike: {
+                                    Task { await toggleCommentLike(reply) }
+                                } onReply: {
+                                    replyingTo = comment
+                                    commentFieldFocused = true
+                                }
+                                .padding(.leading, 30)
+                            }
                         }
+                    }
+                }
+
+                if let replyingTo {
+                    HStack {
+                        Text("Replying to \(replyingTo.userName)")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        Spacer()
+                        Button {
+                            self.replyingTo = nil
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
 
                 // New comment input
                 HStack(spacing: 10) {
-                    TextField("Add a comment…", text: $newCommentText, axis: .vertical)
+                    TextField(replyingTo == nil ? "Add a comment…" : "Add a reply…", text: $newCommentText, axis: .vertical)
                         .font(.subheadline)
                         .foregroundColor(.white)
                         .tint(emerald)
@@ -476,8 +521,9 @@ struct ClimbDetailView: View {
         isPostingComment = true
         defer { isPostingComment = false }
         do {
-            let created = try await APIClient.shared.postComment(climbId: climbId, body: text)
+            let created = try await APIClient.shared.postComment(climbId: climbId, body: text, parentCommentId: replyingTo?.id)
             newCommentText = ""
+            replyingTo = nil
             comments.append(created)
         } catch {}
     }
@@ -486,8 +532,23 @@ struct ClimbDetailView: View {
         guard comment.isOwner == true else { return }
         do {
             try await APIClient.shared.deleteComment(climbId: climbId, commentId: comment.id)
-            comments.removeAll { $0.id == comment.id }
+            comments.removeAll { $0.id == comment.id || $0.parentCommentId == comment.id }
         } catch {}
+    }
+
+    private func toggleCommentLike(_ comment: Comment) async {
+        guard let idx = comments.firstIndex(where: { $0.id == comment.id }) else { return }
+        let wasLiked = comments[idx].isLiked
+        comments[idx].isLiked.toggle()
+        comments[idx].likeCount += wasLiked ? -1 : 1
+        do {
+            let result = try await APIClient.shared.likeComment(climbId: climbId, commentId: comment.id)
+            comments[idx].isLiked = result.liked
+            comments[idx].likeCount = result.count
+        } catch {
+            comments[idx].isLiked = wasLiked
+            comments[idx].likeCount = comment.likeCount
+        }
     }
 
     private func load() async {
@@ -577,6 +638,8 @@ private let sky = Color(red: 56/255, green: 189/255, blue: 248/255)
 struct CommentRow: View {
     let comment: Comment
     let onDelete: () -> Void
+    let onLike: () -> Void
+    let onReply: () -> Void
 
     @State private var showReportDialog = false
 
@@ -631,6 +694,30 @@ struct CommentRow: View {
                     .font(.subheadline)
                     .foregroundColor(Color(red: 209/255, green: 213/255, blue: 219/255))
                     .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 14) {
+                    Button(action: onLike) {
+                        HStack(spacing: 4) {
+                            Image(systemName: comment.isLiked ? "heart.fill" : "heart")
+                                .font(.caption2)
+                                .foregroundColor(comment.isLiked ? .red : .gray)
+                            if comment.likeCount > 0 {
+                                Text("\(comment.likeCount)")
+                                    .font(.caption2)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onReply) {
+                        Text("Reply")
+                            .font(.caption2.bold())
+                            .foregroundColor(.gray)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 2)
             }
         }
         .padding(.vertical, 4)

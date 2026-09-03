@@ -360,19 +360,31 @@ function initDb() {
       from_user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       type          TEXT    NOT NULL,
       climb_id      INTEGER REFERENCES climbs(id) ON DELETE CASCADE,
+      comment_id    INTEGER REFERENCES climb_comments(id) ON DELETE CASCADE,
       is_read       INTEGER NOT NULL DEFAULT 0,
       created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id);
 
     CREATE TABLE IF NOT EXISTS climb_comments (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      climb_id   INTEGER NOT NULL REFERENCES climbs(id) ON DELETE CASCADE,
-      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      body       TEXT    NOT NULL,
-      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      climb_id          INTEGER NOT NULL REFERENCES climbs(id) ON DELETE CASCADE,
+      user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      parent_comment_id INTEGER REFERENCES climb_comments(id) ON DELETE CASCADE,
+      body              TEXT    NOT NULL,
+      created_at        TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_comments_climb ON climb_comments(climb_id);
+    CREATE INDEX IF NOT EXISTS idx_comments_parent ON climb_comments(parent_comment_id);
+
+    CREATE TABLE IF NOT EXISTS comment_likes (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      comment_id INTEGER NOT NULL REFERENCES climb_comments(id) ON DELETE CASCADE,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(user_id, comment_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_comment_likes_comment ON comment_likes(comment_id);
 
     CREATE TABLE IF NOT EXISTS climb_photos (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -521,6 +533,16 @@ function initDb() {
   const notifColsNow = db.pragma('table_info(notifications)').map(c => c.name);
   if (!notifColsNow.includes('level')) {
     db.exec('ALTER TABLE notifications ADD COLUMN level INTEGER');
+  }
+  if (!notifColsNow.includes('comment_id')) {
+    db.exec('ALTER TABLE notifications ADD COLUMN comment_id INTEGER REFERENCES climb_comments(id) ON DELETE CASCADE');
+  }
+
+  // Migrate: add parent_comment_id to climb_comments for threaded replies
+  // (no-op on new installs)
+  const commentColsNow = db.pragma('table_info(climb_comments)').map(c => c.name);
+  if (!commentColsNow.includes('parent_comment_id')) {
+    db.exec('ALTER TABLE climb_comments ADD COLUMN parent_comment_id INTEGER REFERENCES climb_comments(id) ON DELETE CASCADE');
   }
 
   // Migrate: add lat/lng/source to mountains (no-op on new installs — these
