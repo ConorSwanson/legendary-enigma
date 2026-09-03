@@ -26,6 +26,7 @@ struct BadgesView: View {
     var initialFilter: Filter = .peaks
     var isTabRoot: Bool = false
 
+    @EnvironmentObject var userState: UserState
     @State private var filter: Filter = .peaks
     @State private var mountains: [Mountain] = []
     @State private var peakLists: [PeakList] = []
@@ -101,6 +102,9 @@ struct BadgesView: View {
         .task { await load() }
         .task(id: filter == .leaderboard ? leaderboardScope.rawValue : nil) {
             if filter == .leaderboard { await loadLeaderboard() }
+        }
+        .onChange(of: userState.selectedTab) { newTab in
+            if newTab == 3 { Task { await load() } }   // refresh climbed state on tab open
         }
     }
 
@@ -538,11 +542,18 @@ private struct BadgeTile: View {
 
 struct BadgeDetailView: View {
     let mountain: Mountain
-    let climbed: Bool
-    let ascentCount: Int
 
+    @State private var climbed: Bool
+    @State private var ascentCount: Int
     @State private var ascents: [Climb] = []
     @State private var isLoading = false
+    @State private var showLogClimb = false
+
+    init(mountain: Mountain, climbed: Bool, ascentCount: Int) {
+        self.mountain = mountain
+        _climbed = State(initialValue: climbed)
+        _ascentCount = State(initialValue: ascentCount)
+    }
 
     private var pngURL: URL? {
         URL(string: "\(Config.apiBaseURL)/api/badges/\(mountain.id)/png?climbed=\(climbed ? 1 : 0)")
@@ -577,6 +588,9 @@ struct BadgeDetailView: View {
                 }
                 .frame(maxWidth: 240)
                 .padding(.top, 8)
+
+                logClimbSection
+                    .padding(.horizontal)
 
                 // Mountain info
                 VStack(spacing: 1) {
@@ -625,11 +639,77 @@ struct BadgeDetailView: View {
         .background(bg.ignoresSafeArea())
         .navigationTitle(mountain.name)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showLogClimb) {
+            LogClimbView(preselectedMountainId: mountain.id)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .climbLogged)) { _ in
+            Task { await loadAscents() }
+        }
         .task {
             guard climbed else { return }
-            isLoading = true
-            ascents = (try? await APIClient.shared.climbs(mountainId: mountain.id)) ?? []
-            isLoading = false
+            await loadAscents()
+        }
+    }
+
+    private func loadAscents() async {
+        isLoading = true
+        ascents = (try? await APIClient.shared.climbs(mountainId: mountain.id)) ?? []
+        climbed = !ascents.isEmpty
+        ascentCount = ascents.count
+        isLoading = false
+    }
+
+    // MARK: - Log a climb / already-summited banner
+
+    // Same pattern as MountainDetailView's logClimbSection -- lets someone
+    // who found a peak via its badge tile log a climb for it without first
+    // backing out to Summits or the Log tab.
+    @ViewBuilder
+    private var logClimbSection: some View {
+        if climbed {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.title3)
+                        .foregroundColor(emerald)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("You've summited this peak")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.white)
+                        Text(ascentCount > 1 ? "\(ascentCount) ascents logged" : "1 ascent logged")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    Spacer()
+                }
+                Button { showLogClimb = true } label: {
+                    Text("Log Another Ascent")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(card)
+                        .foregroundColor(emerald)
+                        .cornerRadius(12)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(14)
+            .background(emerald.opacity(0.12))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(emerald.opacity(0.3), lineWidth: 1))
+            .cornerRadius(14)
+        } else {
+            Button { showLogClimb = true } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "plus.circle.fill")
+                    Text("Log This Climb").bold()
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(emerald)
+                .foregroundColor(bg)
+                .cornerRadius(14)
+            }
+            .buttonStyle(.plain)
         }
     }
 
