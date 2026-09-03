@@ -90,7 +90,7 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .navigateToClimb)) { note in
             guard authManager.isSignedIn,
                   let climbId = note.userInfo?["climbId"] as? Int else { return }
-            userState.selectedTab = 0
+            userState.selectedTab = 4
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 userState.pendingClimbId = climbId
             }

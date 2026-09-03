@@ -694,7 +694,7 @@ struct LogClimbView: View {
             // yank the user away from the page they were just looking at.
             dismiss()
         } else {
-            userState.selectedTab = 1
+            userState.selectedTab = 0
         }
     }
 }

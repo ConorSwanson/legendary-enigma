@@ -138,7 +138,7 @@ struct MountainsView: View {
         }
         .task { await load() }
         .onChange(of: userState.selectedTab) { newTab in
-            if newTab == 3 { Task { await load() } }   // refresh climbed state on tab open
+            if newTab == 1 { Task { await load() } }   // refresh climbed state on tab open
         }
     }
 

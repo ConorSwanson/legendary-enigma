@@ -5,27 +5,27 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $userState.selectedTab) {
-            HomeView()
-                .tabItem { Label("Profile", systemImage: "house.fill") }
-                .tag(0)
-
             FeedView()
                 .tabItem { Label("Feed", systemImage: "person.2.fill") }
+                .tag(0)
+
+            MountainsView()
+                .tabItem { Label("Summits", systemImage: "mountain.2.fill") }
                 .tag(1)
 
             LogClimbView()
                 .tabItem { Label("Log", systemImage: "plus.circle.fill") }
                 .tag(2)
 
-            MountainsView()
-                .tabItem { Label("Summits", systemImage: "mountain.2.fill") }
-                .tag(3)
-
             NavigationStack {
                 BadgesView(isTabRoot: true)
             }
             .tabItem { Label("Badges", systemImage: "medal.fill") }
-            .tag(4)
+            .tag(3)
+
+            HomeView()
+                .tabItem { Label("Profile", systemImage: "house.fill") }
+                .tag(4)
         }
         .tint(Color(red: 56/255, green: 189/255, blue: 248/255))
         .onAppear {

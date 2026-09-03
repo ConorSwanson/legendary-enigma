@@ -83,7 +83,7 @@ struct HomeView: View {
             Task { await load() }
         }
         .onChange(of: userState.selectedTab) { newTab in
-            if newTab == 0 { Task { await load() } }
+            if newTab == 4 { Task { await load() } }
         }
         .onChange(of: avatarPickerItem) { handleAvatarPick() }
         .onChange(of: backgroundPickerItem) { handleBackgroundPick() }
@@ -679,7 +679,7 @@ struct HeaderAvatar: View {
     @EnvironmentObject var userState: UserState
 
     var body: some View {
-        Button { userState.selectedTab = 0 } label: {
+        Button { userState.selectedTab = 4 } label: {
             Group {
                 if let urlStr = userState.avatarUrl, let url = URL(string: urlStr) {
                     CachedAsyncImage(url: url) { img in
@@ -770,7 +770,7 @@ struct NotificationsView: View {
                     List(notifications) { item in
                         NotificationRow(item: item) {
                             if let climbId = item.climbId {
-                                userState.selectedTab = 0
+                                userState.selectedTab = 4
                                 dismiss()
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                                     userState.pendingClimbId = climbId
