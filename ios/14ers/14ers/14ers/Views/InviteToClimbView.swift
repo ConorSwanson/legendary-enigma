@@ -71,13 +71,15 @@ struct InviteToClimbView: View {
             VStack(alignment: .leading, spacing: 22) {
                 peakChip
 
+                linkButton
+
                 VStack(alignment: .leading, spacing: 8) {
                     fieldLabel("When")
                     dateRow
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    fieldLabel("Who")
+                    fieldLabel("Also Notify On Switchback")
                     searchField
                     if people.isEmpty {
                         Text(searchQuery.isEmpty ? "You're not following anyone yet — search by name." : "No one found.")
@@ -89,7 +91,6 @@ struct InviteToClimbView: View {
                             ForEach(people) { person in personRow(person) }
                         }
                     }
-                    linkToggleRow
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -255,21 +256,39 @@ struct InviteToClimbView: View {
         )
     }
 
-    private var linkToggleRow: some View {
+    private var linkButton: some View {
         Button {
-            wantsLink.toggle()
+            withAnimation(.spring(response: 0.3)) { wantsLink.toggle() }
         } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "link")
-                Text("Not on Switchback? Include a shareable link")
-                    .font(.caption.bold())
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle().fill(wantsLink ? emerald : sky.opacity(0.15)).frame(width: 34, height: 34)
+                    Image(systemName: "link")
+                        .font(.subheadline.bold())
+                        .foregroundColor(wantsLink ? bg : sky)
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Get a Shareable Link")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                    Text("For friends who aren't on Switchback yet")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
                 Spacer()
                 Image(systemName: wantsLink ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundColor(wantsLink ? emerald : Color(white: 0.3))
             }
-            .foregroundColor(wantsLink ? emerald : sky)
+            .padding(13)
+            .background(wantsLink ? emerald.opacity(0.14) : card)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(wantsLink ? emerald.opacity(0.5) : Color.clear, lineWidth: 1.3)
+            )
+            .cornerRadius(14)
         }
         .buttonStyle(.plain)
-        .padding(.top, 2)
     }
 
     // MARK: - Confirmation
