@@ -689,6 +689,14 @@ extension Int {
     }
 }
 
+// .navigationDestination(item:) only needs Hashable, which Int already
+// gets for free, but .sheet(item:) requires Identifiable -- this lets a
+// raw id (climbId, inviteId, etc.) drive a sheet the same way it already
+// drives navigation, instead of needing a wrapper type at every call site.
+extension Int: Identifiable {
+    public var id: Int { self }
+}
+
 extension String {
     func formattedClimbDate() -> String {
         let isoFormatter = DateFormatter()
