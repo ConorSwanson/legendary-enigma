@@ -92,12 +92,12 @@ struct FeedView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 14) {
-                        Button { showUserSearch = true } label: {
-                            Image(systemName: "magnifyingglass").foregroundColor(sky)
-                        }
-                        NotificationBellButton()
+                    Button { showUserSearch = true } label: {
+                        Image(systemName: "magnifyingglass").foregroundColor(sky)
                     }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NotificationBellButton()
                 }
             }
             .sheet(isPresented: $showUserSearch) {

@@ -124,15 +124,16 @@ struct MountainsView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { HeaderAvatar() }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 14) {
-                        Button {
-                            withAnimation { viewMode = viewMode == .list ? .map : .list }
-                        } label: {
-                            Image(systemName: viewMode == .list ? "map" : "list.bullet")
-                                .foregroundColor(sky)
-                        }
-                        NotificationBellButton()
+                    Button {
+                        withAnimation { viewMode = viewMode == .list ? .map : .list }
+                    } label: {
+                        Image(systemName: viewMode == .list ? "map.fill" : "list.bullet")
+                            .fontWeight(.semibold)
+                            .foregroundColor(sky)
                     }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NotificationBellButton()
                 }
             }
         }
