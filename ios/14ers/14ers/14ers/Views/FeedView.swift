@@ -96,6 +96,9 @@ struct FeedView: View {
                         Image(systemName: "magnifyingglass").foregroundColor(sky)
                     }
                 }
+                if #available(iOS 26.0, *) {
+                    ToolbarSpacer(.fixed, placement: .navigationBarTrailing)
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NotificationBellButton()
                 }
