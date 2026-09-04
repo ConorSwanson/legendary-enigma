@@ -191,8 +191,18 @@ struct InviteDetailView: View {
             Text("WHO'S IN").font(.caption2.bold()).foregroundColor(.gray).tracking(1)
             VStack(spacing: 1) {
                 ForEach(invite.recipients) { r in
-                    HStack {
+                    HStack(spacing: 6) {
                         Text(r.userName).font(.subheadline).foregroundColor(.white)
+                        if r.isGuest {
+                            Text("VIA LINK")
+                                .font(.system(size: 9, weight: .bold))
+                                .tracking(0.5)
+                                .foregroundColor(sky)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(sky.opacity(0.15))
+                                .cornerRadius(5)
+                        }
                         Spacer()
                         Text(r.status.capitalized)
                             .font(.caption.bold())

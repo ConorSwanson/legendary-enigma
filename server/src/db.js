@@ -362,6 +362,7 @@ function initDb() {
       climb_id      INTEGER REFERENCES climbs(id) ON DELETE CASCADE,
       comment_id    INTEGER REFERENCES climb_comments(id) ON DELETE CASCADE,
       invite_id     INTEGER REFERENCES climb_invites(id) ON DELETE CASCADE,
+      guest_name    TEXT,
       is_read       INTEGER NOT NULL DEFAULT 0,
       created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );
@@ -528,6 +529,19 @@ function initDb() {
       UNIQUE(user_id, mountain_id)
     );
     CREATE INDEX IF NOT EXISTS idx_wishlist_user ON mountain_wishlist(user_id);
+
+    -- A "yes" from someone who tapped a share-link invite but never made
+    -- an account -- no user_id to attach to (that's the whole point), so
+    -- this stays a separate table rather than a nullable column on
+    -- climb_invite_recipients. serializeInvite() merges rows from both
+    -- into one recipients array for the client.
+    CREATE TABLE IF NOT EXISTS climb_invite_guest_responses (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      invite_id  INTEGER NOT NULL REFERENCES climb_invites(id) ON DELETE CASCADE,
+      guest_name TEXT    NOT NULL,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_guest_responses_invite ON climb_invite_guest_responses(invite_id);
   `);
 
   // Migrate: add columns to legacy climbs table if missing
@@ -582,6 +596,9 @@ function initDb() {
   }
   if (!notifColsNow.includes('invite_id')) {
     db.exec('ALTER TABLE notifications ADD COLUMN invite_id INTEGER REFERENCES climb_invites(id) ON DELETE CASCADE');
+  }
+  if (!notifColsNow.includes('guest_name')) {
+    db.exec('ALTER TABLE notifications ADD COLUMN guest_name TEXT');
   }
 
   // Migrate: add parent_comment_id to climb_comments for threaded replies

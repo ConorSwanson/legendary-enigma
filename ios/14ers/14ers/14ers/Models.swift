@@ -605,18 +605,32 @@ struct InviteRecipient: Codable, Identifiable, Sendable {
     let id: Int
     let status: String
     let viaLink: Bool
+    let isGuest: Bool
     let respondedAt: String?
-    let userId: Int
+    let userId: Int?
     let userName: String
     let userAvatarUrl: String?
 
     enum CodingKeys: String, CodingKey {
         case id, status
         case viaLink     = "via_link"
+        case isGuest     = "is_guest"
         case respondedAt = "responded_at"
         case userId      = "user_id"
         case userName    = "user_name"
         case userAvatarUrl = "user_avatar_url"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        status = try c.decode(String.self, forKey: .status)
+        viaLink = try c.decode(Bool.self, forKey: .viaLink)
+        isGuest = try c.decodeIfPresent(Bool.self, forKey: .isGuest) ?? false
+        respondedAt = try c.decodeIfPresent(String.self, forKey: .respondedAt)
+        userId = try c.decodeIfPresent(Int.self, forKey: .userId)
+        userName = try c.decode(String.self, forKey: .userName)
+        userAvatarUrl = try c.decodeIfPresent(String.self, forKey: .userAvatarUrl)
     }
 }
 
@@ -650,6 +664,7 @@ struct NotificationItem: Codable, Identifiable, Sendable {
     let climbId: Int?
     let commentId: Int?
     let inviteId: Int?
+    let guestName: String?
     let mountainName: String?
     let level: Int?
     let levelName: String?
@@ -664,6 +679,7 @@ struct NotificationItem: Codable, Identifiable, Sendable {
         case climbId           = "climb_id"
         case commentId         = "comment_id"
         case inviteId          = "invite_id"
+        case guestName         = "guest_name"
         case mountainName      = "mountain_name"
         case levelName         = "level_name"
         case isRead            = "is_read"

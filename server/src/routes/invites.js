@@ -23,6 +23,14 @@ function serializeInvite(req, db, invite) {
     ORDER BY cir.created_at ASC
   `).all(invite.id);
 
+  // Guests who said "I'm in" on the web without ever making an account --
+  // no user_id, so they live in a separate table, merged into the same
+  // recipients array here so the client renders one unified roster.
+  const guestResponses = db.prepare(`
+    SELECT id, guest_name, created_at FROM climb_invite_guest_responses
+    WHERE invite_id = ? ORDER BY created_at ASC
+  `).all(invite.id);
+
   const myRecipient = recipients.find(r => r.user_id === req.user.id);
 
   return {
@@ -41,15 +49,31 @@ function serializeInvite(req, db, invite) {
     created_at: invite.created_at,
     is_inviter: invite.inviter_id === req.user.id,
     my_status: myRecipient?.status ?? null,
-    recipients: recipients.map(r => ({
-      id: r.id,
-      status: r.status,
-      via_link: !!r.via_link,
-      responded_at: r.responded_at,
-      user_id: r.user_id,
-      user_name: r.user_name,
-      user_avatar_url: avatarUrl(req, r.user_avatar_path),
-    })),
+    recipients: [
+      ...recipients.map(r => ({
+        id: r.id,
+        status: r.status,
+        via_link: !!r.via_link,
+        is_guest: false,
+        responded_at: r.responded_at,
+        user_id: r.user_id,
+        user_name: r.user_name,
+        user_avatar_url: avatarUrl(req, r.user_avatar_path),
+      })),
+      ...guestResponses.map(g => ({
+        // Offset well clear of any real climb_invite_recipients.id so the
+        // merged list has no collisions -- these ids only ever need to be
+        // unique within this one response, never looked up on their own.
+        id: 1_000_000_000 + g.id,
+        status: 'accepted',
+        via_link: true,
+        is_guest: true,
+        responded_at: g.created_at,
+        user_id: null,
+        user_name: g.guest_name,
+        user_avatar_url: null,
+      })),
+    ],
   };
 }
 

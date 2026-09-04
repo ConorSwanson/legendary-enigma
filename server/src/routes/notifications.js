@@ -15,7 +15,7 @@ router.get('/unread-count', requireAuth, (req, res) => {
 // GET /api/notifications
 router.get('/', requireAuth, (req, res) => {
   const rows = getDb().prepare(`
-    SELECT n.id, n.type, n.from_user_id, n.climb_id, n.comment_id, n.invite_id, n.level, n.is_read, n.created_at,
+    SELECT n.id, n.type, n.from_user_id, n.climb_id, n.comment_id, n.invite_id, n.guest_name, n.level, n.is_read, n.created_at,
            u.name AS from_user_name, u.avatar_path AS from_user_avatar_path,
            COALESCE(m.name, im.name) AS mountain_name
     FROM notifications n
@@ -39,6 +39,7 @@ router.get('/', requireAuth, (req, res) => {
     climb_id: n.climb_id,
     comment_id: n.comment_id,
     invite_id: n.invite_id,
+    guest_name: n.guest_name,
     mountain_name: n.mountain_name,
     level: n.level,
     level_name: n.level != null ? nameForLevel(n.level) : null,

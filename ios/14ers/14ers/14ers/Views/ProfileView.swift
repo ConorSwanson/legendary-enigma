@@ -884,6 +884,7 @@ private struct NotificationRow: View {
         case "invite_accepted": return "\(item.fromUserName) accepted your invite to climb \(item.mountainName ?? "a peak")"
         case "invite_declined": return "\(item.fromUserName) can't make it to climb \(item.mountainName ?? "a peak")"
         case "invite_maybe":    return "\(item.fromUserName) might join climbing \(item.mountainName ?? "a peak")"
+        case "invite_guest_accepted": return "\(item.guestName ?? item.fromUserName) accepted your invite to climb \(item.mountainName ?? "a peak")"
         default:         return "\(item.fromUserName) interacted with your content"
         }
     }
