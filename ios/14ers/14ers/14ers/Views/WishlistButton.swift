@@ -48,8 +48,8 @@ struct WishlistButton: View {
             Button("Add to Wishlist") { Task { await apply(true) } }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(mountainName.map { "Save \($0) so you can find it later, from your Profile." }
-                 ?? "Save this peak so you can find it later, from your Profile.")
+            Text(mountainName.map { "Save \($0) for future adventures, accessible from your Profile." }
+                 ?? "Save this peak for future adventures, accessible from your Profile.")
         }
     }
 
