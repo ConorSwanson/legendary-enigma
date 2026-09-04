@@ -416,6 +416,11 @@ struct HomeView: View {
     @ViewBuilder
     private var settingsLinksSection: some View {
         VStack(spacing: 0) {
+            NavigationLink(destination: PlannedClimbsView()) {
+                settingsRow(icon: "calendar", title: "Planned Climbs")
+            }
+            .buttonStyle(.plain)
+            Divider().overlay(Color.white.opacity(0.08))
             ShareLink(item: inviteText) {
                 settingsRow(icon: "person.badge.plus", title: "Invite Friends")
             }
