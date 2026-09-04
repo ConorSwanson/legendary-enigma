@@ -149,7 +149,11 @@ router.get('/:token', (req, res) => {
   const description = dateLabel
     ? `Join them on ${dateLabel} — track it on Switchback.`
     : 'No date set yet — track it on Switchback.';
-  const image = `${host}/api/badges/${invite.mountain_id}/png?climbed=0`;
+  // The colorful "climbed" badge art, not the desaturated "locked" one --
+  // an invite is trying to entice someone, and the locked style (built for
+  // in-app context, where a grid of other badges explains what it means)
+  // just reads as a dull, half-broken image in a bare iMessage preview.
+  const image = `${host}/api/badges/${invite.mountain_id}/png?climbed=1`;
   const url = `${host}${req.originalUrl}`;
 
   const body = `
