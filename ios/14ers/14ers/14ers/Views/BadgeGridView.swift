@@ -549,6 +549,7 @@ struct BadgeDetailView: View {
     @State private var ascents: [Climb] = []
     @State private var isLoading = false
     @State private var showLogClimb = false
+    @State private var showInvite = false
 
     init(mountain: Mountain, climbed: Bool, ascentCount: Int) {
         self.mountain = mountain
@@ -641,13 +642,12 @@ struct BadgeDetailView: View {
         .background(bg.ignoresSafeArea())
         .navigationTitle(mountain.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                WishlistButton(mountainId: mountain.id, isWishlisted: $isWishlisted)
-            }
-        }
         .sheet(isPresented: $showLogClimb) {
             LogClimbView(preselectedMountainId: mountain.id)
+        }
+        .sheet(isPresented: $showInvite) {
+            InviteToClimbView(mountainId: mountain.id, mountainName: mountain.name,
+                               mountainElevation: mountain.elevation, mountainRange: mountain.range)
         }
         .onReceive(NotificationCenter.default.publisher(for: .climbLogged)) { _ in
             Task { await loadAscents() }
@@ -704,6 +704,7 @@ struct BadgeDetailView: View {
             .background(emerald.opacity(0.12))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(emerald.opacity(0.3), lineWidth: 1))
             .cornerRadius(14)
+            secondaryActionRow
         } else {
             Button { showLogClimb = true } label: {
                 HStack(spacing: 8) {
@@ -717,7 +718,29 @@ struct BadgeDetailView: View {
                 .cornerRadius(14)
             }
             .buttonStyle(.plain)
+            secondaryActionRow
         }
+    }
+
+    private var secondaryActionRow: some View {
+        HStack(spacing: 10) {
+            Button { showInvite = true } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "person.badge.plus")
+                    Text("Invite to Climb").bold()
+                }
+                .font(.subheadline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .foregroundColor(sky)
+                .overlay(RoundedRectangle(cornerRadius: 13).stroke(sky.opacity(0.35), lineWidth: 1.2))
+                .cornerRadius(13)
+            }
+            .buttonStyle(.plain)
+
+            WishlistButton(mountainId: mountain.id, style: .labeledButton, isWishlisted: $isWishlisted)
+        }
+        .padding(.top, 8)
     }
 
     @ViewBuilder

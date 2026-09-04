@@ -47,11 +47,6 @@ struct MountainDetailView: View {
         .background(bg.ignoresSafeArea())
         .navigationTitle(detail?.name ?? fallbackName ?? "Mountain")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                WishlistButton(mountainId: mountainId, isWishlisted: $isWishlisted)
-            }
-        }
         .navigationDestination(item: $selectedClimbId) { id in
             ClimbDetailView(climbId: id)
         }
@@ -111,7 +106,7 @@ struct MountainDetailView: View {
             .background(emerald.opacity(0.12))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(emerald.opacity(0.3), lineWidth: 1))
             .cornerRadius(14)
-            inviteButton
+            secondaryActionRow
         } else {
             Button { showLogClimb = true } label: {
                 HStack(spacing: 8) {
@@ -125,25 +120,28 @@ struct MountainDetailView: View {
                 .cornerRadius(14)
             }
             .buttonStyle(.plain)
-            inviteButton
+            secondaryActionRow
         }
     }
 
-    private var inviteButton: some View {
-        Button { showInvite = true } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "person.badge.plus")
-                Text("Invite to Climb").bold()
+    private var secondaryActionRow: some View {
+        HStack(spacing: 10) {
+            Button { showInvite = true } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "person.badge.plus")
+                    Text("Invite to Climb").bold()
+                }
+                .font(.subheadline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .foregroundColor(sky)
+                .overlay(RoundedRectangle(cornerRadius: 13).stroke(sky.opacity(0.35), lineWidth: 1.2))
+                .cornerRadius(13)
             }
-            .font(.subheadline)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Color.clear)
-            .foregroundColor(sky)
-            .overlay(RoundedRectangle(cornerRadius: 13).stroke(sky.opacity(0.35), lineWidth: 1.2))
-            .cornerRadius(13)
+            .buttonStyle(.plain)
+
+            WishlistButton(mountainId: mountainId, style: .labeledButton, isWishlisted: $isWishlisted)
         }
-        .buttonStyle(.plain)
         .padding(.top, 8)
     }
 
