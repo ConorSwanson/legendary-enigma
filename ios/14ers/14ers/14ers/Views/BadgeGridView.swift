@@ -545,6 +545,7 @@ struct BadgeDetailView: View {
 
     @State private var climbed: Bool
     @State private var ascentCount: Int
+    @State private var isWishlisted: Bool
     @State private var ascents: [Climb] = []
     @State private var isLoading = false
     @State private var showLogClimb = false
@@ -553,6 +554,7 @@ struct BadgeDetailView: View {
         self.mountain = mountain
         _climbed = State(initialValue: climbed)
         _ascentCount = State(initialValue: ascentCount)
+        _isWishlisted = State(initialValue: mountain.isWishlisted)
     }
 
     private var pngURL: URL? {
@@ -639,6 +641,11 @@ struct BadgeDetailView: View {
         .background(bg.ignoresSafeArea())
         .navigationTitle(mountain.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                WishlistButton(mountainId: mountain.id, isWishlisted: $isWishlisted)
+            }
+        }
         .sheet(isPresented: $showLogClimb) {
             LogClimbView(preselectedMountainId: mountain.id)
         }

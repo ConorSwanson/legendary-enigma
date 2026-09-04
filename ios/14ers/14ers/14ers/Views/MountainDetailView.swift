@@ -15,6 +15,7 @@ struct MountainDetailView: View {
     @State private var selectedClimbId: Int?
     @State private var showLogClimb = false
     @State private var showInvite = false
+    @State private var isWishlisted = false
 
     private static let monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -46,6 +47,11 @@ struct MountainDetailView: View {
         .background(bg.ignoresSafeArea())
         .navigationTitle(detail?.name ?? fallbackName ?? "Mountain")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                WishlistButton(mountainId: mountainId, isWishlisted: $isWishlisted)
+            }
+        }
         .navigationDestination(item: $selectedClimbId) { id in
             ClimbDetailView(climbId: id)
         }
@@ -411,6 +417,7 @@ struct MountainDetailView: View {
     private func load() async {
         do {
             detail = try await APIClient.shared.mountainDetail(mountainId)
+            isWishlisted = detail?.isWishlisted ?? false
         } catch {
             self.error = error.localizedDescription
         }

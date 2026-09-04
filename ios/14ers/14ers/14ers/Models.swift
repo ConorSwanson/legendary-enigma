@@ -13,12 +13,14 @@ struct Mountain: Codable, Identifiable, Sendable, Hashable {
     let lastActivity: String?   // most recent public climb date, if any
     let listKeys: [String]      // which peak_lists this mountain belongs to, e.g. ["co-14ers"]
     let defaultPhotos: [MountainPhoto]  // curated fallback photos, best pick first; [] if none exist
+    var isWishlisted: Bool = false
 
     enum CodingKeys: String, CodingKey {
         case id, name, elevation, range, state, lat, lng
         case lastActivity = "last_activity"
         case listKeys      = "list_keys"
         case defaultPhotos = "default_photos"
+        case isWishlisted   = "is_wishlisted"
     }
 
     // "Elk Mountains" (Colorado) and "Sierra Nevada" (California) are real
@@ -83,6 +85,7 @@ struct Climb: Codable, Identifiable, Sendable {
     var isLiked: Bool?
     var likeCount: Int?
     var commentCount: Int?
+    var mountainIsWishlisted: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id, notes, visibility
@@ -102,6 +105,7 @@ struct Climb: Codable, Identifiable, Sendable {
         case isLiked      = "is_liked"
         case likeCount    = "like_count"
         case commentCount = "comment_count"
+        case mountainIsWishlisted = "mountain_is_wishlisted"
     }
 }
 
@@ -156,6 +160,7 @@ struct MountainDetail: Codable, Identifiable, Sendable {
     let uniqueClimbers: Int
     let userAscents: Int
     let isClimbed: Bool
+    var isWishlisted: Bool = false
     let byYear: [YearCount]
     let byMonth: [MonthCount]
     let recentSummits: [RecentSummit]
@@ -169,6 +174,7 @@ struct MountainDetail: Codable, Identifiable, Sendable {
         case uniqueClimbers = "unique_climbers"
         case userAscents    = "user_ascents"
         case isClimbed      = "is_climbed"
+        case isWishlisted   = "is_wishlisted"
         case byYear         = "by_year"
         case byMonth        = "by_month"
         case recentSummits  = "recent_summits"

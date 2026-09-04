@@ -143,12 +143,13 @@ router.get('/:id', requireAuth, (req, res) => {
            u.name AS user_name, u.id AS user_id, u.avatar_path AS user_avatar_path,
            (SELECT COUNT(*) FROM climb_likes WHERE climb_id = c.id) AS like_count,
            EXISTS(SELECT 1 FROM climb_likes WHERE climb_id = c.id AND user_id = ?) AS is_liked,
-           (SELECT COUNT(*) FROM climb_comments WHERE climb_id = c.id) AS comment_count
+           (SELECT COUNT(*) FROM climb_comments WHERE climb_id = c.id) AS comment_count,
+           EXISTS(SELECT 1 FROM mountain_wishlist WHERE mountain_id = c.mountain_id AND user_id = ?) AS mountain_is_wishlisted
     FROM climbs c
     JOIN mountains m ON c.mountain_id = m.id
     LEFT JOIN users u ON c.user_id = u.id
     WHERE c.id = ?
-  `).get(req.user.id, req.params.id);
+  `).get(req.user.id, req.user.id, req.params.id);
 
   if (!row) return res.status(404).json({ error: 'Climb not found' });
 
@@ -168,7 +169,7 @@ router.get('/:id', requireAuth, (req, res) => {
   const photo_urls = photoUrlsFor(getDb(), row.id, req, row.photo_path);
   const defaultPhotos = allDefaultPhotos(getDb());
 
-  res.json({ ...withPhotoUrl(row, req, defaultPhotos), photo_urls, user_avatar_url, is_owner: row.user_id === req.user.id, is_liked: !!row.is_liked, like_count: row.like_count ?? 0, comment_count: row.comment_count ?? 0 });
+  res.json({ ...withPhotoUrl(row, req, defaultPhotos), photo_urls, user_avatar_url, is_owner: row.user_id === req.user.id, is_liked: !!row.is_liked, like_count: row.like_count ?? 0, comment_count: row.comment_count ?? 0, mountain_is_wishlisted: !!row.mountain_is_wishlisted });
 });
 
 // POST /api/climbs — accepts multiple photos under the "photos" field; the

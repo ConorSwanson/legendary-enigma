@@ -348,6 +348,14 @@ actor APIClient {
         try await request("/wishlist")
     }
 
+    func addToWishlist(mountainId: Int) async throws {
+        try await requestVoid("/wishlist/\(mountainId)", method: "POST")
+    }
+
+    func removeFromWishlist(mountainId: Int) async throws {
+        try await requestVoid("/wishlist/\(mountainId)", method: "DELETE")
+    }
+
     // MARK: - Feed
 
     func feedDiscover(page: Int = 1, sort: String = "chronological") async throws -> [FeedItem] {

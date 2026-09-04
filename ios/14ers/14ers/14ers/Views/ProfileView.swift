@@ -405,6 +405,11 @@ struct HomeView: View {
     @ViewBuilder
     private var settingsLinksSection: some View {
         VStack(spacing: 0) {
+            NavigationLink(destination: WishlistView()) {
+                settingsRow(icon: "bookmark.fill", title: "Wishlist")
+            }
+            .buttonStyle(.plain)
+            Divider().overlay(Color.white.opacity(0.08))
             ShareLink(item: inviteText) {
                 settingsRow(icon: "person.badge.plus", title: "Invite Friends")
             }

@@ -25,6 +25,7 @@ struct ClimbDetailView: View {
     @State private var newCommentText: String = ""
     @State private var isPostingComment = false
     @State private var replyingTo: Comment?
+    @State private var isWishlisted = false
     @FocusState private var commentFieldFocused: Bool
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var userState: UserState
@@ -230,6 +231,11 @@ struct ClimbDetailView: View {
         .background(bg.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if let climb {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    WishlistButton(mountainId: climb.mountainId, isWishlisted: $isWishlisted)
+                }
+            }
             if climb?.isOwner != true {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
@@ -560,6 +566,7 @@ struct ClimbDetailView: View {
             comments = fetchedComments
             liked = fetched.isLiked ?? false
             likeCount = fetched.likeCount ?? 0
+            isWishlisted = fetched.mountainIsWishlisted ?? false
             if fetched.isOwner == true {
                 let ownAscents = (try? await APIClient.shared.climbs(mountainId: fetched.mountainId)) ?? []
                 ascentCount = ownAscents.count

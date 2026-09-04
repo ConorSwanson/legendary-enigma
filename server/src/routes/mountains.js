@@ -1,8 +1,29 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const router = express.Router();
 const { getDb } = require('../db');
 const requireAuth = require('../middleware/auth');
 const { allDefaultPhotos, needsAttribution } = require('../utils/mountainPhotos');
+
+// The list route below predates login and stayed public on purpose -- so
+// this reads a bearer token if one happens to be present (every real
+// caller is signed in) without making auth mandatory for anyone who isn't.
+function optionalUserId(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  try {
+    return jwt.verify(authHeader.slice(7), process.env.JWT_SECRET).sub;
+  } catch {
+    return null;
+  }
+}
+
+function wishlistedMountainIds(db, userId) {
+  if (!userId) return new Set();
+  return new Set(
+    db.prepare('SELECT mountain_id FROM mountain_wishlist WHERE user_id = ?').all(userId).map(r => r.mountain_id)
+  );
+}
 
 // GET /api/mountains/lists — every named peak list (Colorado 14ers, Colorado
 // 13ers, ...), with a member count, so the client can build a list picker.
@@ -75,10 +96,12 @@ router.get('/', (req, res) => {
 
   const listKeys = listKeysByMountainId(db);
   const defaultPhotos = defaultPhotosByMountainId(db, base);
+  const wishlisted = wishlistedMountainIds(db, optionalUserId(req));
   res.json(mountains.map(m => ({
     ...m,
     list_keys: listKeys[m.id] || [],
     default_photos: defaultPhotos[m.id] || [],
+    is_wishlisted: wishlisted.has(m.id),
   })));
 });
 
@@ -144,6 +167,10 @@ router.get('/:id', requireAuth, (req, res) => {
     'SELECT COUNT(*) AS user_ascents FROM climbs WHERE mountain_id = ? AND user_id = ?'
   ).get(id, req.user.id);
 
+  const isWishlisted = !!db.prepare(
+    'SELECT 1 FROM mountain_wishlist WHERE user_id = ? AND mountain_id = ?'
+  ).get(req.user.id, id);
+
   res.json({
     id: mountain.id,
     name: mountain.name,
@@ -156,6 +183,7 @@ router.get('/:id', requireAuth, (req, res) => {
     unique_climbers: totals.unique_climbers,
     user_ascents,
     is_climbed: user_ascents > 0,
+    is_wishlisted: isWishlisted,
     by_year,
     by_month,
     recent_summits,
