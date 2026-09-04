@@ -50,7 +50,8 @@ router.get('/', requireAuth, (req, res) => {
            u.id AS user_id, u.name AS user_name, u.avatar_path AS user_avatar_path,
            (SELECT COUNT(*) FROM climb_likes WHERE climb_id = c.id) AS like_count,
            EXISTS(SELECT 1 FROM climb_likes WHERE climb_id = c.id AND user_id = ?) AS is_liked,
-           (SELECT COUNT(*) FROM climb_comments WHERE climb_id = c.id) AS comment_count
+           (SELECT COUNT(*) FROM climb_comments WHERE climb_id = c.id) AS comment_count,
+           EXISTS(SELECT 1 FROM mountain_wishlist WHERE mountain_id = c.mountain_id AND user_id = ?) AS mountain_is_wishlisted
     FROM climbs c
     JOIN mountains m ON c.mountain_id = m.id
     JOIN users u ON c.user_id = u.id
@@ -61,12 +62,13 @@ router.get('/', requireAuth, (req, res) => {
       AND c.user_id NOT IN ${BLOCKED_EITHER_DIRECTION_SQL}
     ORDER BY ${orderClause(sort)}
     LIMIT 30 OFFSET ?
-  `).all(req.user.id, req.user.id, req.user.id, req.user.id, offset).map(r => ({
+  `).all(req.user.id, req.user.id, req.user.id, req.user.id, req.user.id, offset).map(r => ({
     ...withPhotoUrl(r, req, defaultPhotos),
     user_avatar_url: r.user_avatar_path ? `${req.protocol}://${req.get('host')}/uploads/${r.user_avatar_path}` : null,
     is_liked: !!r.is_liked,
     like_count: r.like_count ?? 0,
     comment_count: r.comment_count ?? 0,
+    mountain_is_wishlisted: !!r.mountain_is_wishlisted,
   }));
 
   res.json(rows);
@@ -85,7 +87,8 @@ router.get('/discover', requireAuth, (req, res) => {
            u.id AS user_id, u.name AS user_name, u.avatar_path AS user_avatar_path,
            (SELECT COUNT(*) FROM climb_likes WHERE climb_id = c.id) AS like_count,
            EXISTS(SELECT 1 FROM climb_likes WHERE climb_id = c.id AND user_id = ?) AS is_liked,
-           (SELECT COUNT(*) FROM climb_comments WHERE climb_id = c.id) AS comment_count
+           (SELECT COUNT(*) FROM climb_comments WHERE climb_id = c.id) AS comment_count,
+           EXISTS(SELECT 1 FROM mountain_wishlist WHERE mountain_id = c.mountain_id AND user_id = ?) AS mountain_is_wishlisted
     FROM climbs c
     JOIN mountains m ON c.mountain_id = m.id
     JOIN users u ON c.user_id = u.id
@@ -93,12 +96,13 @@ router.get('/discover', requireAuth, (req, res) => {
       AND c.user_id NOT IN ${BLOCKED_EITHER_DIRECTION_SQL}
     ORDER BY ${orderClause(sort)}
     LIMIT 30 OFFSET ?
-  `).all(req.user.id, req.user.id, req.user.id, offset).map(r => ({
+  `).all(req.user.id, req.user.id, req.user.id, req.user.id, offset).map(r => ({
     ...withPhotoUrl(r, req, defaultPhotos),
     user_avatar_url: r.user_avatar_path ? `${req.protocol}://${req.get('host')}/uploads/${r.user_avatar_path}` : null,
     is_liked: !!r.is_liked,
     like_count: r.like_count ?? 0,
     comment_count: r.comment_count ?? 0,
+    mountain_is_wishlisted: !!r.mountain_is_wishlisted,
   }));
 
   res.json(rows);

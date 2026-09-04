@@ -129,6 +129,7 @@ struct FeedItem: Codable, Identifiable, Sendable {
     var isLiked: Bool?
     var likeCount: Int?
     var commentCount: Int?
+    var mountainIsWishlisted: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id, visibility, notes, elevation, range
@@ -144,6 +145,7 @@ struct FeedItem: Codable, Identifiable, Sendable {
         case isLiked      = "is_liked"
         case likeCount    = "like_count"
         case commentCount = "comment_count"
+        case mountainIsWishlisted = "mountain_is_wishlisted"
     }
 }
 

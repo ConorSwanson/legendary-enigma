@@ -226,6 +226,7 @@ struct FeedCard: View {
     @State private var liked: Bool
     @State private var likeCount: Int
     private let commentCount: Int
+    @State private var isWishlisted: Bool
     @State private var showLikes = false
     @State private var isSharingToInstagram = false
 
@@ -234,6 +235,7 @@ struct FeedCard: View {
         _liked = State(initialValue: item.isLiked ?? false)
         _likeCount = State(initialValue: item.likeCount ?? 0)
         commentCount = item.commentCount ?? 0
+        _isWishlisted = State(initialValue: item.mountainIsWishlisted ?? false)
     }
 
     private var shareText: String {
@@ -383,6 +385,12 @@ struct FeedCard: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.leading, 8)
+
+                    // Wishlist button — save the mountain, not the climb
+                    WishlistButton(mountainId: item.mountainId, mountainName: item.mountainName,
+                                   confirmOnAdd: true, iconSize: 15, inactiveColor: .gray,
+                                   isWishlisted: $isWishlisted)
+                        .padding(.leading, 8)
 
                     // Share button
                     ShareLink(item: shareText) {

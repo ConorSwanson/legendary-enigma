@@ -197,6 +197,9 @@ struct ClimbDetailView: View {
 
                             commentButton
 
+                            WishlistButton(mountainId: climb.mountainId, iconSize: 20, padding: 6,
+                                           inactiveColor: Color(white: 0.6), isWishlisted: $isWishlisted)
+
                             shareButton
 
                             if InstagramShareHelper.isInstagramInstalled {
@@ -231,11 +234,6 @@ struct ClimbDetailView: View {
         .background(bg.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if let climb {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    WishlistButton(mountainId: climb.mountainId, isWishlisted: $isWishlisted)
-                }
-            }
             if climb?.isOwner != true {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
