@@ -70,10 +70,11 @@ router.get('/', requireAuth, (req, res) => {
 
   const { followers } = db.prepare('SELECT COUNT(*) AS followers FROM follows WHERE following_id = ?').get(uid);
   const { following } = db.prepare('SELECT COUNT(*) AS following FROM follows WHERE follower_id = ?').get(uid);
+  const { wishlist_count } = db.prepare('SELECT COUNT(*) AS wishlist_count FROM mountain_wishlist WHERE user_id = ?').get(uid);
 
   const rank = levelForCount(totals.unique_peaks);
 
-  res.json({ ...totals, total_mountains, by_month, by_year, top_mountains, recent_climbs, climbed_ids, ascent_counts, last_climbed, followers, following, rank });
+  res.json({ ...totals, total_mountains, by_month, by_year, top_mountains, recent_climbs, climbed_ids, ascent_counts, last_climbed, followers, following, wishlist_count, rank });
 });
 
 module.exports = router;

@@ -257,6 +257,7 @@ struct Stats: Codable, Sendable {
     let byMonth: [MonthCount]
     let followers: Int?
     let following: Int?
+    let wishlistCount: Int?
     let rank: ClimberRank?
 
     enum CodingKeys: String, CodingKey {
@@ -270,6 +271,7 @@ struct Stats: Codable, Sendable {
         case lastClimbed    = "last_climbed"
         case byYear         = "by_year"
         case byMonth        = "by_month"
+        case wishlistCount  = "wishlist_count"
         case followers, following, rank
     }
 }

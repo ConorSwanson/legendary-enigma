@@ -283,8 +283,14 @@ struct HomeView: View {
             }
             HStack(spacing: 8) {
                 let scope = statsScope(s)
-                HomeStatCard(title: "Summits", value: "\(scope.count)")
-                HomeStatCard(title: "Unique", value: "\(scope.uniquePeaks)")
+                NavigationLink(destination: MyClimbsListView(year: selectedStatsYear, title: "My Summits")) {
+                    HomeStatCard(title: "Summits", value: "\(scope.count)")
+                }
+                .buttonStyle(.plain)
+                NavigationLink(destination: MyClimbsListView(year: selectedStatsYear, title: "Unique Peaks")) {
+                    HomeStatCard(title: "Unique", value: "\(scope.uniquePeaks)")
+                }
+                .buttonStyle(.plain)
                 HomeStatCard(title: "Elevation", value: "\(scope.elevation.formatted())ft")
             }
         }
@@ -324,6 +330,11 @@ struct HomeView: View {
                 Divider().frame(height: 32).background(Color.white.opacity(0.1))
                 NavigationLink(destination: FollowerListView(userId: id, startTab: .following)) {
                     followStatCell(value: "\(s.following ?? 0)", label: "Following")
+                }
+                .buttonStyle(.plain)
+                Divider().frame(height: 32).background(Color.white.opacity(0.1))
+                NavigationLink(destination: WishlistView()) {
+                    followStatCell(value: "\(s.wishlistCount ?? 0)", label: "Wishlist")
                 }
                 .buttonStyle(.plain)
             }
@@ -405,11 +416,6 @@ struct HomeView: View {
     @ViewBuilder
     private var settingsLinksSection: some View {
         VStack(spacing: 0) {
-            NavigationLink(destination: WishlistView()) {
-                settingsRow(icon: "bookmark.fill", title: "Wishlist")
-            }
-            .buttonStyle(.plain)
-            Divider().overlay(Color.white.opacity(0.08))
             ShareLink(item: inviteText) {
                 settingsRow(icon: "person.badge.plus", title: "Invite Friends")
             }
