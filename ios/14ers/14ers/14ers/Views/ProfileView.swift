@@ -283,11 +283,11 @@ struct HomeView: View {
             }
             HStack(spacing: 8) {
                 let scope = statsScope(s)
-                NavigationLink(destination: MyClimbsListView(year: selectedStatsYear, title: "My Summits")) {
+                NavigationLink(destination: ClimbHistoryView(initialYear: selectedStatsYear)) {
                     HomeStatCard(title: "Summits", value: "\(scope.count)")
                 }
                 .buttonStyle(.plain)
-                NavigationLink(destination: MyClimbsListView(year: selectedStatsYear, title: "Unique Peaks")) {
+                NavigationLink(destination: ClimbHistoryView(initialYear: selectedStatsYear)) {
                     HomeStatCard(title: "Unique", value: "\(scope.uniquePeaks)")
                 }
                 .buttonStyle(.plain)
@@ -391,7 +391,7 @@ struct HomeView: View {
     private func recentClimbsSection(_ s: Stats) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Recent Climbs")
+                Text("Recent Summits")
                     .font(.headline)
                     .foregroundColor(.white)
                 Spacer()

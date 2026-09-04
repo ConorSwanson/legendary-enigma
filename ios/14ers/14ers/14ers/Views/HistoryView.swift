@@ -4,13 +4,27 @@ private let bg = Color(red: 3/255, green: 7/255, blue: 18/255)
 private let card = Color(red: 17/255, green: 24/255, blue: 39/255)
 private let emerald = Color(red: 52/255, green: 211/255, blue: 153/255)
 
-/// Full climb history, pushed from the Profile tab's "See All".
+/// Full climb history, pushed from the Profile tab's "See All" and from
+/// tapping the Summits/Unique numbers in the stats row above it -- same
+/// list either way, just optionally pre-filtered to a chosen year.
 struct ClimbHistoryView: View {
+    enum SortOption: String, CaseIterable {
+        case newest   = "Newest First"
+        case oldest   = "Oldest First"
+        case highest  = "Highest Elevation"
+        case nameAZ   = "Peak Name A–Z"
+    }
+
     @State private var climbs: [Climb] = []
     @State private var isLoading = false
     @State private var selectedClimbId: Int?
     @State private var yearFilter: String?   // nil = all years
     @State private var rangeFilter: String?  // nil = all ranges
+    @State private var sortOption: SortOption = .newest
+
+    init(initialYear: String? = nil) {
+        _yearFilter = State(initialValue: initialYear)
+    }
 
     private var years: [String] {
         Array(Set(climbs.map { String($0.climbDate.prefix(4)) })).sorted(by: >)
@@ -22,6 +36,12 @@ struct ClimbHistoryView: View {
         var list = climbs
         if let y = yearFilter { list = list.filter { $0.climbDate.prefix(4) == y } }
         if let r = rangeFilter { list = list.filter { $0.range == r } }
+        switch sortOption {
+        case .newest:  list.sort { $0.climbDate > $1.climbDate }
+        case .oldest:  list.sort { $0.climbDate < $1.climbDate }
+        case .highest: list.sort { $0.elevation > $1.elevation }
+        case .nameAZ:  list.sort { $0.mountainName < $1.mountainName }
+        }
         return list
     }
 
@@ -61,7 +81,7 @@ struct ClimbHistoryView: View {
             }
         }
         .background(bg.ignoresSafeArea())
-        .navigationTitle("My Climbs")
+        .navigationTitle("My Summits")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(item: $selectedClimbId) { id in
             ClimbDetailView(climbId: id)
@@ -99,6 +119,16 @@ struct ClimbHistoryView: View {
                         }
                     } label: {
                         filterChip(icon: "line.3.horizontal.decrease.circle", text: rangeFilter ?? "All Ranges")
+                    }
+
+                    Menu {
+                        ForEach(SortOption.allCases, id: \.self) { option in
+                            Button { sortOption = option } label: {
+                                Label(option.rawValue, systemImage: sortOption == option ? "checkmark" : "")
+                            }
+                        }
+                    } label: {
+                        filterChip(icon: "arrow.up.arrow.down", text: sortOption.rawValue)
                     }
                 }
             }
