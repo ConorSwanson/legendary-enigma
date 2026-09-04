@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SignUpView: View {
+    @EnvironmentObject var userState: UserState
     @State private var name = ""
     @State private var email = ""
     @State private var password = ""
@@ -81,6 +82,9 @@ struct SignUpView: View {
                     password: password
                 )
                 await AuthManager.shared.signIn(token: response.token)
+                if response.isNewUser {
+                    await userState.resolvePendingInvite(checkClipboard: true)
+                }
             } catch let e as APIError {
                 errorMessage = e.errorDescription
             } catch {

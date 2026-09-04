@@ -90,7 +90,18 @@ actor APIClient {
 
     // MARK: - Auth
 
-    struct AuthResponse: Decodable { let token: String }
+    struct AuthResponse: Decodable {
+        let token: String
+        let isNewUser: Bool
+
+        enum CodingKeys: String, CodingKey { case token; case isNewUser = "is_new_user" }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            token = try c.decode(String.self, forKey: .token)
+            isNewUser = try c.decodeIfPresent(Bool.self, forKey: .isNewUser) ?? false
+        }
+    }
 
     func signIn(email: String, password: String) async throws -> AuthResponse {
         let payload = try JSONEncoder().encode(["email": email, "password": password])
@@ -295,6 +306,46 @@ actor APIClient {
 
     func likeComment(climbId: Int, commentId: Int) async throws -> LikeResponse {
         try await request("/climbs/\(climbId)/comments/\(commentId)/like", method: "POST")
+    }
+
+    // MARK: - Invites
+
+    func createInvite(mountainId: Int, climbDate: String?, note: String?, recipientUserIds: [Int], generateLink: Bool) async throws -> ClimbInvite {
+        struct Payload: Encodable {
+            let mountain_id: Int
+            let climb_date: String?
+            let note: String?
+            let recipient_user_ids: [Int]
+            let generate_link: Bool
+        }
+        let payload = Payload(mountain_id: mountainId, climb_date: climbDate, note: note,
+                               recipient_user_ids: recipientUserIds, generate_link: generateLink)
+        let data = try JSONEncoder().encode(payload)
+        return try await request("/invites", method: "POST", body: data)
+    }
+
+    func myInvites() async throws -> MyInvites {
+        try await request("/invites")
+    }
+
+    func invite(_ id: Int) async throws -> ClimbInvite {
+        try await request("/invites/\(id)")
+    }
+
+    func respondToInvite(_ id: Int, status: String) async throws -> ClimbInvite {
+        let payload = try JSONEncoder().encode(["status": status])
+        return try await request("/invites/\(id)/respond", method: "POST", body: payload)
+    }
+
+    func claimInvite(token: String) async throws -> ClimbInvite {
+        let payload = try JSONEncoder().encode(["token": token])
+        return try await request("/invites/claim", method: "POST", body: payload)
+    }
+
+    // MARK: - Wishlist
+
+    func wishlist() async throws -> [WishlistPeak] {
+        try await request("/wishlist")
     }
 
     // MARK: - Feed

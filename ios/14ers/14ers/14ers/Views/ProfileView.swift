@@ -744,6 +744,7 @@ struct NotificationsView: View {
     @State private var notifications: [NotificationItem] = []
     @State private var isLoading = true
     @State private var selectedUserId: Int?
+    @State private var selectedInviteId: Int?
     @Environment(\.dismiss) private var dismiss
 
     private let notifBg = Color(red: 3/255, green: 7/255, blue: 18/255)
@@ -769,7 +770,9 @@ struct NotificationsView: View {
                 } else {
                     List(notifications) { item in
                         NotificationRow(item: item) {
-                            if let climbId = item.climbId {
+                            if let inviteId = item.inviteId {
+                                selectedInviteId = inviteId
+                            } else if let climbId = item.climbId {
                                 userState.selectedTab = 4
                                 dismiss()
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
@@ -789,6 +792,9 @@ struct NotificationsView: View {
             }
             .navigationDestination(item: $selectedUserId) { uid in
                 UserProfileView(userId: uid)
+            }
+            .sheet(item: $selectedInviteId) { id in
+                InviteDetailView(inviteId: id)
             }
             .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(.inline)
@@ -858,6 +864,10 @@ private struct NotificationRow: View {
         case "comment_like":  return "\(item.fromUserName) liked your comment"
         case "level_up": return "🏔 You've reached \(item.levelName ?? "a new rank")!"
         case "new_climb": return "\(item.fromUserName) just summited \(item.mountainName ?? "a peak")"
+        case "climb_invite":    return "\(item.fromUserName) wants to climb \(item.mountainName ?? "a peak") with you"
+        case "invite_accepted": return "\(item.fromUserName) accepted your invite to climb \(item.mountainName ?? "a peak")"
+        case "invite_declined": return "\(item.fromUserName) can't make it to climb \(item.mountainName ?? "a peak")"
+        case "invite_maybe":    return "\(item.fromUserName) might join climbing \(item.mountainName ?? "a peak")"
         default:         return "\(item.fromUserName) interacted with your content"
         }
     }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject var userState: UserState
+    @State private var activeInviteId: Int?
 
     var body: some View {
         TabView(selection: $userState.selectedTab) {
@@ -35,6 +36,14 @@ struct MainTabView: View {
             appearance.backgroundColor = tabBg
             UITabBar.appearance().standardAppearance = appearance
             UITabBar.appearance().scrollEdgeAppearance = appearance
+        }
+        .sheet(item: $activeInviteId) { id in
+            InviteDetailView(inviteId: id)
+        }
+        .onChange(of: userState.pendingInviteId) { newValue in
+            guard let id = newValue else { return }
+            userState.pendingInviteId = nil
+            activeInviteId = id
         }
     }
 }

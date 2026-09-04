@@ -14,6 +14,7 @@ struct MountainDetailView: View {
     @State private var error: String?
     @State private var selectedClimbId: Int?
     @State private var showLogClimb = false
+    @State private var showInvite = false
 
     private static let monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -50,6 +51,12 @@ struct MountainDetailView: View {
         }
         .sheet(isPresented: $showLogClimb) {
             LogClimbView(preselectedMountainId: mountainId)
+        }
+        .sheet(isPresented: $showInvite) {
+            if let d = detail {
+                InviteToClimbView(mountainId: mountainId, mountainName: d.name,
+                                   mountainElevation: d.elevation, mountainRange: d.range)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .climbLogged)) { _ in
             Task { await load() }
@@ -98,6 +105,7 @@ struct MountainDetailView: View {
             .background(emerald.opacity(0.12))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(emerald.opacity(0.3), lineWidth: 1))
             .cornerRadius(14)
+            inviteButton
         } else {
             Button { showLogClimb = true } label: {
                 HStack(spacing: 8) {
@@ -111,7 +119,26 @@ struct MountainDetailView: View {
                 .cornerRadius(14)
             }
             .buttonStyle(.plain)
+            inviteButton
         }
+    }
+
+    private var inviteButton: some View {
+        Button { showInvite = true } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "person.badge.plus")
+                Text("Invite to Climb").bold()
+            }
+            .font(.subheadline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color.clear)
+            .foregroundColor(sky)
+            .overlay(RoundedRectangle(cornerRadius: 13).stroke(sky.opacity(0.35), lineWidth: 1.2))
+            .cornerRadius(13)
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 8)
     }
 
     // MARK: - Hero

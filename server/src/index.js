@@ -49,8 +49,11 @@ app.use('/api/badges',        require('./routes/badges'));
 app.use('/api/og',            require('./routes/ogImage'));
 app.use('/api/beta',          require('./routes/beta'));
 app.use('/api/admin',         require('./routes/admin'));
+app.use('/api/invites',       require('./routes/invites'));
+app.use('/api/wishlist',      require('./routes/wishlist'));
 app.use('/beta',              require('./routes/beta'));
 app.use('/s',             require('./routes/share'));
+app.use('/i',             require('./routes/inviteLanding'));
 app.use('/',              require('./routes/passwordReset'));
 app.use('/',              require('./routes/legal'));
 

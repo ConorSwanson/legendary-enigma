@@ -8,6 +8,7 @@ private let deepBlue  = Color(red: 20/255, green: 30/255,  blue: 70/255)
 private let farBlue   = Color(red: 30/255, green: 60/255,  blue: 100/255)
 
 struct SignInView: View {
+    @EnvironmentObject var userState: UserState
     @State private var email = ""
     @State private var password = ""
     @State private var isLoading = false
@@ -128,6 +129,7 @@ struct SignInView: View {
             do {
                 let response = try await APIClient.shared.signIn(email: email, password: password)
                 await AuthManager.shared.signIn(token: response.token)
+                await userState.resolvePendingInvite(checkClipboard: false)
             } catch let e as APIError {
                 errorMessage = e.errorDescription
             } catch {
@@ -155,6 +157,7 @@ struct SignInView: View {
                         fullName: cred.fullName
                     )
                     await AuthManager.shared.signIn(token: response.token)
+                    await userState.resolvePendingInvite(checkClipboard: response.isNewUser)
                 } catch let e as APIError {
                     errorMessage = e.errorDescription
                 } catch {

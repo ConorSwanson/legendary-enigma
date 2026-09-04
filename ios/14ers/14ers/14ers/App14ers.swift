@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import UserNotifications
+import UIKit
 
 @MainActor
 final class UserState: ObservableObject {
@@ -9,12 +10,51 @@ final class UserState: ObservableObject {
     @Published var selectedTab: Int = 0
     @Published var climbWasDeleted = false
     @Published var pendingClimbId: Int?
+    @Published var pendingInviteId: Int?
 
     func refresh() async {
         async let p = APIClient.shared.myProfile()
         async let c = APIClient.shared.unreadNotificationCount()
         if let profile = try? await p { avatarUrl = profile.avatarUrl }
         if let count = try? await c { unreadCount = count }
+    }
+
+    // MARK: - Deferred invite claim
+    //
+    // A climb-invite share link opened before the app was installed can't
+    // carry its token through the App Store round-trip via a URL, so the
+    // web landing page copies "switchback-invite:<token>" to the clipboard
+    // right before it hands off to the App Store. We read it back exactly
+    // once, right after a fresh signup -- not on every launch -- so this
+    // never triggers iOS's "pasted from X" prompt outside the one moment
+    // it's actually expected. A link tapped while the app is already
+    // installed but the user is signed out goes through the UserDefaults
+    // stash instead (see .onOpenURL in RootView), which needs no clipboard
+    // access at all.
+    private static let pendingInviteTokenKey = "pendingInviteToken"
+
+    func stashPendingInviteToken(_ token: String) {
+        UserDefaults.standard.set(token, forKey: Self.pendingInviteTokenKey)
+    }
+
+    func resolvePendingInvite(checkClipboard: Bool) async {
+        var token = UserDefaults.standard.string(forKey: Self.pendingInviteTokenKey)
+        if token != nil {
+            UserDefaults.standard.removeObject(forKey: Self.pendingInviteTokenKey)
+        } else if checkClipboard {
+            token = Self.consumeClipboardInviteToken()
+        }
+        guard let token, !token.isEmpty else { return }
+        if let invite = try? await APIClient.shared.claimInvite(token: token) {
+            pendingInviteId = invite.id
+        }
+    }
+
+    private static func consumeClipboardInviteToken() -> String? {
+        let prefix = "switchback-invite:"
+        guard let text = UIPasteboard.general.string, text.hasPrefix(prefix) else { return nil }
+        UIPasteboard.general.string = ""
+        return String(text.dropFirst(prefix.count))
     }
 }
 
@@ -46,7 +86,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                                  didReceive response: UNNotificationResponse,
                                  withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
-        if let climbId = userInfo["climbId"] as? Int {
+        if let inviteId = userInfo["inviteId"] as? Int {
+            NotificationCenter.default.post(name: .navigateToInvite, object: nil,
+                                            userInfo: ["inviteId": inviteId])
+        } else if let climbId = userInfo["climbId"] as? Int {
             NotificationCenter.default.post(name: .navigateToClimb, object: nil,
                                             userInfo: ["climbId": climbId])
         }
@@ -95,10 +138,33 @@ struct RootView: View {
                 userState.pendingClimbId = climbId
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToInvite)) { note in
+            guard authManager.isSignedIn,
+                  let inviteId = note.userInfo?["inviteId"] as? Int else { return }
+            userState.pendingInviteId = inviteId
+        }
         .task(id: authManager.isSignedIn) {
             if authManager.isSignedIn {
                 await userState.refresh()
                 await requestPushPermission()
+            }
+        }
+        .onOpenURL { url in
+            // switchback://invite/<token> -- tapped from the /i/:token web
+            // landing page when the app is already installed. If signed
+            // out, stash the token rather than dropping it; it's picked up
+            // right after the next sign-in (see SignInView/SignUpView).
+            guard url.scheme == "switchback", url.host == "invite" else { return }
+            let token = url.lastPathComponent
+            guard !token.isEmpty else { return }
+            if authManager.isSignedIn {
+                Task {
+                    if let invite = try? await APIClient.shared.claimInvite(token: token) {
+                        userState.pendingInviteId = invite.id
+                    }
+                }
+            } else {
+                userState.stashPendingInviteToken(token)
             }
         }
         .task {

@@ -15,13 +15,15 @@ router.get('/unread-count', requireAuth, (req, res) => {
 // GET /api/notifications
 router.get('/', requireAuth, (req, res) => {
   const rows = getDb().prepare(`
-    SELECT n.id, n.type, n.from_user_id, n.climb_id, n.comment_id, n.level, n.is_read, n.created_at,
+    SELECT n.id, n.type, n.from_user_id, n.climb_id, n.comment_id, n.invite_id, n.level, n.is_read, n.created_at,
            u.name AS from_user_name, u.avatar_path AS from_user_avatar_path,
-           m.name AS mountain_name
+           COALESCE(m.name, im.name) AS mountain_name
     FROM notifications n
     JOIN users u ON u.id = n.from_user_id
     LEFT JOIN climbs c ON c.id = n.climb_id
     LEFT JOIN mountains m ON m.id = c.mountain_id
+    LEFT JOIN climb_invites ci ON ci.id = n.invite_id
+    LEFT JOIN mountains im ON im.id = ci.mountain_id
     WHERE n.user_id = ?
     ORDER BY n.created_at DESC
     LIMIT 50
@@ -36,6 +38,7 @@ router.get('/', requireAuth, (req, res) => {
     from_user_avatar_url: n.from_user_avatar_path ? `${base}/uploads/${n.from_user_avatar_path}` : null,
     climb_id: n.climb_id,
     comment_id: n.comment_id,
+    invite_id: n.invite_id,
     mountain_name: n.mountain_name,
     level: n.level,
     level_name: n.level != null ? nameForLevel(n.level) : null,

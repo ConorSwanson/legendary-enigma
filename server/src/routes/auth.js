@@ -37,7 +37,7 @@ router.post('/signup', async (req, res) => {
     'INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)'
   ).run(email.toLowerCase(), hash, displayName);
 
-  res.status(201).json({ token: issueToken(result.lastInsertRowid) });
+  res.status(201).json({ token: issueToken(result.lastInsertRowid), is_new_user: true });
 });
 
 // POST /api/auth/signin
@@ -53,7 +53,7 @@ router.post('/signin', async (req, res) => {
     return res.status(400).json({ error: 'Invalid email or password' });
   }
 
-  res.json({ token: issueToken(user.id) });
+  res.json({ token: issueToken(user.id), is_new_user: false });
 });
 
 // POST /api/auth/apple — Sign in with Apple
@@ -81,6 +81,7 @@ router.post('/apple', async (req, res) => {
     const db = getDb();
 
     let user = db.prepare('SELECT * FROM users WHERE apple_id = ?').get(appleId);
+    let isNewUser = false;
 
     if (!user && email) {
       user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
@@ -100,9 +101,10 @@ router.post('/apple', async (req, res) => {
         'INSERT INTO users (apple_id, email, name) VALUES (?, ?, ?)'
       ).run(appleId, email, displayName);
       user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+      isNewUser = true;
     }
 
-    res.json({ token: issueToken(user.id) });
+    res.json({ token: issueToken(user.id), is_new_user: isNewUser });
   } catch (e) {
     console.error('[Apple Auth]', e.message);
     res.status(400).json({ error: `Apple sign in failed: ${e.message}` });

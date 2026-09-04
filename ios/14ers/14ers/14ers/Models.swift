@@ -553,6 +553,82 @@ struct LikeResponse: Codable, Sendable {
     let count: Int
 }
 
+// MARK: - Climb Invite
+
+struct ClimbInvite: Codable, Identifiable, Sendable {
+    let id: Int
+    let mountainId: Int
+    let mountainName: String?
+    let mountainElevation: Int?
+    let mountainRange: String?
+    let mountainState: String?
+    let inviterId: Int
+    let inviterName: String?
+    let inviterAvatarUrl: String?
+    let climbDate: String?
+    let note: String?
+    let shareToken: String?
+    let createdAt: String
+    let isInviter: Bool
+    let myStatus: String?
+    let recipients: [InviteRecipient]
+
+    enum CodingKeys: String, CodingKey {
+        case id, note, recipients
+        case mountainId         = "mountain_id"
+        case mountainName       = "mountain_name"
+        case mountainElevation  = "mountain_elevation"
+        case mountainRange      = "mountain_range"
+        case mountainState      = "mountain_state"
+        case inviterId          = "inviter_id"
+        case inviterName        = "inviter_name"
+        case inviterAvatarUrl   = "inviter_avatar_url"
+        case climbDate          = "climb_date"
+        case shareToken         = "share_token"
+        case createdAt          = "created_at"
+        case isInviter          = "is_inviter"
+        case myStatus           = "my_status"
+    }
+}
+
+struct InviteRecipient: Codable, Identifiable, Sendable {
+    let id: Int
+    let status: String
+    let viaLink: Bool
+    let respondedAt: String?
+    let userId: Int
+    let userName: String
+    let userAvatarUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, status
+        case viaLink     = "via_link"
+        case respondedAt = "responded_at"
+        case userId      = "user_id"
+        case userName    = "user_name"
+        case userAvatarUrl = "user_avatar_url"
+    }
+}
+
+struct MyInvites: Codable, Sendable {
+    let sent: [ClimbInvite]
+    let received: [ClimbInvite]
+}
+
+struct WishlistPeak: Codable, Identifiable, Sendable {
+    let id: Int
+    let name: String
+    let elevation: Int
+    let range: String
+    let state: String?
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, elevation, range, state
+        case createdAt = "created_at"
+    }
+}
+
 // MARK: - NotificationItem
 
 struct NotificationItem: Codable, Identifiable, Sendable {
@@ -563,6 +639,7 @@ struct NotificationItem: Codable, Identifiable, Sendable {
     let fromUserAvatarUrl: String?
     let climbId: Int?
     let commentId: Int?
+    let inviteId: Int?
     let mountainName: String?
     let level: Int?
     let levelName: String?
@@ -576,6 +653,7 @@ struct NotificationItem: Codable, Identifiable, Sendable {
         case fromUserAvatarUrl = "from_user_avatar_url"
         case climbId           = "climb_id"
         case commentId         = "comment_id"
+        case inviteId          = "invite_id"
         case mountainName      = "mountain_name"
         case levelName         = "level_name"
         case isRead            = "is_read"
@@ -596,6 +674,7 @@ extension Notification.Name {
     static let climbDeleted    = Notification.Name("climbDeleted")
     static let climbLogged     = Notification.Name("climbLogged")
     static let navigateToClimb = Notification.Name("navigateToClimb")
+    static let navigateToInvite = Notification.Name("navigateToInvite")
     static let climbLikeChanged = Notification.Name("climbLikeChanged")
 }
 

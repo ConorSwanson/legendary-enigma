@@ -361,6 +361,7 @@ function initDb() {
       type          TEXT    NOT NULL,
       climb_id      INTEGER REFERENCES climbs(id) ON DELETE CASCADE,
       comment_id    INTEGER REFERENCES climb_comments(id) ON DELETE CASCADE,
+      invite_id     INTEGER REFERENCES climb_invites(id) ON DELETE CASCADE,
       is_read       INTEGER NOT NULL DEFAULT 0,
       created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );
@@ -484,6 +485,49 @@ function initDb() {
       created_at TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token);
+
+    -- A proposed group climb: a peak, an optional date/note, and whoever's
+    -- invited. share_token (nullable) backs the "invite someone not on the
+    -- app yet" text/link path -- unlike named recipients below, it isn't
+    -- tied to a single person, so the inviter can forward one link to a
+    -- whole group chat and everyone who installs through it gets attached.
+    CREATE TABLE IF NOT EXISTS climb_invites (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      mountain_id INTEGER NOT NULL REFERENCES mountains(id) ON DELETE CASCADE,
+      inviter_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      climb_date  TEXT,
+      note        TEXT,
+      share_token TEXT UNIQUE,
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_invites_inviter  ON climb_invites(inviter_id);
+    CREATE INDEX IF NOT EXISTS idx_invites_mountain ON climb_invites(mountain_id);
+
+    -- One row per person attached to an invite, whether picked by name from
+    -- the inviter's followers or added later by claiming the share_token.
+    CREATE TABLE IF NOT EXISTS climb_invite_recipients (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      invite_id    INTEGER NOT NULL REFERENCES climb_invites(id) ON DELETE CASCADE,
+      user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status       TEXT    NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'maybe', 'declined')),
+      via_link     INTEGER NOT NULL DEFAULT 0,
+      created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+      responded_at TEXT,
+      UNIQUE(invite_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_invite_recipients_invite ON climb_invite_recipients(invite_id);
+    CREATE INDEX IF NOT EXISTS idx_invite_recipients_user   ON climb_invite_recipients(user_id);
+
+    -- Peaks someone wants to climb but hasn't yet. Accepting a climb invite
+    -- adds the peak here automatically (see routes/invites.js).
+    CREATE TABLE IF NOT EXISTS mountain_wishlist (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      mountain_id INTEGER NOT NULL REFERENCES mountains(id) ON DELETE CASCADE,
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(user_id, mountain_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_wishlist_user ON mountain_wishlist(user_id);
   `);
 
   // Migrate: add columns to legacy climbs table if missing
@@ -535,6 +579,9 @@ function initDb() {
   }
   if (!notifColsNow.includes('comment_id')) {
     db.exec('ALTER TABLE notifications ADD COLUMN comment_id INTEGER REFERENCES climb_comments(id) ON DELETE CASCADE');
+  }
+  if (!notifColsNow.includes('invite_id')) {
+    db.exec('ALTER TABLE notifications ADD COLUMN invite_id INTEGER REFERENCES climb_invites(id) ON DELETE CASCADE');
   }
 
   // Migrate: add parent_comment_id to climb_comments for threaded replies
