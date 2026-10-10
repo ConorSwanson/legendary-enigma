@@ -123,4 +123,87 @@ router.get('/stats', requireAdmin, (req, res) => {
   });
 });
 
+const VALID_VISIBILITY = new Set(['public', 'followers', 'private']);
+
+// GET /api/admin/climbs?user=<name substring> — every climb by matching
+// users, newest first, so a moderator can see what they're about to change.
+router.get('/climbs', requireAdmin, (req, res) => {
+  const q = String(req.query.user || '').trim();
+  if (!q) return res.status(400).json({ error: 'user query param required' });
+
+  const db = getDb();
+  const users = db.prepare(
+    'SELECT id, name, email FROM users WHERE name LIKE ? ORDER BY id'
+  ).all(`%${q}%`);
+
+  const climbsFor = db.prepare(`
+    SELECT c.id, c.climb_date, c.visibility, c.created_at, m.name AS mountain_name
+    FROM climbs c JOIN mountains m ON m.id = c.mountain_id
+    WHERE c.user_id = ?
+    ORDER BY c.created_at DESC
+  `);
+
+  res.json(users.map(u => {
+    const climbs = climbsFor.all(u.id);
+    const byVisibility = { public: 0, followers: 0, private: 0 };
+    for (const c of climbs) byVisibility[c.visibility] = (byVisibility[c.visibility] || 0) + 1;
+    return { ...u, climb_count: climbs.length, by_visibility: byVisibility, climbs };
+  }));
+});
+
+// POST /api/admin/climbs/visibility — moderation override for a user's
+// climbs. Body: { user_id, visibility, climb_ids?, created_after? }.
+// Without climb_ids it only narrows (public → followers → private) every
+// matching climb; with climb_ids it sets exactly those, in either direction.
+// Returns the ids changed so the action can be undone with climb_ids.
+router.post('/climbs/visibility', requireAdmin, (req, res) => {
+  const { user_id, visibility, climb_ids, created_after } = req.body || {};
+  const userId = Number(user_id);
+  if (!Number.isInteger(userId)) return res.status(400).json({ error: 'user_id required' });
+  if (!VALID_VISIBILITY.has(visibility)) {
+    return res.status(400).json({ error: 'visibility must be public, followers, or private' });
+  }
+  if (climb_ids !== undefined && (!Array.isArray(climb_ids) || !climb_ids.every(Number.isInteger))) {
+    return res.status(400).json({ error: 'climb_ids must be an array of integers' });
+  }
+
+  const db = getDb();
+  if (!db.prepare('SELECT 1 FROM users WHERE id = ?').get(userId)) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  let where = 'user_id = ? AND visibility != ?';
+  const params = [userId, visibility];
+  if (!climb_ids) {
+    // Bulk changes only ever narrow visibility, so hiding posts can't
+    // expose a climb the user had already made private.
+    const narrower = [...VALID_VISIBILITY].slice(0, [...VALID_VISIBILITY].indexOf(visibility));
+    if (narrower.length === 0) return res.status(400).json({ error: 'bulk changes can only reduce visibility; pass climb_ids to widen' });
+    where += ` AND visibility IN (${narrower.map(() => '?').join(',')})`;
+    params.push(...narrower);
+  }
+  if (climb_ids) {
+    if (climb_ids.length === 0) return res.json({ changed: 0, climb_ids: [] });
+    where += ` AND id IN (${climb_ids.map(() => '?').join(',')})`;
+    params.push(...climb_ids);
+  }
+  if (created_after) {
+    where += ' AND created_at >= ?';
+    params.push(String(created_after));
+  }
+
+  const changed = db.transaction(() => {
+    const rows = db.prepare(`SELECT id, visibility FROM climbs WHERE ${where}`).all(...params);
+    const update = db.prepare('UPDATE climbs SET visibility = ? WHERE id = ?');
+    for (const r of rows) update.run(visibility, r.id);
+    return rows;
+  })();
+
+  res.json({
+    changed: changed.length,
+    climb_ids: changed.map(r => r.id),
+    previous: changed,
+  });
+});
+
 module.exports = router;
